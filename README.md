@@ -1,5 +1,3 @@
-# Plataforma-Operacional-Great
-
 # Plataforma de Relatórios META Ads
 
 Esta plataforma foi criada para **automatizar a geração e o envio de relatórios de campanhas de tráfego pago da META Ads** para clientes.
