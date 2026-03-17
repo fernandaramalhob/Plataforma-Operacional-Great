@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(MANAGER)
+  createdAt    DateTime @default(now())
+}
+
+model Client {
+  id              String           @id @default(uuid())
+  name            String
+  company         String?
+  email           String?
+  phone           String?
+  notes           String?
+  whatsappGroupId String?
+  status          ClientStatus     @default(ACTIVE)
+  createdAt       DateTime         @default(now())
+  metaIntegration MetaIntegration?
+  campaigns       ClientCampaign[]
+  reports         Report[]
+}
+
+model MetaIntegration {
+  id                   String    @id @default(uuid())
+  clientId             String    @unique
+  client               Client    @relation(fields: [clientId], references: [id])
+  accessTokenEncrypted String
+  adAccountId          String?
+  tokenExpiresAt       DateTime?
+}
+
+model ClientCampaign {
+  id             String  @id @default(uuid())
+  clientId       String
+  client         Client  @relation(fields: [clientId], references: [id])
+  campaignIdMeta String
+  campaignName   String
+  isActive       Boolean @default(true)
+}
+
+model Report {
+  id            String       @id @default(uuid())
+  clientId      String
+  client        Client       @relation(fields: [clientId], references: [id])
+  referenceWeek DateTime
+  generatedAt   DateTime     @default(now())
+  status        ReportStatus @default(PENDING)
+  payloadJson   Json?
+  sendLogs      SendLog[]
+}
+
+model SendLog {
+  id            String        @id @default(uuid())
+  reportId      String
+  report        Report        @relation(fields: [reportId], references: [id])
+  channel       String
+  status        SendLogStatus @default(PENDING)
+  sentAt        DateTime?
+  errorMessage  String?
+  attemptNumber Int           @default(1)
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ReportStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum SendLogStatus {
+  PENDING
+  OK
+  FAILED
+}
