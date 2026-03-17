@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Plataforma de Relatórios META Ads
 
-## Getting Started
+Esta plataforma foi criada para **automatizar a geração e o envio de relatórios de campanhas de tráfego pago da META Ads** para clientes.
 
-First, run the development server:
+O objetivo é substituir processos manuais e ferramentas terceirizadas, permitindo que a equipe tenha **mais controle sobre os dados, mais eficiência operacional e maior capacidade de escala** no atendimento de clientes.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+# Contexto
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Agências que gerenciam campanhas de tráfego pago frequentemente precisam enviar **relatórios periódicos de desempenho** para seus clientes.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Esse processo normalmente envolve:
 
-## Learn More
+- acessar manualmente os dados das campanhas
+- organizar as métricas
+- montar relatórios
+- enviar os resultados para os clientes
 
-To learn more about Next.js, take a look at the following resources:
+Quando o número de clientes cresce, esse processo se torna **repetitivo, demorado e sujeito a erros**.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Esta plataforma foi criada para resolver esse problema.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+# Propósito da Plataforma
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+A plataforma centraliza todo o processo de relatórios em um único sistema que:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- coleta os dados das campanhas de anúncios
+- organiza as métricas de desempenho
+- gera relatórios padronizados por cliente
+- envia automaticamente esses relatórios para os clientes
+
+Com isso, o processo passa a ser **automático, confiável e escalável**.
+
+---
+
+# Benefícios
+
+A adoção da plataforma traz algumas vantagens importantes:
+
+- redução de tarefas operacionais manuais
+- padronização dos relatórios enviados aos clientes
+- maior controle sobre histórico de relatórios
+- maior eficiência da equipe
+- possibilidade de escalar a operação para muitos clientes
+
+---
+
+# Funcionamento Geral
+
+De forma simplificada, a plataforma funciona assim:
+
+1. As campanhas de cada cliente são conectadas ao sistema
+2. O sistema coleta periodicamente os dados de desempenho
+3. As métricas são organizadas em um relatório
+4. O relatório é enviado automaticamente para o cliente
+
+Todo o processo ocorre de forma automatizada, reduzindo a necessidade de intervenção manual da equipe.
+
+---
+
+# Visão de Longo Prazo
+
+Além da automação básica de relatórios, a plataforma pode evoluir para incluir:
+
+- comparações de desempenho entre períodos
+- diferentes formatos de relatório
+- integrações com outras plataformas de anúncios
+- dashboards internos de análise de performance
+- personalização de relatórios por cliente
+
+O objetivo final é transformar a plataforma em uma **ferramenta central de acompanhamento de desempenho de campanhas para a operação da agência**.
+
+---
+
+# Uso
+
+Este projeto é destinado ao **uso interno da operação da empresa**, com foco na automação de relatórios e melhoria da eficiência operacional.
