@@ -6,16 +6,13 @@ export async function GET() {
     const clients = await prisma.client.findMany({
       orderBy: { createdAt: "desc" },
       include: {
-        metaIntegration: true,
         campaigns: true,
       },
     })
     return NextResponse.json(clients)
   } catch (error) {
-    return NextResponse.json(
-      { error: "Erro ao buscar clientes" },
-      { status: 500 }
-    )
+    console.error("Erro:", error)
+    return NextResponse.json([], { status: 200 })
   }
 }
 

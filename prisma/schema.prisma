@@ -8,11 +8,14 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(MANAGER)
-  createdAt    DateTime @default(now())
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  passwordHash        String
+  role                Role      @default(MANAGER)
+  metaAccessToken     String?
+  metaTokenExpiresAt  DateTime?
+  createdAt           DateTime  @default(now())
+  clients             Client[]
 }
 
 model Client {
@@ -23,20 +26,14 @@ model Client {
   phone           String?
   notes           String?
   whatsappGroupId String?
+  adAccountId     String?
+  adAccountName   String?
   status          ClientStatus     @default(ACTIVE)
   createdAt       DateTime         @default(now())
-  metaIntegration MetaIntegration?
+  managerId       String?
+  manager         User?            @relation(fields: [managerId], references: [id])
   campaigns       ClientCampaign[]
   reports         Report[]
-}
-
-model MetaIntegration {
-  id                   String    @id @default(uuid())
-  clientId             String    @unique
-  client               Client    @relation(fields: [clientId], references: [id])
-  accessTokenEncrypted String
-  adAccountId          String?
-  tokenExpiresAt       DateTime?
 }
 
 model ClientCampaign {

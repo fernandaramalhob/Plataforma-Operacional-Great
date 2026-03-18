@@ -1,1 +1,3 @@
-export default function Page() { return <div></div> }
+export default function EditClientPage() {
+  return <div>Editar Cliente</div>
+}

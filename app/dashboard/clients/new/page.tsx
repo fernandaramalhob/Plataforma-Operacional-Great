@@ -37,12 +37,11 @@ export default function NewClientPage() {
 
   async function handleSave() {
     if (!form.name) {
-      setError("Nome é obrigatório")
+      setError("Nome completo é obrigatório.")
       return
     }
     setIsSaving(true)
     setError("")
-
     try {
       const res = await fetch("/api/clients", {
         method: "POST",
@@ -56,12 +55,11 @@ export default function NewClientPage() {
           whatsappGroupId: form.whatsappGroupId,
         }),
       })
-
       if (!res.ok) throw new Error("Erro ao salvar")
-
       router.push("/dashboard/clients")
-    } catch (err) {
+    } catch {
       setError("Erro ao salvar cliente. Tente novamente.")
+    } finally {
       setIsSaving(false)
     }
   }
@@ -80,14 +78,14 @@ export default function NewClientPage() {
         </Link>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3 mb-6">
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3 mb-6">
             {error}
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          {/* Left */}
+          {/* Informações Básicas */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
             <h2 className="text-lg font-bold text-gray-900 mb-1">Informações Básicas</h2>
             <p className="text-sm text-gray-400 mb-8">Dados principais do cliente</p>
@@ -101,7 +99,7 @@ export default function NewClientPage() {
                   onChange={handleChange}
                   type="text"
                   placeholder="Ex: Ana Beatriz Santos"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB]"
                 />
               </div>
 
@@ -113,7 +111,7 @@ export default function NewClientPage() {
                   onChange={handleChange}
                   type="text"
                   placeholder="Ex: Loja ModaFit"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB]"
                 />
               </div>
 
@@ -127,7 +125,7 @@ export default function NewClientPage() {
                     onChange={handleChange}
                     type="email"
                     placeholder="contato@empresa.com.br"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB] focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB]"
                   />
                 </div>
               </div>
@@ -142,7 +140,7 @@ export default function NewClientPage() {
                     onChange={handleChange}
                     type="tel"
                     placeholder="(11) 99999-9999"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB] focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB]"
                   />
                 </div>
               </div>
@@ -155,7 +153,7 @@ export default function NewClientPage() {
                   onChange={handleChange}
                   placeholder="Notas internas sobre este cliente..."
                   rows={4}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB] focus:border-transparent resize-none"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB] resize-none"
                 />
               </div>
             </div>
@@ -163,6 +161,8 @@ export default function NewClientPage() {
 
           {/* Right */}
           <div className="space-y-6">
+
+            {/* META */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-gray-900">Integração META Ads</h2>
@@ -170,13 +170,11 @@ export default function NewClientPage() {
                   <span className="text-white text-sm font-bold">f</span>
                 </div>
               </div>
-
               <div className="bg-blue-50 border-l-4 border-[#1AABDB] rounded-lg px-4 py-3 mb-6">
                 <p className="text-sm text-blue-700">
                   Acesse business.facebook.com → Configurações → Acesso à API para obter seu token
                 </p>
               </div>
-
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Token de Acesso META</label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -186,13 +184,9 @@ export default function NewClientPage() {
                     onChange={handleChange}
                     type={showToken ? "text" : "password"}
                     placeholder="••••••••••••••••••••"
-                    className="w-full pr-10 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB] focus:border-transparent"
+                    className="w-full pr-10 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB]"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowToken(!showToken)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  >
+                  <button type="button" onClick={() => setShowToken(!showToken)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                     {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -206,6 +200,7 @@ export default function NewClientPage() {
               </div>
             </div>
 
+            {/* WhatsApp */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-gray-900">WhatsApp</h2>
@@ -213,7 +208,6 @@ export default function NewClientPage() {
                   <span className="text-white text-lg">✓</span>
                 </div>
               </div>
-
               <label className="block text-sm font-medium text-gray-700 mb-1.5">ID do Grupo WhatsApp</label>
               <input
                 name="whatsappGroupId"
@@ -221,17 +215,14 @@ export default function NewClientPage() {
                 onChange={handleChange}
                 type="text"
                 placeholder="Ex: 5511999999999-1234567890@g.us"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB] focus:border-transparent mb-4"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB] mb-4"
               />
-
               <button className="w-full flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 text-sm text-gray-600 hover:bg-gray-50 transition">
                 ⚠ Testar Envio
               </button>
-
-              <p className="text-xs text-gray-400 mt-3">
-                O número Evolution API deve estar no grupo antes de salvar
-              </p>
+              <p className="text-xs text-gray-400 mt-3">O número Evolution API deve estar no grupo antes de salvar</p>
             </div>
+
           </div>
         </div>
 
@@ -252,14 +243,7 @@ export default function NewClientPage() {
               disabled={isSaving}
               className="bg-[#1AABDB] hover:bg-[#1594bf] text-white font-semibold px-6 py-3 rounded-xl text-sm transition disabled:opacity-60 flex items-center gap-2"
             >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                "Salvar Cliente"
-              )}
+              {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : "Salvar Cliente"}
             </button>
           </div>
         </div>
