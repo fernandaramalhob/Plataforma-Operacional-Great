@@ -36,7 +36,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
 
- useEffect(() => {
+  useEffect(() => {
     fetch("/api/clients")
       .then((res) => res.json())
       .then((data) => {
@@ -148,11 +148,10 @@ export default function ClientsPage() {
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">{client.company ?? "—"}</td>
                     <td className="px-4 py-4">
-                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                        client.metaIntegration
+                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${client.metaIntegration
                           ? "bg-green-50 text-green-600"
                           : "bg-gray-100 text-gray-400"
-                      }`}>
+                        }`}>
                         {client.metaIntegration ? "Conectado" : "Não conectado"}
                       </span>
                     </td>
@@ -163,12 +162,20 @@ export default function ClientsPage() {
                       {new Date(client.createdAt).toLocaleDateString("pt-BR")}
                     </td>
                     <td className="px-4 py-4">
-                      <Link
-                        href={`/dashboard/clients/${client.id}/edit`}
-                        className="text-[#1AABDB] hover:underline text-sm"
-                      >
-                        Editar
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        <Link
+                          href={`/dashboard/clients/${client.id}`}
+                          className="text-[#1AABDB] hover:underline text-sm font-medium"
+                        >
+                          Ver
+                        </Link>
+                        <Link
+                          href={`/dashboard/clients/${client.id}/edit`}
+                          className="text-gray-400 hover:text-gray-600 text-sm"
+                        >
+                          Editar
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
