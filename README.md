@@ -1,50 +1,50 @@
-# Plataforma de Relatórios META Ads
+# GreatGo
 
-Esta plataforma foi criada para **automatizar a geração e o envio de relatórios de campanhas de tráfego pago da META Ads** para clientes.
+O GreatGo foi criado para **automatizar a geracao e o envio de relatorios de campanhas de trafego pago da META Ads** para clientes.
 
-O objetivo é substituir processos manuais e ferramentas terceirizadas, permitindo que a equipe tenha **mais controle sobre os dados, mais eficiência operacional e maior capacidade de escala** no atendimento de clientes.
+O objetivo e substituir processos manuais e ferramentas terceirizadas, permitindo que a equipe tenha **mais controle sobre os dados, mais eficiencia operacional e maior capacidade de escala** no atendimento de clientes.
 
 ---
 
 # Contexto
 
-Agências que gerenciam campanhas de tráfego pago frequentemente precisam enviar **relatórios periódicos de desempenho** para seus clientes.
+Agencias que gerenciam campanhas de trafego pago frequentemente precisam enviar **relatorios periodicos de desempenho** para seus clientes.
 
 Esse processo normalmente envolve:
 
 - acessar manualmente os dados das campanhas
-- organizar as métricas
-- montar relatórios
+- organizar as metricas
+- montar relatorios
 - enviar os resultados para os clientes
 
-Quando o número de clientes cresce, esse processo se torna **repetitivo, demorado e sujeito a erros**.
+Quando o numero de clientes cresce, esse processo se torna **repetitivo, demorado e sujeito a erros**.
 
 Esta plataforma foi criada para resolver esse problema.
 
 ---
 
-# Propósito da Plataforma
+# Proposito da Plataforma
 
-A plataforma centraliza todo o processo de relatórios em um único sistema que:
+A plataforma centraliza todo o processo de relatorios em um unico sistema que:
 
-- coleta os dados das campanhas de anúncios
-- organiza as métricas de desempenho
-- gera relatórios padronizados por cliente
-- envia automaticamente esses relatórios para os clientes
+- coleta os dados das campanhas de anuncios
+- organiza as metricas de desempenho
+- gera relatorios padronizados por cliente
+- envia automaticamente esses relatorios para os clientes
 
-Com isso, o processo passa a ser **automático, confiável e escalável**.
+Com isso, o processo passa a ser **automatico, confiavel e escalavel**.
 
 ---
 
-# Benefícios
+# Beneficios
 
-A adoção da plataforma traz algumas vantagens importantes:
+A adocao da plataforma traz algumas vantagens importantes:
 
-- redução de tarefas operacionais manuais
-- padronização dos relatórios enviados aos clientes
-- maior controle sobre histórico de relatórios
-- maior eficiência da equipe
-- possibilidade de escalar a operação para muitos clientes
+- reducao de tarefas operacionais manuais
+- padronizacao dos relatorios enviados aos clientes
+- maior controle sobre historico de relatorios
+- maior eficiencia da equipe
+- possibilidade de escalar a operacao para muitos clientes
 
 ---
 
@@ -52,29 +52,29 @@ A adoção da plataforma traz algumas vantagens importantes:
 
 De forma simplificada, a plataforma funciona assim:
 
-1. As campanhas de cada cliente são conectadas ao sistema
+1. As campanhas de cada cliente sao conectadas ao sistema
 2. O sistema coleta periodicamente os dados de desempenho
-3. As métricas são organizadas em um relatório
-4. O relatório é enviado automaticamente para o cliente
+3. As metricas sao organizadas em um relatorio
+4. O relatorio e enviado automaticamente para o cliente
 
-Todo o processo ocorre de forma automatizada, reduzindo a necessidade de intervenção manual da equipe.
+Todo o processo ocorre de forma automatizada, reduzindo a necessidade de intervencao manual da equipe.
 
 ---
 
-# Visão de Longo Prazo
+# Visao de Longo Prazo
 
-Além da automação básica de relatórios, a plataforma pode evoluir para incluir:
+Alem da automacao basica de relatorios, a plataforma pode evoluir para incluir:
 
-- comparações de desempenho entre períodos
-- diferentes formatos de relatório
-- integrações com outras plataformas de anúncios
-- dashboards internos de análise de performance
-- personalização de relatórios por cliente
+- comparacoes de desempenho entre periodos
+- diferentes formatos de relatorio
+- integracoes com outras plataformas de anuncios
+- dashboards internos de analise de performance
+- personalizacao de relatorios por cliente
 
-O objetivo final é transformar a plataforma em uma **ferramenta central de acompanhamento de desempenho de campanhas para a operação da agência**.
+O objetivo final e transformar a plataforma em uma **ferramenta central de acompanhamento de desempenho de campanhas para a operacao da agencia**.
 
 ---
 
 # Uso
 
-Este projeto é destinado ao **uso interno da operação da empresa**, com foco na automação de relatórios e melhoria da eficiência operacional.
+Este projeto e destinado ao **uso interno da operacao da empresa**, com foco na automacao de relatorios e melhoria da eficiencia operacional.
