@@ -16,7 +16,7 @@ export function Header({ title, subtitle }: HeaderProps) {
     .map((n) => n[0])
     .slice(0, 2)
     .join("")
-    .toUpperCase() ?? "AD"
+    .toUpperCase() ?? "GG"
 
   const today = new Date()
   const weekStart = new Date(today)
@@ -29,34 +29,24 @@ export function Header({ title, subtitle }: HeaderProps) {
 
   return (
     <header className="h-[72px] bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-20">
-
-      {/* Title */}
       <div>
         <h1 className="text-xl font-bold text-gray-900">{title}</h1>
         {subtitle && (
           <p className="text-sm text-gray-400 mt-0.5">{subtitle}</p>
         )}
       </div>
-
-      {/* Right */}
       <div className="flex items-center gap-4">
-        {/* Week range */}
         <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg">
           <span className="text-gray-400">🕐</span>
           <span>Semana: {fmt(weekStart)} – {fmt(weekEnd)}</span>
         </div>
-
-        {/* Bell */}
         <button className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-50 transition">
           <Bell className="w-5 h-5 text-gray-500" />
         </button>
-
-        {/* Avatar */}
-        <div className="w-9 h-9 rounded-full bg-[#1AABDB] flex items-center justify-center cursor-pointer">
+        <div className="w-9 h-9 rounded-full bg-[#C1121F] flex items-center justify-center cursor-pointer">
           <span className="text-white text-sm font-semibold">{initials}</span>
         </div>
       </div>
-
     </header>
   )
 }

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -9,8 +10,8 @@ import { z } from "zod"
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react"
 
 const loginSchema = z.object({
-  email: z.string().email("E-mail inválido"),
-  password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+  email: z.string().email("E-mail invalido"),
+  password: z.string().min(6, "Senha deve ter no minimo 6 caracteres"),
 })
 
 type LoginForm = z.infer<typeof loginSchema>
@@ -40,7 +41,7 @@ export default function LoginPage() {
     })
 
     if (result?.error) {
-      setError("E-mail ou senha inválidos")
+      setError("E-mail ou senha invalidos")
       setIsLoading(false)
       return
     }
@@ -55,13 +56,19 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-[#f0f4f8] flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-sm w-full max-w-[480px] px-10 py-10">
-
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 bg-[#1AABDB] rounded-2xl flex items-center justify-center mb-4">
-            <span className="text-white text-2xl font-bold">M</span>
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FFF1F2] ring-1 ring-[#FECDD3]">
+            <Image
+              src="/logo.png"
+              alt="Logo GreatGo"
+              width={40}
+              height={40}
+              className="h-10 w-10 object-contain"
+              priority
+            />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">MetaReport</h1>
-          <p className="text-gray-400 text-sm mt-1">Relatórios automáticos de META Ads</p>
+          <h1 className="text-2xl font-bold text-gray-900">GreatGo</h1>
+          <p className="mt-1 text-sm text-gray-400">Operacao de relatorios para META Ads</p>
         </div>
 
         {error && (
@@ -81,7 +88,7 @@ export default function LoginPage() {
                 {...register("email")}
                 type="email"
                 placeholder="seu@email.com"
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1AABDB] focus:border-transparent transition"
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C1121F] focus:border-transparent transition"
               />
             </div>
             {errors.email && (
@@ -98,8 +105,8 @@ export default function LoginPage() {
               <input
                 {...register("password")}
                 type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1AABDB] focus:border-transparent transition"
+                placeholder="********"
+                className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C1121F] focus:border-transparent transition"
               />
               <button
                 type="button"
@@ -117,7 +124,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#1AABDB] hover:bg-[#1594bf] text-white font-semibold py-3.5 rounded-xl transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+            className="w-full bg-[#C1121F] hover:bg-[#A50F1A] text-white font-semibold py-3.5 rounded-xl transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
           >
             {isLoading ? (
               <>
@@ -143,7 +150,6 @@ export default function LoginPage() {
           <GoogleIcon />
           Entrar com Google
         </button>
-
       </div>
     </main>
   )

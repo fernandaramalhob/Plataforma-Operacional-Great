@@ -53,7 +53,7 @@ export default function ClientDetailPage() {
   if (loadingClient) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <Loader2 className="w-6 h-6 animate-spin text-[#1AABDB]" />
+        <Loader2 className="w-6 h-6 animate-spin text-[#C1121F]" />
       </div>
     )
   }
@@ -82,7 +82,7 @@ export default function ClientDetailPage() {
           </div>
           <Link
             href={`/dashboard/clients/${id}/edit`}
-            className="bg-[#1AABDB] hover:bg-[#1594bf] text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition"
+            className="bg-[#C1121F] hover:bg-[#A50F1A] text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition"
           >
             Editar Cliente
           </Link>
@@ -95,7 +95,7 @@ export default function ClientDetailPage() {
 
           {loadingCampaigns ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-[#1AABDB]" />
+              <Loader2 className="w-6 h-6 animate-spin text-[#C1121F]" />
             </div>
           ) : error ? (
             <div className="flex items-center justify-center py-16 text-gray-400">

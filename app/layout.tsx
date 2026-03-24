@@ -1,32 +1,32 @@
-"use client"
-
-import { SessionProvider } from "next-auth/react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { useState } from "react"
+import type { Metadata } from "next"
+import Providers from "@/components/providers"
 import "./globals.css"
+
+export const metadata: Metadata = {
+  title: {
+    default: "GreatGo",
+    template: "%s | GreatGo",
+  },
+  applicationName: "GreatGo",
+  description: "Plataforma interna para relatorios e operacao de performance em META Ads",
+  icons: {
+    icon: [{ url: "/favicon.png" }],
+    shortcut: [{ url: "/favicon.png" }],
+    apple: [{ url: "/favicon.png" }],
+  },
+}
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 1000 * 60,
-        retry: 2,
-      },
-    },
-  }))
-
   return (
     <html lang="pt-BR">
       <body>
-        <SessionProvider>
-          <QueryClientProvider client={queryClient}>
-            {children}
-          </QueryClientProvider>
-        </SessionProvider>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )

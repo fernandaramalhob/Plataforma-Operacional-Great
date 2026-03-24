@@ -20,7 +20,7 @@ export default function Error({
         <p className="text-gray-500 text-sm mb-6">Ocorreu um erro inesperado.</p>
         <button
           onClick={reset}
-          className="bg-[#1AABDB] text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-[#1594bf] transition"
+          className="bg-[#C1121F] text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-[#A50F1A] transition"
         >
           Tentar novamente
         </button>

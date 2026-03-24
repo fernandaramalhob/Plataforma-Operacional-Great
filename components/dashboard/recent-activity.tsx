@@ -44,7 +44,7 @@ export function RecentActivity() {
         </h2>
         <Link
           href="/dashboard/reports"
-          className="text-sm text-[#1AABDB] hover:underline font-medium"
+          className="text-sm text-[#C1121F] hover:underline font-medium"
         >
           Ver todos →
         </Link>

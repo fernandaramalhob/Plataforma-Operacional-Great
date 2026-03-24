@@ -67,7 +67,7 @@ export default function EditClientPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <Loader2 className="w-6 h-6 animate-spin text-[#1AABDB]" />
+        <Loader2 className="w-6 h-6 animate-spin text-[#C1121F]" />
       </div>
     )
   }
@@ -95,19 +95,19 @@ export default function EditClientPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Nome completo *</label>
               <input name="name" value={form.name} onChange={handleChange} type="text"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB]" />
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Empresa</label>
               <input name="company" value={form.company} onChange={handleChange} type="text"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB]" />
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">E-mail</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input name="email" value={form.email} onChange={handleChange} type="email"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB]" />
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]" />
               </div>
             </div>
             <div>
@@ -115,19 +115,19 @@ export default function EditClientPage() {
               <div className="relative">
                 <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input name="phone" value={form.phone} onChange={handleChange} type="tel"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB]" />
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]" />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">ID Grupo WhatsApp</label>
               <input name="whatsappGroupId" value={form.whatsappGroupId} onChange={handleChange} type="text"
                 placeholder="5511999999999-1234567890@g.us"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB]" />
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Observações</label>
               <textarea name="notes" value={form.notes} onChange={handleChange} rows={4}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1AABDB] resize-none" />
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F] resize-none" />
             </div>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function EditClientPage() {
             Cancelar
           </button>
           <button onClick={handleSave} disabled={isSaving}
-            className="bg-[#1AABDB] hover:bg-[#1594bf] text-white font-semibold px-6 py-3 rounded-xl text-sm transition disabled:opacity-60 flex items-center gap-2">
+            className="bg-[#C1121F] hover:bg-[#A50F1A] text-white font-semibold px-6 py-3 rounded-xl text-sm transition disabled:opacity-60 flex items-center gap-2">
             {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : "Salvar Alterações"}
           </button>
         </div>

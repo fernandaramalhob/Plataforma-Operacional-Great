@@ -1,24 +1,21 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
 import {
-  LayoutDashboard,
-  Users,
-  FileText,
-  History,
-  Settings,
-  LogOut,
+  LayoutDashboard, Users, FileText,
+  History, Settings, LogOut,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { label: "Dashboard",     href: "/dashboard",              icon: LayoutDashboard },
-  { label: "Clientes",      href: "/dashboard/clients",      icon: Users },
-  { label: "Relatórios",    href: "/dashboard/reports",      icon: FileText },
-  { label: "Histórico",     href: "/dashboard/history",      icon: History },
-  { label: "Configurações", href: "/dashboard/settings",     icon: Settings },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Clientes", href: "/dashboard/clients", icon: Users },
+  { label: "Relatorios", href: "/dashboard/reports", icon: FileText },
+  { label: "Historico", href: "/dashboard/history", icon: History },
+  { label: "Configuracoes", href: "/dashboard/settings", icon: Settings },
 ]
 
 export function Sidebar() {
@@ -26,32 +23,45 @@ export function Sidebar() {
   const { data: session } = useSession()
 
   const initials = session?.user?.name
-    ?.split(" ")
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() ?? "AD"
+    ?.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() ?? "GG"
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-[280px] bg-white border-r border-gray-100 flex flex-col z-30">
-
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-        <div className="w-9 h-9 bg-[#1AABDB] rounded-xl flex items-center justify-center">
-          <span className="text-white text-base font-bold">M</span>
+      <div className="border-b border-gray-100 px-6 py-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FFF1F2] ring-1 ring-[#FECDD3]">
+            <Image
+              src="/logo.png"
+              alt="Logo GreatGo"
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
+              priority
+            />
+          </div>
+          <div className="min-w-0">
+            <Image
+              src="/logo-name.png"
+              alt="GreatGo"
+              width={108}
+              height={24}
+              className="h-6 w-auto object-contain"
+              priority
+            />
+            <p className="mt-1 text-xs text-gray-400">Painel interno de operacao</p>
+          </div>
         </div>
-        <span className="text-gray-900 font-bold text-lg">MetaReport</span>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 px-3 py-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest px-3 mb-3">
           Menu
         </p>
         <ul className="space-y-1">
           {navItems.map(({ label, href, icon: Icon }) => {
-            const isActive =
-              href === "/" ? pathname === "/" : pathname.startsWith(href)
+            const isActive = href === "/dashboard"
+              ? pathname === "/dashboard"
+              : pathname.startsWith(href)
 
             return (
               <li key={href}>
@@ -60,11 +70,11 @@ export function Sidebar() {
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                     isActive
-                      ? "bg-[#EBF7FC] text-[#1AABDB]"
+                      ? "bg-[#FEF2F2] text-[#C1121F]"
                       : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                   )}
                 >
-                  <Icon className={cn("w-5 h-5", isActive ? "text-[#1AABDB]" : "text-gray-400")} />
+                  <Icon className={cn("w-5 h-5", isActive ? "text-[#C1121F]" : "text-gray-400")} />
                   {label}
                 </Link>
               </li>
@@ -73,15 +83,14 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* User */}
       <div className="px-4 py-4 border-t border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[#1AABDB] flex items-center justify-center">
+          <div className="w-9 h-9 rounded-full bg-[#C1121F] flex items-center justify-center">
             <span className="text-white text-sm font-semibold">{initials}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-gray-900 leading-tight">
-              {session?.user?.name ?? "Admin User"}
+              {session?.user?.name ?? "Nao autenticado"}
             </span>
             <span className="text-xs text-gray-400">Administrador</span>
           </div>
@@ -94,7 +103,6 @@ export function Sidebar() {
           <LogOut className="w-4 h-4" />
         </button>
       </div>
-
     </aside>
   )
 }
