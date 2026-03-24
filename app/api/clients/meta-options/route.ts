@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { resolveMetaToken } from "@/lib/meta-token"
 import { prisma } from "@/lib/prisma"
+import { logError } from "@/lib/safe-logger"
 
 type MetaItem = {
   id?: string
@@ -82,7 +84,22 @@ export async function GET() {
       )
     }
 
-    const token = user.metaAccessToken
+    const { token: rawToken, encryptedToken } = resolveMetaToken(
+      user.metaAccessToken
+    )
+
+    if (encryptedToken) {
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { metaAccessToken: encryptedToken },
+        })
+      } catch (error) {
+        logError("clients.meta-options.reencrypt", error, { userId: user.id })
+      }
+    }
+
+    const token = encodeURIComponent(rawToken)
     const baseUrl = "https://graph.facebook.com/v18.0"
 
     const adAccountsData = await fetchMetaResponse<MetaListResponse>(
@@ -183,7 +200,7 @@ export async function GET() {
 
     return NextResponse.json({ profiles, brands })
   } catch (error) {
-    console.error(error)
+    logError("clients.meta-options.get", error)
     return NextResponse.json(
       { error: "Erro ao carregar opcoes META para clientes" },
       { status: 500 }

@@ -3,20 +3,22 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id                  String    @id @default(uuid())
-  email               String    @unique
-  passwordHash        String
-  role                Role      @default(MANAGER)
-  metaAccessToken     String?
-  metaTokenExpiresAt  DateTime?
-  createdAt           DateTime  @default(now())
-  clients             Client[]
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  name               String?
+  avatarUrl          String?
+  passwordHash       String
+  role               Role      @default(MANAGER)
+  metaAccessToken    String?
+  metaTokenExpiresAt DateTime?
+  createdAt          DateTime  @default(now())
+  clients            Client[]
 }
 
 model Client {
@@ -32,40 +34,54 @@ model Client {
   status          ClientStatus     @default(ACTIVE)
   createdAt       DateTime         @default(now())
   managerId       String?
-  manager         User?            @relation(fields: [managerId], references: [id])
+  manager         User?            @relation(fields: [managerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   campaigns       ClientCampaign[]
   reports         Report[]
+
+  @@index([managerId, status])
+  @@index([adAccountId])
 }
 
 model ClientCampaign {
   id             String  @id @default(uuid())
   clientId       String
-  client         Client  @relation(fields: [clientId], references: [id])
+  client         Client  @relation(fields: [clientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   campaignIdMeta String
   campaignName   String
   isActive       Boolean @default(true)
+
+  @@unique([clientId, campaignIdMeta])
+  @@index([clientId, isActive])
 }
 
 model Report {
   id            String       @id @default(uuid())
   clientId      String
-  client        Client       @relation(fields: [clientId], references: [id])
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   referenceWeek DateTime
   generatedAt   DateTime     @default(now())
   status        ReportStatus @default(PENDING)
   payloadJson   Json?
   sendLogs      SendLog[]
+
+  @@index([clientId, generatedAt])
+  @@index([status, generatedAt])
+  @@index([referenceWeek])
 }
 
 model SendLog {
   id            String        @id @default(uuid())
   reportId      String
-  report        Report        @relation(fields: [reportId], references: [id])
+  report        Report        @relation(fields: [reportId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   channel       String
   status        SendLogStatus @default(PENDING)
   sentAt        DateTime?
   errorMessage  String?
   attemptNumber Int           @default(1)
+
+  @@unique([reportId, attemptNumber])
+  @@index([reportId, status])
+  @@index([sentAt])
 }
 
 enum Role {

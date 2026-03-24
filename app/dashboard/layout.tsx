@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
-import { Sidebar } from "@/components/layout/sidebar"
+import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { authOptions } from "@/lib/auth"
 
 export default async function DashboardLayout({
@@ -14,12 +14,5 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
-  return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#F8FAFC" }}>
-      <Sidebar />
-      <main style={{ flex: 1, marginLeft: "280px" }}>
-        {children}
-      </main>
-    </div>
-  )
+  return <DashboardShell>{children}</DashboardShell>
 }

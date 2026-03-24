@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { encryptMetaToken, resolveMetaToken } from "@/lib/meta-token"
 import { prisma } from "@/lib/prisma"
+import { logError } from "@/lib/safe-logger"
 
 type TokenStatus = "missing" | "active" | "expired" | "invalid" | "unknown"
 type AuthenticatedContext = {
@@ -133,7 +135,22 @@ export async function GET() {
       })
     }
 
-    const validation = await validateMetaToken(user.metaAccessToken)
+    const { token: decryptedToken, encryptedToken } = resolveMetaToken(
+      user.metaAccessToken
+    )
+
+    if (encryptedToken) {
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { metaAccessToken: encryptedToken },
+        })
+      } catch (error) {
+        logError("meta-token.reencrypt", error, { userId: user.id })
+      }
+    }
+
+    const validation = await validateMetaToken(decryptedToken)
 
     return NextResponse.json({
       sessionUser: {
@@ -143,13 +160,14 @@ export async function GET() {
         name: session.user.name ?? email,
       },
       hasSavedToken: true,
-      tokenMasked: maskToken(user.metaAccessToken),
+      tokenMasked: maskToken(decryptedToken),
       tokenStatus: validation.tokenStatus,
       metaUser: validation.ok ? validation.metaUser : null,
       detail: validation.ok ? null : validation.detail,
       expiresAt: user.metaTokenExpiresAt,
     })
   } catch (error) {
+    logError("meta-token.get", error)
     return NextResponse.json(
       { error: "Erro interno", detail: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -197,17 +215,19 @@ export async function POST(request: Request) {
       )
     }
 
+    const encryptedToken = encryptMetaToken(sanitizedToken)
+
     await prisma.user.upsert({
       where: { email },
       update: {
-        metaAccessToken: sanitizedToken,
+        metaAccessToken: encryptedToken,
         metaTokenExpiresAt: null,
       },
       create: {
         email,
         passwordHash: user?.passwordHash ?? "",
         role: user?.role ?? "MANAGER",
-        metaAccessToken: sanitizedToken,
+        metaAccessToken: encryptedToken,
       },
     })
 
@@ -218,6 +238,7 @@ export async function POST(request: Request) {
       metaUser: validation.metaUser,
     })
   } catch (error) {
+    logError("meta-token.post", error)
     return NextResponse.json(
       { error: "Erro interno", detail: error instanceof Error ? error.message : String(error) },
       { status: 500 }

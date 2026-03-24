@@ -1,71 +1,192 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { Prisma } from "@prisma/client"
+import {
+  type AuthenticatedUser,
+  getCurrentUser,
+  scopeClientWhere,
+} from "@/lib/authorization"
 import { prisma } from "@/lib/prisma"
+import { logError } from "@/lib/safe-logger"
+import {
+  clientPayloadSchema,
+  getClientValidationMessage,
+} from "@/lib/validations/client.schema"
 
-export async function GET() {
-  try {
-    const clients = await prisma.client.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        campaigns: true,
+function buildClientFilters(searchParams: URLSearchParams) {
+  const search = searchParams.get("search")?.trim() ?? ""
+  const status = searchParams.get("status")
+  const metaStatus = searchParams.get("metaStatus")
+  const filters: Prisma.ClientWhereInput[] = []
+
+  if (search) {
+    filters.push({
+      OR: [
+        {
+          name: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+        {
+          company: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      ],
+    })
+  }
+
+  if (status === "ACTIVE" || status === "INACTIVE") {
+    filters.push({ status })
+  }
+
+  if (metaStatus === "CONNECTED") {
+    filters.push({
+      NOT: {
+        OR: [{ adAccountId: null }, { adAccountId: "" }],
       },
     })
+  }
+
+  if (metaStatus === "DISCONNECTED") {
+    filters.push({
+      OR: [{ adAccountId: null }, { adAccountId: "" }],
+    })
+  }
+
+  return filters
+}
+
+async function fetchClients(
+  user: Pick<AuthenticatedUser, "id" | "role">,
+  searchParams: URLSearchParams
+) {
+  const filters = buildClientFilters(searchParams)
+
+  return prisma.client.findMany({
+    where: scopeClientWhere(user, filters.length > 0 ? { AND: filters } : {}),
+    orderBy: { createdAt: "desc" },
+    include: {
+      campaigns: {
+        select: {
+          id: true,
+        },
+      },
+    },
+  })
+}
+
+function escapeCsvValue(value: string | number) {
+  const stringValue = String(value)
+  const escapedValue = stringValue.replace(/"/g, '""')
+  return `"${escapedValue}"`
+}
+
+function serializeClientsToCsv(
+  clients: Awaited<ReturnType<typeof fetchClients>>
+) {
+  const header = [
+    "Nome",
+    "Empresa",
+    "Email",
+    "Telefone",
+    "Status cadastro",
+    "Status META",
+    "Conta META ID",
+    "Conta META nome",
+    "Grupo WhatsApp",
+    "Campanhas",
+    "Cadastrado em",
+  ]
+
+  const rows = clients.map((client) =>
+    [
+      client.name,
+      client.company ?? "",
+      client.email ?? "",
+      client.phone ?? "",
+      client.status,
+      client.adAccountId ? "Conectado" : "Nao conectado",
+      client.adAccountId ?? "",
+      client.adAccountName ?? "",
+      client.whatsappGroupId ?? "",
+      client.campaigns.length,
+      new Date(client.createdAt).toLocaleDateString("pt-BR"),
+    ]
+      .map(escapeCsvValue)
+      .join(",")
+  )
+
+  return [header.map(escapeCsvValue).join(","), ...rows].join("\n")
+}
+
+export async function GET(request: Request) {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const format = searchParams.get("format")
+    const clients = await fetchClients(user, searchParams)
+
+    if (format === "csv") {
+      const csv = serializeClientsToCsv(clients)
+      const dateStamp = new Date().toISOString().slice(0, 10)
+
+      return new NextResponse(csv, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="clientes-${dateStamp}.csv"`,
+        },
+      })
+    }
+
     return NextResponse.json(clients)
   } catch (error) {
-    console.error("Erro:", error)
+    logError("clients.get", error)
     return NextResponse.json([], { status: 200 })
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
+    const user = await getCurrentUser()
+    if (!user) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const body = await request.json()
-    const manager = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
 
-    const name = typeof body.name === "string" ? body.name.trim() : ""
-    const company = typeof body.company === "string" ? body.company.trim() : ""
-    const email = typeof body.email === "string" ? body.email.trim() : ""
-    const phone = typeof body.phone === "string" ? body.phone.trim() : ""
-    const notes = typeof body.notes === "string" ? body.notes.trim() : ""
-    const whatsappGroupId =
-      typeof body.whatsappGroupId === "string"
-        ? body.whatsappGroupId.trim()
-        : ""
-    const adAccountId =
-      typeof body.adAccountId === "string" ? body.adAccountId.trim() : ""
-    const adAccountName =
-      typeof body.adAccountName === "string" ? body.adAccountName.trim() : ""
-
-    if (!name) {
+    const parsedClient = clientPayloadSchema.safeParse(body)
+    if (!parsedClient.success) {
       return NextResponse.json(
-        { error: "Nome do perfil e obrigatorio" },
+        { error: getClientValidationMessage(parsedClient.error) },
         { status: 400 }
       )
     }
 
+    const clientData = parsedClient.data
     const client = await prisma.client.create({
       data: {
-        name,
-        company: company || null,
-        email: email || null,
-        phone: phone || null,
-        notes: notes || null,
-        whatsappGroupId: whatsappGroupId || null,
-        adAccountId: adAccountId || null,
-        adAccountName: adAccountName || null,
-        managerId: manager?.id ?? null,
+        name: clientData.name,
+        company: clientData.company ?? null,
+        email: clientData.email ?? null,
+        phone: clientData.phone ?? null,
+        notes: clientData.notes ?? null,
+        whatsappGroupId: clientData.whatsappGroupId ?? null,
+        adAccountId: clientData.adAccountId ?? null,
+        adAccountName: clientData.adAccountName ?? null,
+        status: clientData.status ?? "ACTIVE",
+        managerId: user.id,
       },
     })
     return NextResponse.json(client, { status: 201 })
-  } catch {
+  } catch (error) {
+    logError("clients.create", error)
     return NextResponse.json(
       { error: "Erro ao criar cliente" },
       { status: 500 }

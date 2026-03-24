@@ -12,6 +12,10 @@ import {
   RefreshCw,
 } from "lucide-react"
 import Link from "next/link"
+import {
+  clientPayloadSchema,
+  getClientValidationMessage,
+} from "@/lib/validations/client.schema"
 
 type ProfileOption = {
   id: string
@@ -49,10 +53,12 @@ export default function NewClientPage() {
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) {
+    setError("")
     setForm((current) => ({ ...current, [e.target.name]: e.target.value }))
   }
 
   function handleSelectChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    setError("")
     setForm((current) => ({ ...current, [e.target.name]: e.target.value }))
   }
 
@@ -70,7 +76,7 @@ export default function NewClientPage() {
         throw new Error(
           typeof data?.error === "string"
             ? data.error
-            : "Nao foi possivel carregar as opcoes META"
+            : "Não foi possível carregar as opções META"
         )
       }
 
@@ -82,7 +88,7 @@ export default function NewClientPage() {
       setMetaError(
         loadError instanceof Error
           ? loadError.message
-          : "Nao foi possivel carregar as opcoes META"
+          : "Não foi possível carregar as opções META"
       )
     } finally {
       setIsLoadingMeta(false)
@@ -113,19 +119,26 @@ export default function NewClientPage() {
     setError("")
 
     try {
+      const payload = {
+        name: form.profileName.trim(),
+        company: selectedBrand.name,
+        email: form.email,
+        phone: form.phone,
+        notes: form.notes,
+        whatsappGroupId: form.whatsappGroupId,
+        adAccountId: selectedBrand.adAccountId,
+        adAccountName: selectedBrand.adAccountName,
+      }
+      const parsedPayload = clientPayloadSchema.safeParse(payload)
+
+      if (!parsedPayload.success) {
+        throw new Error(getClientValidationMessage(parsedPayload.error))
+      }
+
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.profileName.trim(),
-          company: selectedBrand.name,
-          email: form.email,
-          phone: form.phone,
-          notes: form.notes,
-          whatsappGroupId: form.whatsappGroupId,
-          adAccountId: selectedBrand.adAccountId,
-          adAccountName: selectedBrand.adAccountName,
-        }),
+        body: JSON.stringify(parsedPayload.data),
       })
 
       const data = await res.json().catch(() => ({}))
@@ -171,10 +184,10 @@ export default function NewClientPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
             <h2 className="text-lg font-bold text-gray-900 mb-1">
-              Informacoes do cliente
+              Informações do cliente
             </h2>
             <p className="text-sm text-gray-400 mb-8">
-              Selecione o perfil e a marca vinculada na sua integracao META.
+              Selecione o perfil e a marca vinculada na sua integração META.
             </p>
 
             <div className="space-y-5">
@@ -194,6 +207,7 @@ export default function NewClientPage() {
                       : "Selecione ou digite o nome do perfil"
                   }
                   disabled={isLoadingMeta}
+                  maxLength={120}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
                 />
                 <datalist id="profile-options">
@@ -203,8 +217,8 @@ export default function NewClientPage() {
                 </datalist>
                 <p className="text-xs text-gray-400 mt-2">
                   {profileOptions.length > 0
-                    ? `${profileOptions.length} perfil(is) carregado(s) da META para facilitar a selecao.`
-                    : "Se o perfil nao aparecer na lista, voce ainda pode digitar o nome manualmente."}
+                    ? `${profileOptions.length} perfil(is) carregado(s) da META para facilitar a seleção.`
+                    : "Se o perfil não aparecer na lista, você ainda pode digitar o nome manualmente."}
                 </p>
               </div>
 
@@ -224,7 +238,7 @@ export default function NewClientPage() {
                       ? "Carregando marcas..."
                       : brandOptions.length > 0
                         ? "Selecione uma marca / BM"
-                        : "Nenhuma marca disponivel"}
+                        : "Nenhuma marca disponível"}
                   </option>
                   {brandOptions.map((option) => (
                     <option key={option.id} value={option.id}>
@@ -257,6 +271,7 @@ export default function NewClientPage() {
                     onChange={handleChange}
                     type="email"
                     placeholder="contato@empresa.com.br"
+                    maxLength={160}
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
                   />
                 </div>
@@ -274,14 +289,18 @@ export default function NewClientPage() {
                     onChange={handleChange}
                     type="tel"
                     placeholder="(11) 99999-9999"
+                    maxLength={25}
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
                   />
                 </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Use entre 10 e 15 digitos, com ou sem mascara.
+                </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Observacoes
+                  Observações
                 </label>
                 <textarea
                   name="notes"
@@ -289,6 +308,7 @@ export default function NewClientPage() {
                   onChange={handleChange}
                   placeholder="Notas internas sobre este cliente..."
                   rows={4}
+                  maxLength={1000}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F] resize-none"
                 />
               </div>
@@ -299,7 +319,7 @@ export default function NewClientPage() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-gray-900">
-                  Opcoes da integracao META
+                  Opções da integração META
                 </h2>
                 <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
                   <span className="text-white text-sm font-bold">f</span>
@@ -318,7 +338,7 @@ export default function NewClientPage() {
                     <div className="space-y-2">
                       <p className="text-sm font-medium">{metaError}</p>
                       <p className="text-xs text-red-500">
-                        Revise o token em Configuracoes e tente carregar novamente.
+                        Revise o token em Configurações e tente carregar novamente.
                       </p>
                       <div className="flex items-center gap-3">
                         <button
@@ -333,7 +353,7 @@ export default function NewClientPage() {
                           href="/dashboard/settings"
                           className="text-xs font-semibold text-[#C1121F] hover:underline"
                         >
-                          Abrir configuracoes
+                          Abrir configurações
                         </Link>
                       </div>
                     </div>
@@ -343,11 +363,11 @@ export default function NewClientPage() {
                 <div className="space-y-4">
                   <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-4">
                     <p className="text-sm font-semibold text-gray-900">
-                      {profileOptions.length} perfil(is) disponiveis
+                      {profileOptions.length} perfil(is) disponíveis
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       A lista do campo perfil foi preenchida a partir da
-                      integracao META da sua sessao atual.
+                      integração META da sua sessão atual.
                     </p>
                   </div>
                   <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-4">
@@ -356,7 +376,7 @@ export default function NewClientPage() {
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       Ao salvar, a conta META escolhida fica vinculada ao
-                      cliente para uso nos relatorios.
+                      cliente para uso nos relatórios.
                     </p>
                   </div>
                 </div>
@@ -379,13 +399,14 @@ export default function NewClientPage() {
                 onChange={handleChange}
                 type="text"
                 placeholder="Ex: 5511999999999-1234567890@g.us"
+                maxLength={60}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F] mb-4"
               />
               <button className="w-full flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 text-sm text-gray-600 hover:bg-gray-50 transition">
                 Testar envio
               </button>
               <p className="text-xs text-gray-400 mt-3">
-                O numero da Evolution API deve estar no grupo antes de salvar.
+                O número da Evolution API deve estar no grupo antes de salvar.
               </p>
             </div>
           </div>

@@ -52,7 +52,7 @@ function getTokenStatusLabel(status: TokenStatus) {
     case "expired":
       return "Token expirado"
     case "invalid":
-      return "Token invalido"
+      return "Token inválido"
     case "unknown":
       return "Status indefinido"
     default:
@@ -141,7 +141,7 @@ export default function SettingsPage() {
           setStatusDetail(data.detail)
         }
         if (res.status === 401) {
-          setErrorMsg("Sessao expirada ou inexistente. Faca login novamente.")
+          setErrorMsg("Sessão expirada ou inexistente. Faça login novamente.")
           return
         }
 
@@ -158,7 +158,9 @@ export default function SettingsPage() {
         return
       }
 
-      setSessionUser(isObject(data.sessionUser) ? data.sessionUser as unknown as SessionUser : null)
+      setSessionUser(
+        isObject(data.sessionUser) ? (data.sessionUser as unknown as SessionUser) : null
+      )
       setSavedTokenMasked(typeof data.tokenMasked === "string" ? data.tokenMasked : null)
       setTokenStatus(
         data.tokenStatus === "active"
@@ -169,7 +171,7 @@ export default function SettingsPage() {
           : "missing"
       )
       setStatusDetail(typeof data.detail === "string" ? data.detail : "")
-      setMetaUser(isObject(data.metaUser) ? data.metaUser as unknown as MetaUser : null)
+      setMetaUser(isObject(data.metaUser) ? (data.metaUser as unknown as MetaUser) : null)
 
       const hasSavedToken = data.hasSavedToken === true
       if (hasSavedToken && data.tokenStatus === "active") {
@@ -181,7 +183,9 @@ export default function SettingsPage() {
       }
     } catch (error) {
       setResult("error")
-      setErrorMsg(error instanceof Error ? error.message : "Erro ao carregar configuracoes")
+      setErrorMsg(
+        error instanceof Error ? error.message : "Erro ao carregar configurações"
+      )
     } finally {
       setIsLoadingStatus(false)
     }
@@ -209,7 +213,7 @@ export default function SettingsPage() {
       if (!res.ok) {
         setResult("error")
         if (res.status === 401) {
-          setErrorMsg("Sessao expirada ou inexistente. Faca login novamente.")
+          setErrorMsg("Sessão expirada ou inexistente. Faça login novamente.")
         } else if (isObject(data)) {
           setErrorMsg(String(data.detail ?? data.error ?? `Erro ${res.status}`))
         } else {
@@ -253,15 +257,17 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Header title="Configuracoes" subtitle="Gerencie as integracoes da plataforma" />
+      <Header title="Configurações" subtitle="Gerencie as integrações da plataforma" />
       <div className="p-8 max-w-4xl space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Sessao atual</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              Sessão atual
+            </p>
             {isLoadingStatus ? (
               <div className="flex items-center gap-2 text-sm text-gray-400">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Carregando sessao...
+                Carregando sessão...
               </div>
             ) : sessionUser ? (
               <div className="space-y-1">
@@ -272,20 +278,26 @@ export default function SettingsPage() {
             ) : errorMsg ? (
               <p className="text-sm text-red-500">{errorMsg}</p>
             ) : (
-              <p className="text-sm text-red-500">Sessao nao encontrada. Faca login novamente.</p>
+              <p className="text-sm text-red-500">
+                Sessão não encontrada. Faça login novamente.
+              </p>
             )}
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Token salvo</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              Token salvo
+            </p>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-gray-900">{savedTokenMasked ?? "Nenhum token salvo"}</p>
-                {statusDetail && (
-                  <p className="text-xs text-gray-400 mt-1">{statusDetail}</p>
-                )}
+                <p className="text-sm font-semibold text-gray-900">
+                  {savedTokenMasked ?? "Nenhum token salvo"}
+                </p>
+                {statusDetail && <p className="text-xs text-gray-400 mt-1">{statusDetail}</p>}
               </div>
-              <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getTokenStatusColor(tokenStatus)}`}>
+              <span
+                className={`text-xs font-semibold px-3 py-1 rounded-full ${getTokenStatusColor(tokenStatus)}`}
+              >
                 {getTokenStatusLabel(tokenStatus)}
               </span>
             </div>
@@ -294,21 +306,23 @@ export default function SettingsPage() {
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-bold text-gray-900">Integracao META Ads</h2>
+            <h2 className="text-lg font-bold text-gray-900">Integração META Ads</h2>
             <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
               <span className="text-white font-bold">f</span>
             </div>
           </div>
           <p className="text-sm text-gray-400 mb-6">
-            Atualize o token da conta logada para carregar clientes e contas de anuncio da META com seguranca.
+            Atualize o token da conta logada para carregar clientes e contas de anúncio da META com segurança.
           </p>
           <div className="bg-blue-50 border-l-4 border-[#C1121F] rounded-lg px-4 py-3 mb-6">
             <p className="text-sm text-blue-700">
-              Acesse business.facebook.com - Configuracoes - Acesso a API para obter seu token pessoal.
+              Acesse business.facebook.com - Configurações - Acesso à API para obter seu token pessoal.
             </p>
           </div>
 
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Novo token de acesso META</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Novo token de acesso META
+          </label>
           <div className="flex gap-2 mb-4">
             <div className="relative flex-1">
               <input
@@ -348,7 +362,10 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2 text-green-600 bg-green-50 px-4 py-3 rounded-xl text-sm">
               <CheckCircle className="w-4 h-4" />
               {metaUser ? (
-                <>Token valido. Conectado como <strong>{metaUser.name ?? metaUser.email ?? "usuario META"}</strong></>
+                <>
+                  Token válido. Conectado como{" "}
+                  <strong>{metaUser.name ?? metaUser.email ?? "usuário META"}</strong>
+                </>
               ) : (
                 "Token salvo com sucesso."
               )}
@@ -364,31 +381,42 @@ export default function SettingsPage() {
 
         {accounts.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-            <h2 className="text-lg font-bold text-gray-900 mb-1">Contas de anuncios encontradas</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-1">
+              Contas de anúncios encontradas
+            </h2>
             <p className="text-sm text-gray-400 mb-6">
-              {accounts.length} conta(s) vinculada(s) ao token ativo da sessao atual.
+              {accounts.length} conta(s) vinculada(s) ao token ativo da sessão atual.
             </p>
             <div className="space-y-3">
               {accounts.map((acc) => {
                 const isImported = imported.includes(acc.id)
                 const isImporting = importing === acc.id
                 return (
-                  <div key={acc.id} className="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3">
+                  <div
+                    key={acc.id}
+                    className="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3"
+                  >
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{acc.name}</p>
                       <p className="text-xs text-gray-400">{acc.id}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                        acc.account_status === 1 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"
-                      }`}>
+                      <span
+                        className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                          acc.account_status === 1
+                            ? "bg-green-50 text-green-600"
+                            : "bg-red-50 text-red-500"
+                        }`}
+                      >
                         {acc.account_status === 1 ? "Ativo" : "Inativo"}
                       </span>
                       <button
                         onClick={() => handleImport(acc)}
                         disabled={isImported || isImporting}
                         className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition ${
-                          isImported ? "bg-green-50 text-green-600 cursor-default" : "bg-[#C1121F] hover:bg-[#A50F1A] text-white"
+                          isImported
+                            ? "bg-green-50 text-green-600 cursor-default"
+                            : "bg-[#C1121F] hover:bg-[#A50F1A] text-white"
                         }`}
                       >
                         {isImporting ? (

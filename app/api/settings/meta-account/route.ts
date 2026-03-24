@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { resolveMetaToken } from "@/lib/meta-token"
 import { prisma } from "@/lib/prisma"
+import { logError } from "@/lib/safe-logger"
 
 export async function GET() {
   try {
@@ -21,8 +23,21 @@ export async function GET() {
       )
     }
 
+    const { token, encryptedToken } = resolveMetaToken(user.metaAccessToken)
+
+    if (encryptedToken) {
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { metaAccessToken: encryptedToken },
+        })
+      } catch (error) {
+        logError("meta-account.reencrypt", error, { userId: user.id })
+      }
+    }
+
     const res = await fetch(
-      `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_status,currency,amount_spent&access_token=${user.metaAccessToken}&limit=100`
+      `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_status,currency,amount_spent&access_token=${encodeURIComponent(token)}&limit=100`
     )
     const data = await res.json()
 
@@ -35,7 +50,7 @@ export async function GET() {
 
     return NextResponse.json(data.data ?? [])
   } catch (error) {
-    console.error(error)
+    logError("meta-account.get", error)
     return NextResponse.json({ error: "Erro interno" }, { status: 500 })
   }
 }

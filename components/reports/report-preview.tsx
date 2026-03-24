@@ -17,54 +17,11 @@ import {
   Tooltip,
   XAxis,
 } from "recharts"
-
-export type ReportAction = {
-  action_type?: string
-  value?: string
-}
-
-export type ReportInsight = {
-  spend?: string
-  impressions?: string
-  reach?: string
-  clicks?: string
-  ctr?: string
-  cpc?: string
-  cpm?: string
-  actions?: ReportAction[]
-  action_values?: ReportAction[]
-  date_start?: string
-}
-
-export type ReportCampaign = {
-  id: string
-  name: string
-  status: string
-  objective?: string
-  insights?: {
-    data?: ReportInsight[]
-  }
-}
-
-export type ReportClient = {
-  id: string
-  name: string
-  company: string | null
-  email?: string | null
-  adAccountId?: string | null
-}
-
-export type ReportPayload = {
-  client?: {
-    id: string
-    name: string
-    company?: string | null
-    adAccountId?: string | null
-  }
-  campaigns: ReportCampaign[]
-  accountInsights?: ReportInsight
-  dailyInsights?: ReportInsight[]
-}
+import type {
+  ReportAction,
+  ReportClient,
+  ReportPayload,
+} from "@/types/report.types"
 
 type ReportPreviewProps = {
   client: ReportClient
@@ -161,7 +118,7 @@ export function ReportPreview({
     },
     {
       title: "Conta analisada",
-      value: client.adAccountId ?? reportData.client?.adAccountId ?? "Nao informada",
+      value: client.adAccountId ?? reportData.client?.adAccountId ?? "Não informada",
       accent: "bg-blue-50 text-blue-700 border-blue-100",
     },
     {
@@ -183,16 +140,16 @@ export function ReportPreview({
           <div>
             <p className="text-[30px] font-black tracking-tight">GreatGo</p>
             <p className="text-sm text-white/80 mt-1">
-              Relatorio de performance META Ads
+              Relatório de performance META Ads
             </p>
           </div>
           <div className="text-right">
             <p className="text-lg font-bold">{client.name}</p>
             <p className="text-sm text-white/80">
-              {client.company ?? "Marca nao informada"}
+              {client.company ?? "Marca não informada"}
             </p>
             <p className="text-xs text-white/70 mt-2">
-              Periodo: {formatPeriod(startDate)} ate {formatPeriod(endDate)}
+              Período: {formatPeriod(startDate)} até {formatPeriod(endDate)}
             </p>
           </div>
         </div>
@@ -200,7 +157,7 @@ export function ReportPreview({
         <div className="mt-6 grid grid-cols-1 gap-4">
           <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4">
             <p className="text-[11px] uppercase tracking-[0.18em] text-white/60">
-              Campanhas no relatorio
+              Campanhas no relatório
             </p>
             <p className="mt-2 text-sm font-semibold">
               {selectedCampaigns.length} campanha(s)
@@ -219,7 +176,7 @@ export function ReportPreview({
               accent: "bg-blue-50 text-blue-600",
             },
             {
-              label: "Impressoes",
+              label: "Impressões",
               value: formatInteger(impressions),
               icon: Eye,
               accent: "bg-purple-50 text-purple-600",
@@ -266,10 +223,10 @@ export function ReportPreview({
           <div className="flex items-center justify-between gap-4 mb-5">
             <div>
               <h2 className="text-lg font-bold text-gray-900">
-                Visao geral e metricas avancadas
+                Visão geral e métricas avançadas
               </h2>
               <p className="text-sm text-gray-500">
-                Consolidado da conta no periodo selecionado.
+                Consolidado da conta no período selecionado.
               </p>
             </div>
           </div>
@@ -287,7 +244,7 @@ export function ReportPreview({
                 icon: BarChart2,
               },
               {
-                label: "Conversoes",
+                label: "Conversões",
                 value: formatInteger(conversions),
                 icon: Target,
               },
@@ -322,10 +279,10 @@ export function ReportPreview({
           <section className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="mb-5">
               <h2 className="text-lg font-bold text-gray-900">
-                Evolucao por periodo
+                Evolução por período
               </h2>
               <p className="text-sm text-gray-500">
-                Comportamento diario de investimento, cliques e conversoes.
+                Comportamento diário de investimento, cliques e conversões.
               </p>
             </div>
 
@@ -333,7 +290,7 @@ export function ReportPreview({
               {[
                 { label: "Investimento", key: "invest", color: "#C1121F" },
                 { label: "Cliques", key: "clicks", color: "#8B5CF6" },
-                { label: "Conversoes", key: "conversions", color: "#14B87A" },
+                { label: "Conversões", key: "conversions", color: "#14B87A" },
               ].map((chart) => (
                 <div key={chart.key} className="rounded-2xl bg-gray-50 p-4">
                   <p className="text-sm font-semibold text-gray-700 mb-3">
@@ -375,19 +332,19 @@ export function ReportPreview({
               Performance por campanha
             </h2>
             <p className="text-sm text-gray-500">
-              Campanhas consideradas no relatorio e seus principais numeros.
+              Campanhas consideradas no relatório e seus principais números.
             </p>
           </div>
 
           {selectedCampaigns.length === 0 ? (
             <div className="px-6 py-12 text-center text-sm text-gray-400">
-              Nenhuma campanha selecionada para exibir nesta versao do relatorio.
+              Nenhuma campanha selecionada para exibir nesta versão do relatório.
             </div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
-                  {["Campanha", "Status", "Cliques", "Impressoes", "Gasto"].map(
+                  {["Campanha", "Status", "Cliques", "Impressões", "Gasto"].map(
                     (header) => (
                       <th
                         key={header}
@@ -447,11 +404,11 @@ export function ReportPreview({
           <section className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="mb-5">
               <h2 className="text-lg font-bold text-gray-900">
-                Insights automaticos
+                Insights automáticos
               </h2>
               <p className="text-sm text-gray-500">
                 Destaques gerados com base nos dados carregados para este
-                relatorio.
+                relatório.
               </p>
             </div>
 

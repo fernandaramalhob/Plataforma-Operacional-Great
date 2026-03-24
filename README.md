@@ -78,3 +78,30 @@ O objetivo final e transformar a plataforma em uma **ferramenta central de acomp
 # Uso
 
 Este projeto e destinado ao **uso interno da operacao da empresa**, com foco na automacao de relatorios e melhoria da eficiencia operacional.
+
+---
+
+# Ambiente
+
+Use o arquivo `.env.example` como referencia e mantenha os segredos reais apenas em `.env.local` ou no provedor de ambiente do deploy.
+
+Padrao recomendado:
+
+- `.env`: apenas defaults nao sensiveis
+- `.env.local`: segredos locais de desenvolvimento
+- `.env.example`: placeholders e documentacao dos campos esperados
+
+Regras de seguranca:
+
+- nunca commitar `.env`, `.env.local` ou qualquer arquivo com segredos reais
+- nao reutilizar token da META, API key, senha de usuario ou qualquer credencial externa como `NEXTAUTH_SECRET`
+- usar valores aleatorios e distintos para `NEXTAUTH_SECRET` e `META_TOKEN_ENCRYPTION_KEY`
+- manter `SEED_USER_PASSWORD` vazio por padrao e preencher apenas quando for executar `npm run user:create`
+- rotacionar imediatamente qualquer segredo que ja tenha sido exposto em arquivo local, print, log ou commit
+
+Exemplo de setup local:
+
+1. copie `.env.example` para `.env.local`
+2. preencha as credenciais necessarias
+3. gere um `NEXTAUTH_SECRET` forte
+4. gere uma chave independente para `META_TOKEN_ENCRYPTION_KEY`

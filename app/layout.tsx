@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     template: "%s | GreatGo",
   },
   applicationName: "GreatGo",
-  description: "Plataforma interna para relatorios e operacao de performance em META Ads",
+  description: "Plataforma interna para relatórios e operação de performance em META Ads",
   icons: {
     icon: [{ url: "/favicon.png" }],
     shortcut: [{ url: "/favicon.png" }],

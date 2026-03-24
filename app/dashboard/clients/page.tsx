@@ -1,9 +1,9 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Header } from "@/components/layout/header"
-import { Search, Download, Plus, Loader2 } from "lucide-react"
-import Link from "next/link"
+import { Download, Loader2, Plus, Search } from "lucide-react"
 
 interface Client {
   id: string
@@ -17,15 +17,6 @@ interface Client {
   campaigns: { id: string }[]
 }
 
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase()
-}
-
 const colors = [
   "bg-blue-500",
   "bg-purple-500",
@@ -35,91 +26,204 @@ const colors = [
   "bg-teal-500",
 ]
 
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase()
+}
+
 function getColor(name: string) {
-  const index = name.charCodeAt(0) % colors.length
-  return colors[index]
+  return colors[name.charCodeAt(0) % colors.length]
+}
+
+function buildClientsQueryString(
+  search: string,
+  statusFilter: string,
+  metaFilter: string,
+  format?: "csv"
+) {
+  const params = new URLSearchParams()
+
+  if (search.trim()) {
+    params.set("search", search.trim())
+  }
+
+  if (statusFilter !== "ALL") {
+    params.set("status", statusFilter)
+  }
+
+  if (metaFilter !== "ALL") {
+    params.set("metaStatus", metaFilter)
+  }
+
+  if (format) {
+    params.set("format", format)
+  }
+
+  return params.toString()
 }
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState("ALL")
+  const [metaFilter, setMetaFilter] = useState("ALL")
 
   useEffect(() => {
-    fetch("/api/clients")
-      .then((res) => res.json())
-      .then((data) => {
-        setClients(Array.isArray(data) ? (data as Client[]) : [])
-        setLoading(false)
-      })
-      .catch(() => {
-        setClients([])
-        setLoading(false)
-      })
-  }, [])
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => {
+      const queryString = buildClientsQueryString(
+        search,
+        statusFilter,
+        metaFilter
+      )
 
-  const filtered = clients.filter(
-    (client) =>
-      client.name.toLowerCase().includes(search.toLowerCase()) ||
-      (client.company ?? "").toLowerCase().includes(search.toLowerCase())
-  )
+      fetch(`/api/clients?${queryString}`, {
+        signal: controller.signal,
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setClients(Array.isArray(data) ? (data as Client[]) : [])
+          setLoading(false)
+        })
+        .catch((error: unknown) => {
+          if (
+            error instanceof DOMException &&
+            error.name === "AbortError"
+          ) {
+            return
+          }
+
+          setClients([])
+          setLoading(false)
+        })
+    }, 250)
+
+    return () => {
+      clearTimeout(timeoutId)
+      controller.abort()
+    }
+  }, [metaFilter, search, statusFilter])
+
+  async function handleExportCsv() {
+    setExporting(true)
+
+    try {
+      const queryString = buildClientsQueryString(
+        search,
+        statusFilter,
+        metaFilter,
+        "csv"
+      )
+      const response = await fetch(`/api/clients?${queryString}`, {
+        method: "GET",
+      })
+
+      if (!response.ok) {
+        throw new Error("Erro ao exportar CSV")
+      }
+
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      const dateStamp = new Date().toISOString().slice(0, 10)
+
+      link.href = downloadUrl
+      link.download = `clientes-${dateStamp}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(downloadUrl)
+    } catch {
+      window.alert("Nao foi possivel exportar a listagem em CSV.")
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <>
       <Header
         title="Clientes"
-        subtitle={`${clients.length} clientes cadastrados`}
+        subtitle={`${clients.length} clientes encontrados`}
       />
       <div className="p-8">
-        <div className="flex justify-end mb-6">
+        <div className="mb-6 flex justify-end">
           <Link
             href="/dashboard/clients/new"
-            className="flex items-center gap-2 bg-[#C1121F] hover:bg-[#A50F1A] text-white font-semibold px-5 py-2.5 rounded-xl transition text-sm"
+            className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A]"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
             Novo Cliente
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <div className="mb-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[200px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Buscar por nome ou empresa..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F] focus:border-transparent"
+                onChange={(event) => {
+                  setLoading(true)
+                  setSearch(event.target.value)
+                }}
+                className="w-full rounded-xl border border-gray-200 py-2.5 pl-9 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
               />
             </div>
-            <select className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#C1121F]">
-              <option>Status: Todos</option>
-              <option>Ativo</option>
-              <option>Inativo</option>
+            <select
+              value={statusFilter}
+              onChange={(event) => {
+                setLoading(true)
+                setStatusFilter(event.target.value)
+              }}
+              className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+            >
+              <option value="ALL">Status: Todos</option>
+              <option value="ACTIVE">Ativo</option>
+              <option value="INACTIVE">Inativo</option>
             </select>
-            <select className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#C1121F]">
-              <option>Integracao META: Todos</option>
-              <option>Conectado</option>
-              <option>Desconectado</option>
+            <select
+              value={metaFilter}
+              onChange={(event) => {
+                setLoading(true)
+                setMetaFilter(event.target.value)
+              }}
+              className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+            >
+              <option value="ALL">Integracao META: Todos</option>
+              <option value="CONNECTED">Conectado</option>
+              <option value="DISCONNECTED">Desconectado</option>
             </select>
-            <button className="flex items-center gap-2 text-[#C1121F] text-sm font-medium hover:underline ml-auto">
-              <Download className="w-4 h-4" />
-              Exportar CSV
+            <button
+              type="button"
+              onClick={() => void handleExportCsv()}
+              disabled={exporting || loading}
+              className="ml-auto flex items-center gap-2 text-sm font-medium text-[#C1121F] hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Download className="h-4 w-4" />
+              {exporting ? "Exportando..." : "Exportar CSV"}
             </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-6 h-6 animate-spin text-[#C1121F]" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#C1121F]" />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : clients.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-400">
               <p className="text-lg font-medium">Nenhum cliente encontrado</p>
-              <p className="text-sm mt-1">
-                Adicione seu primeiro cliente clicando em &quot;+ Novo Cliente&quot;
+              <p className="mt-1 text-sm">
+                Ajuste os filtros ou adicione um novo cliente.
               </p>
             </div>
           ) : (
@@ -129,31 +233,31 @@ export default function ClientsPage() {
                   <th className="w-10 px-4 py-4">
                     <input type="checkbox" className="rounded" />
                   </th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-4">
+                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Cliente
                   </th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-4">
+                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Empresa
                   </th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-4">
+                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Status META
                   </th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-4">
+                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Campanhas
                   </th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-4">
+                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Cadastrado em
                   </th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-4">
+                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Acoes
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((client) => (
+                {clients.map((client) => (
                   <tr
                     key={client.id}
-                    className="border-b border-gray-50 hover:bg-gray-50 transition"
+                    className="border-b border-gray-50 transition hover:bg-gray-50"
                   >
                     <td className="px-4 py-4">
                       <input type="checkbox" className="rounded" />
@@ -161,9 +265,9 @@ export default function ClientsPage() {
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${getColor(client.name)}`}
+                          className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${getColor(client.name)}`}
                         >
-                          <span className="text-white text-xs font-semibold">
+                          <span className="text-xs font-semibold text-white">
                             {getInitials(client.name)}
                           </span>
                         </div>
@@ -182,7 +286,7 @@ export default function ClientsPage() {
                     </td>
                     <td className="px-4 py-4">
                       <span
-                        className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
                           client.adAccountId
                             ? "bg-green-50 text-green-600"
                             : "bg-gray-100 text-gray-400"
@@ -201,13 +305,13 @@ export default function ClientsPage() {
                       <div className="flex items-center gap-3">
                         <Link
                           href={`/dashboard/clients/${client.id}`}
-                          className="text-[#C1121F] hover:underline text-sm font-medium"
+                          className="text-sm font-medium text-[#C1121F] hover:underline"
                         >
                           Ver
                         </Link>
                         <Link
                           href={`/dashboard/clients/${client.id}/edit`}
-                          className="text-gray-400 hover:text-gray-600 text-sm"
+                          className="text-sm text-gray-400 hover:text-gray-600"
                         >
                           Editar
                         </Link>

@@ -1,93 +1,125 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { canAccessClient, getCurrentUser } from "@/lib/authorization"
+import {
+  generateLiveReportPayload,
+  persistGeneratedReport,
+} from "@/lib/report-service"
 import { prisma } from "@/lib/prisma"
+import { logError } from "@/lib/safe-logger"
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
     const clientId = searchParams.get("clientId")
     const since = searchParams.get("since")
     const until = searchParams.get("until")
-    const objective = searchParams.get("objective") // ALL, TRAFFIC, CONVERSIONS, MESSAGES
+    const objective = searchParams.get("objective")
 
     if (!clientId) {
-      return NextResponse.json({ error: "clientId obrigatório" }, { status: 400 })
+      return NextResponse.json({ error: "clientId obrigatorio" }, { status: 400 })
     }
 
-    // Busca o cliente e o token do gestor
     const client = await prisma.client.findUnique({
       where: { id: clientId },
       include: { manager: true },
     })
 
-    if (!client?.adAccountId) {
-      return NextResponse.json({ error: "Cliente sem conta META configurada" }, { status: 400 })
+    if (!client) {
+      return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
-
-    const token = client.manager?.metaAccessToken ?? user?.metaAccessToken
-
-    if (!token) {
-      return NextResponse.json({ error: "Token META não configurado" }, { status: 400 })
+    if (!canAccessClient(user, client.managerId)) {
+      return NextResponse.json({ error: "Acesso negado a este cliente" }, { status: 403 })
     }
 
-    const timeRange = since && until
-      ? `&time_range={"since":"${since}","until":"${until}"}`
-      : `&date_preset=last_7d`
-
-    // Busca campanhas com insights
-    const fields = [
-      "id", "name", "status", "objective",
-      "insights{spend,impressions,reach,clicks,ctr,cpc,cpm,actions,action_values}"
-    ].join(",")
-
-    let campaignsUrl = `https://graph.facebook.com/v18.0/${client.adAccountId}/campaigns?fields=${fields}&access_token=${token}&limit=50${timeRange}`
-
-    if (objective && objective !== "ALL") {
-      campaignsUrl += `&filtering=[{"field":"objective","operator":"IN","value":["${objective}"]}]`
+    if (!since || !until) {
+      return NextResponse.json(
+        { error: "since e until sao obrigatorios" },
+        { status: 400 }
+      )
     }
 
-    const campaignsRes = await fetch(campaignsUrl)
-    const campaignsData = await campaignsRes.json()
-
-    if (campaignsData.error) {
-      return NextResponse.json({ error: campaignsData.error.message }, { status: 400 })
-    }
-
-    // Busca insights da conta toda
-    const accountInsightsUrl = `https://graph.facebook.com/v18.0/${client.adAccountId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,actions,action_values&access_token=${token}${timeRange}`
-
-    const accountRes = await fetch(accountInsightsUrl)
-    const accountData = await accountRes.json()
-
-    // Busca breakdown por dia
-    const dailyUrl = `https://graph.facebook.com/v18.0/${client.adAccountId}/insights?fields=spend,impressions,clicks,actions&time_increment=1&access_token=${token}${timeRange}`
-
-    const dailyRes = await fetch(dailyUrl)
-    const dailyData = await dailyRes.json()
-
-    return NextResponse.json({
-      client: {
-        id: client.id,
-        name: client.name,
-        company: client.company,
-        adAccountId: client.adAccountId,
+    const payload = await generateLiveReportPayload({
+      user,
+      client,
+      filters: {
+        since,
+        until,
+        objective: objective ?? "ALL",
       },
-      campaigns: campaignsData.data ?? [],
-      accountInsights: accountData.data?.[0] ?? {},
-      dailyInsights: dailyData.data ?? [],
     })
+
+    return NextResponse.json(payload)
   } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 })
+    logError("reports.get", error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro interno" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    }
+
+    const body = (await request.json()) as {
+      clientId?: string
+      since?: string
+      until?: string
+      objective?: string
+    }
+
+    const clientId = typeof body.clientId === "string" ? body.clientId : ""
+    const since = typeof body.since === "string" ? body.since : ""
+    const until = typeof body.until === "string" ? body.until : ""
+    const objective = typeof body.objective === "string" ? body.objective : "ALL"
+
+    if (!clientId || !since || !until) {
+      return NextResponse.json(
+        { error: "clientId, since e until sao obrigatorios" },
+        { status: 400 }
+      )
+    }
+
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+      include: { manager: true },
+    })
+
+    if (!client) {
+      return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+    }
+
+    if (!canAccessClient(user, client.managerId)) {
+      return NextResponse.json({ error: "Acesso negado a este cliente" }, { status: 403 })
+    }
+
+    const payload = await generateLiveReportPayload({
+      user,
+      client,
+      filters: { since, until, objective },
+    })
+    const response = await persistGeneratedReport({
+      clientId,
+      payload,
+      filters: { since, until, objective },
+    })
+
+    return NextResponse.json(response, { status: 201 })
+  } catch (error) {
+    logError("reports.post", error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro interno" },
+      { status: 500 }
+    )
   }
 }

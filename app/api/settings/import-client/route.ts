@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logError } from "@/lib/safe-logger"
 
 export async function POST(request: Request) {
   try {
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(client, { status: 201 })
   } catch (error) {
-    console.error(error)
+    logError("import-client.post", error)
     return NextResponse.json({ error: "Erro interno" }, { status: 500 })
   }
 }

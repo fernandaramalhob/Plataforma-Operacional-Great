@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   BarChart,
   Bar,
@@ -9,29 +10,37 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
+import { DashboardChartData, DashboardChartFilter } from "@/lib/dashboard"
 
-const data = [
-  { week: "13/01", reports: 85 },
-  { week: "20/01", reports: 78 },
-  { week: "27/01", reports: 88 },
-  { week: "03/02", reports: 80 },
-  { week: "10/02", reports: 87 },
-  { week: "17/02", reports: 82 },
-  { week: "24/02", reports: 84 },
-  { week: "03/03", reports: 90 },
-]
+interface ReportsChartProps {
+  data: DashboardChartData
+}
 
-export function ReportsChart() {
+export function ReportsChart({ data }: ReportsChartProps) {
+  const [filter, setFilter] = useState<DashboardChartFilter>("weeks")
+  const activeSeries = data[filter]
+
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-full">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-gray-900">
-          Relatórios por Semana
+          Relatorios por periodo
         </h2>
-        <span className="text-sm text-gray-400">Últimas 8 semanas</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400">{activeSeries.label}</span>
+          <select
+            value={filter}
+            onChange={(event) => setFilter(event.target.value as DashboardChartFilter)}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+          >
+            <option value="weeks">Semanas</option>
+            <option value="months">Meses</option>
+            <option value="days">Dias</option>
+          </select>
+        </div>
       </div>
       <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={data} barSize={32}>
+        <BarChart data={activeSeries.data} barSize={32}>
           <CartesianGrid vertical={false} stroke="#F1F5F9" />
           <XAxis
             dataKey="week"
@@ -43,8 +52,7 @@ export function ReportsChart() {
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 12, fill: "#94A3B8" }}
-            domain={[0, 100]}
-            ticks={[0, 25, 50, 90]}
+            allowDecimals={false}
           />
           <Tooltip
             cursor={{ fill: "#F8FAFC" }}
@@ -54,7 +62,7 @@ export function ReportsChart() {
               fontSize: "13px",
             }}
           />
-          <Bar dataKey="reports" fill="#BAE0F5" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="reports" fill="#F8C4C9" radius={[6, 6, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

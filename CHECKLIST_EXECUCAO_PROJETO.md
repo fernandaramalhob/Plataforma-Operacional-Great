@@ -32,31 +32,31 @@ Legenda:
 - `[x]` Login com NextAuth
 - `[x]` Login com Google configurado na aplicacao
 - `[x]` Tela de login pronta
-- `[~]` Login por credenciais funcionando apenas com credencial hardcoded
-- `[ ]` Autenticar credenciais pelo banco de dados
-- `[ ]` Remover credenciais fixas do codigo
-- `[ ]` Definir papeis e permissoes reais (`ADMIN`, `MANAGER`)
-- `[ ]` Implementar protecao centralizada de rotas com `middleware.ts` ou estrategia equivalente robusta
+- `[x]` Login por credenciais autenticando usuarios persistidos no banco
+- `[x]` Autenticar credenciais pelo banco de dados
+- `[x]` Remover credenciais fixas do codigo
+- `[x]` Definir papeis e permissoes reais (`ADMIN`, `MANAGER`)
+- `[x]` Implementar protecao centralizada de rotas com `middleware.ts` ou estrategia equivalente robusta
 
 ## 4. Seguranca
 
 - `[x]` `NEXTAUTH_SECRET` previsto no ambiente
-- `[~]` Token META validado antes de salvar
-- `[ ]` Criptografar token META antes de persistir
-- `[ ]` Descriptografar token apenas no momento de uso
-- `[ ]` Evitar armazenamento sensivel em texto puro
-- `[ ]` Revisar logs para nao expor token ou dados sensiveis
-- `[ ]` Revisar `.env`, `.env.local` e README para padrao seguro
+- `[x]` Token META validado antes de salvar
+- `[x]` Criptografar token META antes de persistir
+- `[x]` Descriptografar token apenas no momento de uso
+- `[x]` Evitar armazenamento sensivel em texto puro
+- `[x]` Revisar logs para nao expor token ou dados sensiveis
+- `[x]` Revisar `.env`, `.env.local` e README para padrao seguro
 
 ## 5. Banco e modelo de dominio
 
 - `[x]` Modelos `User`, `Client`, `ClientCampaign`, `Report` e `SendLog` definidos no Prisma
 - `[x]` Campos importantes do cliente modelados (`adAccountId`, `whatsappGroupId`, `managerId`)
-- `[~]` Estrutura de relatorio e log modelada, mas ainda pouco usada no fluxo real
-- `[ ]` Passar a usar `Report` como entidade principal de relatorio gerado
-- `[ ]` Passar a usar `SendLog` como trilha real de envio
-- `[ ]` Revisar integridade relacional e regras de negocio
-- `[ ]` Garantir migrations reais e versionadas no projeto
+- `[x]` Estrutura de relatorio e log modelada e usada no fluxo real
+- `[x]` Passar a usar `Report` como entidade principal de relatorio gerado
+- `[x]` Passar a usar `SendLog` como trilha real de envio
+- `[x]` Revisar integridade relacional e regras de negocio
+- `[x]` Garantir migrations reais e versionadas no projeto
 
 ## 6. Gestao de clientes
 
@@ -66,10 +66,10 @@ Legenda:
 - `[x]` Detalhe de cliente
 - `[x]` Campo para grupo de WhatsApp no cliente
 - `[x]` Importacao de conta de anuncio como cliente
-- `[~]` Filtros da tela de clientes existem visualmente
-- `[ ]` Conectar filtros de clientes com backend de forma real
-- `[ ]` Exportacao CSV real da listagem de clientes
-- `[ ]` Regras de validacao mais fortes no cadastro
+- `[x]` Filtros da tela de clientes existem visualmente
+- `[x]` Conectar filtros de clientes com backend de forma real
+- `[x]` Exportacao CSV real da listagem de clientes
+- `[x]` Regras de validacao mais fortes no cadastro
 
 ## 7. Integracao com META Graph API
 
@@ -96,20 +96,20 @@ Legenda:
 - `[x]` KPIs principais na tela
 - `[x]` Graficos e tabela por campanha
 - `[x]` Insights simples na interface
-- `[~]` Existe uma tela de preview/PDF separada
-- `[~]` Existe exportacao PDF em tela com dados mockados
-- `[ ]` Unificar relatorio dinamico e preview final
-- `[ ]` Fazer a tela `/dashboard/reports/[id]` consumir dados reais
-- `[ ]` Definir formato oficial unico do relatorio
-- `[ ]` Persistir relatorios gerados no banco
-- `[ ]` Salvar payload do relatorio em `payloadJson`
-- `[ ]` Permitir reabertura de relatorio historico por ID
+- `[x]` Existe uma tela de preview/PDF separada
+- `[x]` Existe exportacao PDF em tela com dados reais
+- `[x]` Unificar relatorio dinamico e preview final
+- `[x]` Fazer a tela `/dashboard/reports/[id]` consumir dados reais
+- `[x]` Definir formato oficial unico do relatorio
+- `[x]` Persistir relatorios gerados no banco
+- `[x]` Salvar payload do relatorio em `payloadJson`
+- `[x]` Permitir reabertura de relatorio historico por ID
 
 ## 9. PDF e exportacao
 
 - `[x]` Geracao de PDF com `html2canvas` + `jsPDF`
-- `[~]` Fluxo existe, mas ligado a uma tela mockada
-- `[ ]` Gerar PDF a partir do relatorio real
+- `[x]` Fluxo de PDF ligado ao relatorio real
+- `[x]` Gerar PDF a partir do relatorio real
 - `[ ]` Padronizar nome, layout e metadata do arquivo PDF
 - `[ ]` Garantir qualidade visual desktop/mobile/print
 - `[ ]` Validar pagina multipla e quebra correta
@@ -117,26 +117,26 @@ Legenda:
 ## 10. Historico e auditoria
 
 - `[x]` Tela de historico existe
-- `[~]` UI do historico pronta, mas backend nao ligado
-- `[ ]` Implementar `/api/history`
-- `[ ]` Popular historico a partir de `Report` e `SendLog`
-- `[ ]` Exibir status real: `PENDING`, `SENT`, `FAILED`
-- `[ ]` Exibir tentativas reais de envio
-- `[ ]` Exibir mensagem de erro real
-- `[ ]` Permitir abrir relatorio do historico
+- `[x]` UI do historico pronta e backend ligado
+- `[x]` Implementar `/api/history`
+- `[x]` Popular historico a partir de `Report` e `SendLog`
+- `[x]` Exibir status real: `PENDING`, `SENT`, `FAILED`
+- `[x]` Exibir tentativas reais de envio
+- `[x]` Exibir mensagem de erro real
+- `[x]` Permitir abrir relatorio do historico
 - `[ ]` Permitir reenvio real de relatorio com falha
 
 ## 11. WhatsApp / Evolution API
 
 - `[x]` Campo `whatsappGroupId` existe no cadastro do cliente
-- `[~]` Ambiente local sugere configuracao de Evolution API
-- `[ ]` Criar camada de integracao real com Evolution API
-- `[ ]` Montar payload de envio para grupo
-- `[ ]` Enviar relatorio formatado para grupo
-- `[ ]` Tratar resposta de sucesso e falha
-- `[ ]` Registrar tudo em `SendLog`
+- `[x]` Ambiente local com configuracao para Evolution API
+- `[x]` Criar camada de integracao real com Evolution API
+- `[x]` Montar payload de envio para grupo
+- `[x]` Enviar relatorio formatado para grupo
+- `[x]` Tratar resposta de sucesso e falha
+- `[x]` Registrar tudo em `SendLog`
 - `[ ]` Implementar reenvio manual
-- `[ ]` Implementar mensagens de erro operacionais para o time
+- `[x]` Implementar mensagens de erro operacionais para o time
 
 ## 12. Automacao e agendamento
 
@@ -176,33 +176,33 @@ Legenda:
 ### Fase 1. Fechar a fundacao critica
 
 1. `[x]` Padronizar naming do produto para `GreatGo`
-2. `[ ]` Remover login hardcoded e autenticar credenciais pelo banco
-3. `[ ]` Implementar protecao de rotas de forma centralizada
-4. `[ ]` Criptografar token META antes de salvar
+2. `[x]` Remover login hardcoded e autenticar credenciais pelo banco
+3. `[x]` Implementar protecao de rotas de forma centralizada
+4. `[x]` Criptografar token META antes de salvar
 5. `[ ]` Organizar camada real de integracao com META em `lib/meta-api.ts`
 
 ### Fase 2. Consolidar o relatorio real
 
-6. `[ ]` Unificar tela de relatorio dinamico com preview final
-7. `[ ]` Persistir relatorios em `Report`
-8. `[ ]` Salvar payload do relatorio em `payloadJson`
-9. `[ ]` Fazer PDF sair do relatorio real, nao de mocks
-10. `[ ]` Padronizar formato oficial do relatorio
+6. `[x]` Unificar tela de relatorio dinamico com preview final
+7. `[x]` Persistir relatorios em `Report`
+8. `[x]` Salvar payload do relatorio em `payloadJson`
+9. `[x]` Fazer PDF sair do relatorio real, nao de mocks
+10. `[x]` Padronizar formato oficial do relatorio
 
 ### Fase 3. Fechar historico e rastreabilidade
 
-11. `[ ]` Implementar `/api/history`
-12. `[ ]` Popular `SendLog` com eventos reais
-13. `[ ]` Exibir historico funcional no dashboard
-14. `[ ]` Permitir abrir relatorio salvo
+11. `[x]` Implementar `/api/history`
+12. `[x]` Popular `SendLog` com eventos reais
+13. `[x]` Exibir historico funcional no dashboard
+14. `[x]` Permitir abrir relatorio salvo
 15. `[ ]` Permitir reenvio manual de falhas
 
 ### Fase 4. Implementar envio operacional
 
-16. `[ ]` Criar integracao real com Evolution API
-17. `[ ]` Enviar relatorio para WhatsApp com `whatsappGroupId`
-18. `[ ]` Tratar sucesso, erro e retorno da API
-19. `[ ]` Registrar tentativas e erros em `SendLog`
+16. `[x]` Criar integracao real com Evolution API
+17. `[x]` Enviar relatorio para WhatsApp com `whatsappGroupId`
+18. `[x]` Tratar sucesso, erro e retorno da API
+19. `[x]` Registrar tentativas e erros em `SendLog`
 
 ### Fase 5. Automatizar
 
@@ -224,18 +224,18 @@ Legenda:
 
 Se precisar resumir em prioridade maxima:
 
-- `[ ]` login real + seguranca dos tokens
-- `[ ]` relatorio real persistido
-- `[ ]` historico funcional
-- `[ ]` envio real via WhatsApp
+- `[x]` login real + seguranca dos tokens
+- `[x]` relatorio real persistido
+- `[x]` historico funcional
+- `[x]` envio real via WhatsApp
 - `[ ]` automacao semanal
 
 ## 17. Definicao de pronto do produto
 
 O projeto pode ser considerado realmente pronto para a proposta original quando estes cinco pontos estiverem fechados:
 
-- `[ ]` usuario autentica com fluxo seguro e sem credenciais hardcoded
-- `[ ]` relatorio e gerado com dados reais e salvo no banco
-- `[ ]` historico mostra envios e falhas reais
-- `[ ]` envio por WhatsApp funciona para grupos configurados
+- `[x]` usuario autentica com fluxo seguro e sem credenciais hardcoded
+- `[x]` relatorio e gerado com dados reais e salvo no banco
+- `[x]` historico mostra envios e falhas reais
+- `[x]` envio por WhatsApp funciona para grupos configurados
 - `[ ]` job semanal executa sozinho com log, retry e alerta
