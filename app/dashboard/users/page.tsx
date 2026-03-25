@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { Header } from "@/components/layout/header"
+import { EmptyState } from "@/components/shared/empty-state"
+import { ErrorState } from "@/components/shared/error-state"
+import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
+import { StatusBadge } from "@/components/shared/status-badge"
+import { fetchJsonOrThrow } from "@/lib/api-client"
 import {
   CheckCircle,
   Eye,
@@ -14,16 +19,14 @@ import {
   Users,
   XCircle,
 } from "lucide-react"
+import type {
+  RegisterUserRequest,
+  RegisterUserResponse,
+  UserListItem,
+  UsersListResponse,
+} from "@/types/api.types"
 
-type UserRole = "ADMIN" | "MANAGER"
-
-type UserListItem = {
-  id: string
-  name: string | null
-  email: string
-  role: UserRole
-  createdAt: string
-}
+type UserRole = RegisterUserRequest["role"]
 
 const initialForm = {
   name: "",
@@ -77,18 +80,17 @@ export default function UsersPage() {
     setUsersError("")
 
     try {
-      const response = await fetch("/api/users", { cache: "no-store" })
-      const data = await response.json()
-
-      if (!response.ok) {
-        setUsersError(data.error ?? "Nao foi possivel carregar os usuarios")
-        setUsers([])
-        return
-      }
+      const data = await fetchJsonOrThrow<UsersListResponse>(
+        "/api/users",
+        { cache: "no-store" },
+        "Nao foi possivel carregar os usuarios"
+      )
 
       setUsers(Array.isArray(data.users) ? data.users : [])
-    } catch {
-      setUsersError("Erro ao carregar usuarios")
+    } catch (loadError) {
+      setUsersError(
+        loadError instanceof Error ? loadError.message : "Erro ao carregar usuarios"
+      )
       setUsers([])
     } finally {
       setIsLoadingUsers(false)
@@ -106,25 +108,27 @@ export default function UsersPage() {
     setSuccess("")
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      })
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error ?? "Nao foi possivel cadastrar o usuario")
-        return
-      }
+      await fetchJsonOrThrow<RegisterUserResponse>(
+        "/api/auth/register",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        },
+        "Nao foi possivel cadastrar o usuario"
+      )
 
       setSuccess("Usuario cadastrado com sucesso!")
       setForm(initialForm)
       setShowPassword(false)
       setShowForm(false)
       await loadUsers()
-    } catch {
-      setError("Erro ao cadastrar usuario")
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Erro ao cadastrar usuario"
+      )
     } finally {
       setIsSaving(false)
     }
@@ -160,12 +164,13 @@ export default function UsersPage() {
           <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
             <h2 className="mb-6 text-lg font-bold text-gray-900">Cadastrar Novo Usuario</h2>
 
-            {error && (
-              <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-500">
-                <XCircle className="h-4 w-4" />
-                {error}
-              </div>
-            )}
+            {error ? (
+              <ErrorState
+                title="Falha ao cadastrar"
+                message={error}
+                className="mb-4"
+              />
+            ) : null}
 
             <div className="space-y-4">
               <div>
@@ -277,18 +282,15 @@ export default function UsersPage() {
 
           <div className="p-6">
             {isLoadingUsers ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Carregando usuarios...
-              </div>
+              <LoadingSkeleton label="Carregando usuarios..." className="py-10" />
             ) : usersError ? (
-              <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-500">
-                {usersError}
-              </div>
+              <ErrorState message={usersError} />
             ) : users.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-400">
-                Nenhum usuario cadastrado ainda.
-              </div>
+              <EmptyState
+                title="Nenhum usuario cadastrado ainda"
+                description="Cadastre o primeiro acesso para liberar a operacao da plataforma."
+                className="border-none px-0 py-10"
+              />
             ) : (
               <div className="space-y-4">
                 {users.map((user) => (
@@ -320,20 +322,16 @@ export default function UsersPage() {
                         </p>
                       </div>
 
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
-                          user.role === "ADMIN"
-                            ? "bg-[#FEF2F2] text-[#C1121F]"
-                            : "bg-blue-50 text-blue-600"
-                        }`}
-                      >
-                        {user.role === "ADMIN" ? (
-                          <Shield className="h-3.5 w-3.5" />
-                        ) : (
-                          <UserRound className="h-3.5 w-3.5" />
-                        )}
-                        {getRoleLabel(user.role)}
-                      </span>
+                      <StatusBadge tone={user.role === "ADMIN" ? "danger" : "info"}>
+                        <span className="inline-flex items-center gap-1">
+                          {user.role === "ADMIN" ? (
+                            <Shield className="h-3.5 w-3.5" />
+                          ) : (
+                            <UserRound className="h-3.5 w-3.5" />
+                          )}
+                          {getRoleLabel(user.role)}
+                        </span>
+                      </StatusBadge>
                     </div>
                   </div>
                 ))}

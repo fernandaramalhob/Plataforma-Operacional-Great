@@ -2,23 +2,38 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Header } from "@/components/layout/header"
-import { ReportPreview } from "@/components/reports/report-preview"
-import { logError } from "@/lib/safe-logger"
-import type {
-  ReportCampaign,
-  ReportClient,
-  ReportGenerationResponse,
-  ReportPayload,
-} from "@/types/report.types"
 import {
   Calendar,
   ChevronLeft,
   Download,
   Loader2,
-  Search,
   Send,
 } from "lucide-react"
+import { CampaignSelector } from "@/components/clients/campaign-selector"
+import { Header } from "@/components/layout/header"
+import { ReportPreview } from "@/components/reports/report-preview"
+import { EmptyState } from "@/components/shared/empty-state"
+import { ErrorState } from "@/components/shared/error-state"
+import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
+import { StatusBadge } from "@/components/shared/status-badge"
+import {
+  FilterLabel,
+  FilterSearchInput,
+} from "@/components/ui/filter-controls"
+import { fetchJsonOrThrow } from "@/lib/api-client"
+import { exportReportPdf } from "@/lib/report-pdf"
+import {
+  pollSavedReportUntilReady,
+  requestQueuedReport,
+  sendReportToWhatsApp,
+} from "@/lib/report-client"
+import { logError } from "@/lib/safe-logger"
+import type { ClientListItem } from "@/types/client.types"
+import type {
+  ReportObjectiveValue,
+  ReportPayload,
+  SavedReportResponse,
+} from "@/types/report.types"
 
 const colors = [
   "bg-blue-500",
@@ -42,47 +57,70 @@ function getInitials(name: string) {
     .toUpperCase()
 }
 
-function sanitizeFileName(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9-_]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase()
-}
-
-type ClientListItem = ReportClient & {
-  status: string
-}
-
 export default function ReportsPage() {
   const reportRef = useRef<HTMLDivElement>(null)
+  const pdfReportRef = useRef<HTMLDivElement>(null)
+  const reportPollSequenceRef = useRef(0)
   const [clients, setClients] = useState<ClientListItem[]>([])
   const [loadingClients, setLoadingClients] = useState(true)
   const [search, setSearch] = useState("")
   const [selectedClient, setSelectedClient] = useState<ClientListItem | null>(null)
   const [reportData, setReportData] = useState<ReportPayload | null>(null)
   const [loadingReport, setLoadingReport] = useState(false)
+  const [loadingReportMessage, setLoadingReportMessage] = useState("")
   const [reportError, setReportError] = useState("")
   const [insightsEnabled, setInsightsEnabled] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [currentReportId, setCurrentReportId] = useState<string | null>(null)
+  const [currentReportGeneratedAt, setCurrentReportGeneratedAt] = useState<
+    string | null
+  >(null)
   const [actionFeedback, setActionFeedback] = useState("")
 
   const [activePeriod, setActivePeriod] = useState("7d")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
-  const [objective, setObjective] = useState("ALL")
+  const [objective, setObjective] = useState<ReportObjectiveValue>("ALL")
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([])
 
+  const sleep = useCallback(
+    (milliseconds: number) =>
+      new Promise<void>((resolve) => {
+        window.setTimeout(resolve, milliseconds)
+      }),
+    []
+  )
+
+  const applySavedReport = useCallback((savedReport: SavedReportResponse) => {
+    if (!savedReport.payload) {
+      return false
+    }
+
+    const payload: ReportPayload = {
+      client: savedReport.payload.client,
+      campaigns: savedReport.payload.campaigns,
+      accountInsights: savedReport.payload.accountInsights,
+      dailyInsights: savedReport.payload.dailyInsights,
+    }
+
+    setCurrentReportId(savedReport.id)
+    setCurrentReportGeneratedAt(savedReport.generatedAt)
+    setReportData(payload)
+    setSelectedCampaigns(payload.campaigns.map((campaign) => campaign.id))
+
+    return true
+  }, [])
+
   const clearCurrentReport = useCallback(() => {
+    reportPollSequenceRef.current += 1
     setReportData(null)
     setReportError("")
     setSelectedCampaigns([])
     setCurrentReportId(null)
+    setCurrentReportGeneratedAt(null)
     setActionFeedback("")
+    setLoadingReportMessage("")
   }, [])
 
   useEffect(() => {
@@ -114,10 +152,13 @@ export default function ReportsPage() {
   }, [activePeriod])
 
   useEffect(() => {
-    fetch("/api/clients")
-      .then((res) => res.json())
+    void fetchJsonOrThrow<ClientListItem[]>(
+      "/api/clients",
+      undefined,
+      "Erro ao carregar clientes"
+    )
       .then((data) => {
-        setClients(Array.isArray(data) ? (data as ClientListItem[]) : [])
+        setClients(data)
         setLoadingClients(false)
       })
       .catch(() => {
@@ -126,60 +167,77 @@ export default function ReportsPage() {
       })
   }, [])
 
+  const waitForQueuedReport = useCallback(
+    async (reportId: string, sequence: number) => {
+      const savedReport = await pollSavedReportUntilReady({
+        reportId,
+        sequence,
+        getCurrentSequence: () => reportPollSequenceRef.current,
+        sleep,
+        fallbackMessage: "Erro ao acompanhar a fila do relatorio",
+        onUpdate: (nextReport) => {
+          setCurrentReportId(nextReport.id)
+          setCurrentReportGeneratedAt(nextReport.generatedAt)
+
+          if (applySavedReport(nextReport)) {
+            setLoadingReportMessage("")
+            return
+          }
+
+          setLoadingReportMessage(
+            "Relatorio em fila. Processando dados da META API..."
+          )
+        },
+      })
+
+      if (savedReport?.status === "FAILED") {
+        throw new Error(
+          savedReport.errorMessage || "Nao foi possivel gerar o relatorio"
+        )
+      }
+    },
+    [applySavedReport, sleep]
+  )
+
   const fetchReport = useCallback(async () => {
     if (!selectedClient || !startDate || !endDate) {
       return
     }
 
+    clearCurrentReport()
     setLoadingReport(true)
     setReportError("")
     setActionFeedback("")
+    setLoadingReportMessage("Enfileirando relatorio...")
+    const sequence = reportPollSequenceRef.current
 
     try {
-      const res = await fetch("/api/reports", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          clientId: selectedClient.id,
-          since: startDate,
-          until: endDate,
-          objective,
-        }),
+      const response = await requestQueuedReport({
+        clientId: selectedClient.id,
+        since: startDate,
+        until: endDate,
+        objective,
       })
-      const data = (await res.json()) as
-        | ReportGenerationResponse
-        | { error?: string }
-
-      if (!res.ok) {
-        setReportError(
-          "error" in data && typeof data.error === "string"
-            ? data.error
-            : "Erro ao buscar relatorio"
-        )
-        clearCurrentReport()
-        return
-      }
-
-      const response = data as ReportGenerationResponse
-      const payload: ReportPayload = {
-        client: response.client,
-        campaigns: response.campaigns,
-        accountInsights: response.accountInsights,
-        dailyInsights: response.dailyInsights,
-      }
-
       setCurrentReportId(response.reportId)
-      setReportData(payload)
-      setSelectedCampaigns(payload.campaigns.map((campaign) => campaign.id))
-    } catch {
-      setReportError("Erro ao conectar com a META API")
+      setCurrentReportGeneratedAt(response.generatedAt)
+      setLoadingReportMessage("Relatorio em fila. Processando dados da META API...")
+      await waitForQueuedReport(response.reportId, sequence)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Erro ao conectar com a META API"
       clearCurrentReport()
+      setReportError(message)
     } finally {
       setLoadingReport(false)
     }
-  }, [clearCurrentReport, endDate, objective, selectedClient, startDate])
+  }, [
+    clearCurrentReport,
+    endDate,
+    objective,
+    selectedClient,
+    startDate,
+    waitForQueuedReport,
+  ])
 
   useEffect(() => {
     if (selectedClient && startDate && endDate) {
@@ -202,56 +260,24 @@ export default function ReportsPage() {
   }
 
   async function handleGeneratePdf() {
-    if (!reportRef.current || !selectedClient) {
+    const sourceElement = pdfReportRef.current ?? reportRef.current
+
+    if (!sourceElement || !selectedClient) {
       return
     }
 
     setIsExporting(true)
 
     try {
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ])
-
-      const element = reportRef.current
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-      })
-
-      const imageData = canvas.toDataURL("image/png")
-      const pdf = new jsPDF("p", "mm", "a4")
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const imageHeight = (canvas.height * pageWidth) / canvas.width
-
-      let heightLeft = imageHeight
-      let position = 0
-
-      pdf.addImage(imageData, "PNG", 0, position, pageWidth, imageHeight)
-      heightLeft -= pageHeight
-
-      while (heightLeft > 0) {
-        position = heightLeft - imageHeight
-        pdf.addPage()
-        pdf.addImage(imageData, "PNG", 0, position, pageWidth, imageHeight)
-        heightLeft -= pageHeight
-      }
-
-      const fileName = [
-        "greatgo-relatorio",
-        sanitizeFileName(selectedClient.name),
+      await exportReportPdf({
+        sourceElement,
+        clientName: selectedClient.name,
         startDate,
         endDate,
-      ]
-        .filter(Boolean)
-        .join("-")
-
-      pdf.save(`${fileName}.pdf`)
+        objective,
+        generatedAt: currentReportGeneratedAt ?? new Date(),
+        reportId: currentReportId ?? undefined,
+      })
     } catch (error) {
       logError("dashboard.reports.page", error)
       setReportError("Nao foi possivel gerar o PDF do relatorio")
@@ -270,20 +296,8 @@ export default function ReportsPage() {
     setActionFeedback("")
 
     try {
-      const response = await fetch(`/api/reports/${currentReportId}/send`, {
-        method: "POST",
-      })
-      const data = (await response.json()) as { error?: string }
-
-      if (!response.ok) {
-        throw new Error(
-          typeof data.error === "string"
-            ? data.error
-            : "Nao foi possivel enviar o relatorio"
-        )
-      }
-
-      setActionFeedback("Relatorio enviado ao grupo de WhatsApp configurado.")
+      await sendReportToWhatsApp(currentReportId)
+      setActionFeedback("Envio enfileirado. Vamos processar o WhatsApp em segundo plano.")
     } catch (error) {
       setReportError(
         error instanceof Error
@@ -298,31 +312,31 @@ export default function ReportsPage() {
   if (!selectedClient) {
     return (
       <>
-        <Header
-          title="Relatorios"
-          subtitle="Selecione um cliente para visualizar o relatorio"
-        />
+        <div className="print:hidden">
+          <Header
+            title="Relatorios"
+            subtitle="Selecione um cliente para visualizar o relatorio"
+          />
+        </div>
         <div className="p-8">
           <div className="mx-auto max-w-2xl">
-            <div className="relative mb-6">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar cliente por nome ou empresa..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="w-full rounded-2xl border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-              />
-            </div>
+            <FilterSearchInput
+              type="text"
+              placeholder="Buscar cliente por nome ou empresa..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="mb-6"
+              inputClassName="rounded-[26px] py-3.5"
+            />
 
             {loadingClients ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-6 w-6 animate-spin text-[#C1121F]" />
-              </div>
+              <LoadingSkeleton label="Carregando clientes..." />
             ) : filteredClients.length === 0 ? (
-              <div className="py-20 text-center text-gray-400">
-                <p className="text-lg font-medium">Nenhum cliente encontrado</p>
-              </div>
+              <EmptyState
+                title="Nenhum cliente encontrado"
+                description="Ajuste a busca para localizar outro cliente."
+                className="border-none py-20"
+              />
             ) : (
               <div className="space-y-3">
                 {filteredClients.map((client) => (
@@ -350,15 +364,11 @@ export default function ReportsPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          client.status === "ACTIVE"
-                            ? "bg-green-50 text-green-600"
-                            : "bg-gray-100 text-gray-400"
-                        }`}
+                      <StatusBadge
+                        tone={client.status === "ACTIVE" ? "success" : "neutral"}
                       >
                         {client.status === "ACTIVE" ? "Ativo" : "Inativo"}
-                      </span>
+                      </StatusBadge>
                       <span className="text-sm font-medium text-[#C1121F]">
                         Ver relatorio
                       </span>
@@ -375,27 +385,27 @@ export default function ReportsPage() {
 
   return (
     <>
-      <div className="sticky top-0 z-20 border-b border-gray-200 bg-[#F8FAFC]">
+      <div className="print:hidden">
         <Header
           title="Relatorio"
           subtitle={`${selectedClient.name} · ${startDate} ate ${endDate}`}
         />
       </div>
 
-      <div className="flex h-[calc(100vh-72px)]">
-        <aside className="w-[300px] flex-shrink-0 overflow-y-auto border-r border-gray-100 bg-white p-5">
+      <div className="flex flex-col xl:h-[calc(100vh-72px)] xl:flex-row print:block">
+        <aside className="w-full flex-shrink-0 overflow-y-auto border-b border-slate-200/80 bg-[#FCFDFE] p-4 sm:p-6 xl:w-[320px] xl:border-b-0 xl:border-r print:hidden">
           <button
             onClick={() => {
               setSelectedClient(null)
               clearCurrentReport()
             }}
-            className="mb-5 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+            className="mb-6 inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
           >
             <ChevronLeft className="h-4 w-4" />
             Voltar para a lista
           </button>
 
-          <div className="mb-5 flex items-center gap-3 border-b border-gray-100 pb-5">
+          <div className="mb-6 flex items-center gap-3 rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
             <div
               className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${getColor(selectedClient.name)}`}
             >
@@ -413,11 +423,9 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div className="mb-4">
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Periodo
-            </label>
-            <div className="mb-3 grid grid-cols-2 gap-1.5">
+          <div className="mb-5 rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
+            <FilterLabel>Periodo</FilterLabel>
+            <div className="mb-4 grid grid-cols-2 gap-2">
               {[
                 { label: "1 semana", value: "7d" },
                 { label: "1 mes", value: "30d" },
@@ -429,17 +437,19 @@ export default function ReportsPage() {
                 <button
                   key={period.value}
                   onClick={() => setActivePeriod(period.value)}
-                  className={`rounded-lg px-2 py-1.5 text-xs font-medium transition ${
+                  className={`rounded-2xl border px-3 py-2.5 text-xs font-semibold transition ${
                     activePeriod === period.value
-                      ? "bg-[#C1121F] text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      ? "border-[#C1121F] bg-[#C1121F] text-white shadow-[0_16px_30px_-22px_rgba(193,18,31,0.9)]"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-100"
                   }`}
                 >
                   {period.label}
                 </button>
               ))}
             </div>
-            <p className="mb-1.5 text-xs text-gray-400">Periodo personalizado:</p>
+            <p className="mb-2 text-xs font-medium text-slate-400">
+              Periodo personalizado
+            </p>
             <div className="flex gap-2">
               <input
                 type="date"
@@ -448,7 +458,7 @@ export default function ReportsPage() {
                   setStartDate(event.target.value)
                   setActivePeriod("custom")
                 }}
-                className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+                className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.45)] transition focus:border-[#C1121F]/25 focus:outline-none focus:ring-4 focus:ring-[#C1121F]/10"
               />
               <input
                 type="date"
@@ -457,95 +467,82 @@ export default function ReportsPage() {
                   setEndDate(event.target.value)
                   setActivePeriod("custom")
                 }}
-                className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+                className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.45)] transition focus:border-[#C1121F]/25 focus:outline-none focus:ring-4 focus:ring-[#C1121F]/10"
               />
             </div>
           </div>
 
-          <div className="mb-4">
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Objetivo
-            </label>
-            <div className="space-y-1.5">
+          <div className="mb-5 rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
+            <FilterLabel>Objetivo</FilterLabel>
+            <div className="grid gap-2">
               {[
                 { label: "Todos", value: "ALL" },
                 { label: "Trafego", value: "LINK_CLICKS" },
                 { label: "Conversao", value: "CONVERSIONS" },
                 { label: "Mensagens", value: "MESSAGES" },
               ].map((option) => (
-                <label
+                <button
                   key={option.value}
-                  className="flex cursor-pointer items-center gap-2"
+                  type="button"
+                  onClick={() =>
+                    setObjective(option.value as ReportObjectiveValue)
+                  }
+                  className={`flex items-center justify-between rounded-2xl border px-3.5 py-3 text-sm font-medium transition ${
+                    objective === option.value
+                      ? "border-[#C1121F]/20 bg-[#FFF5F6] text-[#C1121F]"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-100"
+                  }`}
                 >
-                  <input
-                    type="radio"
-                    name="objective"
-                    checked={objective === option.value}
-                    onChange={() => setObjective(option.value)}
-                    className="accent-[#C1121F]"
+                  <span>{option.label}</span>
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      objective === option.value ? "bg-[#C1121F]" : "bg-slate-300"
+                    }`}
                   />
-                  <span className="text-sm text-gray-700">{option.label}</span>
-                </label>
+                </button>
               ))}
             </div>
           </div>
 
           {reportData?.campaigns.length ? (
-            <div className="mb-4">
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Campanhas
-              </label>
-              <div className="space-y-2">
-                {reportData.campaigns.map((campaign: ReportCampaign) => (
-                  <label
-                    key={campaign.id}
-                    className="flex cursor-pointer items-center gap-2"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedCampaigns.includes(campaign.id)}
-                      onChange={() => toggleCampaign(campaign.id)}
-                      className="accent-[#C1121F]"
-                    />
-                    <span className="flex-1 truncate text-xs text-gray-700">
-                      {campaign.name}
-                    </span>
-                    <span
-                      className={`flex-shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${
-                        campaign.status === "ACTIVE"
-                          ? "bg-green-100 text-green-600"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {campaign.status === "ACTIVE" ? "Ativa" : "Pausada"}
-                    </span>
-                  </label>
-                ))}
-              </div>
+            <div className="mb-5 rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
+              <FilterLabel>Campanhas</FilterLabel>
+              <CampaignSelector
+                campaigns={reportData.campaigns}
+                selectedCampaignIds={selectedCampaigns}
+                onToggleCampaign={toggleCampaign}
+              />
             </div>
           ) : null}
 
-          <div className="mb-5">
-            <label className="flex items-center gap-2">
+          <div className="mb-5 rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
+            <label className="flex items-center justify-between gap-3">
+              <span>
+                <span className="block text-sm font-semibold text-slate-800">
+                  Insights automaticos
+                </span>
+                <span className="mt-1 block text-xs text-slate-400">
+                  Gera observacoes inteligentes junto com o relatorio.
+                </span>
+              </span>
               <div
                 onClick={() => setInsightsEnabled(!insightsEnabled)}
-                className={`relative h-5 w-10 cursor-pointer rounded-full transition ${
-                  insightsEnabled ? "bg-[#C1121F]" : "bg-gray-300"
+                className={`relative h-6 w-11 cursor-pointer rounded-full transition ${
+                  insightsEnabled ? "bg-[#C1121F]" : "bg-slate-300"
                 }`}
               >
                 <div
-                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${
-                    insightsEnabled ? "left-5" : "left-0.5"
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+                    insightsEnabled ? "left-[22px]" : "left-0.5"
                   }`}
                 />
               </div>
-              <span className="text-sm text-gray-700">Insights automaticos</span>
             </label>
           </div>
 
           <button
             onClick={() => void fetchReport()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#C1121F] py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A]"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#C1121F] py-3 text-sm font-semibold text-white shadow-[0_18px_40px_-24px_rgba(193,18,31,0.9)] transition hover:bg-[#A50F1A]"
           >
             {loadingReport ? (
               <>
@@ -558,41 +555,40 @@ export default function ReportsPage() {
           </button>
         </aside>
 
-        <section className="flex-1 overflow-y-auto bg-[#eef1f6]">
+        <section className="min-h-0 flex-1 overflow-y-auto bg-[#eef1f6] print:overflow-visible print:bg-white">
           {loadingReport ? (
-            <div className="flex h-full items-center justify-center">
-              <div className="text-center">
-                <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#C1121F]" />
-                <p className="text-sm text-gray-500">
-                  Buscando dados da META API...
-                </p>
-              </div>
-            </div>
+            <LoadingSkeleton
+              label={loadingReportMessage || "Gerando relatorio..."}
+              className="h-full"
+            />
           ) : reportError ? (
-            <div className="flex h-full items-center justify-center">
-              <div className="text-center text-gray-400">
-                <p className="text-lg font-medium text-red-500">
-                  Erro ao carregar relatorio
-                </p>
-                <p className="mt-1 text-sm">{reportError}</p>
-                <button
-                  onClick={() => void fetchReport()}
-                  className="mt-4 text-sm text-[#C1121F] hover:underline"
-                >
-                  Tentar novamente
-                </button>
-              </div>
+            <div className="flex h-full items-center justify-center px-6">
+              <ErrorState
+                title="Erro ao carregar relatorio"
+                message={reportError}
+                action={
+                  <button
+                    onClick={() => void fetchReport()}
+                    className="text-sm font-medium text-[#C1121F] hover:underline"
+                  >
+                    Tentar novamente
+                  </button>
+                }
+                className="w-full max-w-lg"
+              />
             </div>
           ) : !reportData ? (
-            <div className="flex h-full items-center justify-center text-gray-400">
-              <p className="text-sm">
-                Selecione os filtros e clique em &quot;Aplicar filtros&quot;
-              </p>
+            <div className="flex h-full items-center justify-center px-6">
+              <EmptyState
+                title="Nenhum relatorio carregado"
+                description='Selecione os filtros e clique em "Aplicar filtros".'
+                className="w-full max-w-lg border-none bg-transparent py-20"
+              />
             </div>
           ) : (
-            <div className="px-8 py-8 pb-28">
+            <div className="px-4 py-5 pb-28 sm:px-6 sm:py-6 md:px-8 md:py-8 print:px-0 print:py-0">
               {actionFeedback ? (
-                <div className="mb-4 rounded-2xl border border-green-100 bg-green-50 px-5 py-4 text-sm text-green-700">
+                <div className="mb-4 rounded-2xl border border-green-100 bg-green-50 px-5 py-4 text-sm text-green-700 print:hidden">
                   {actionFeedback}
                 </div>
               ) : null}
@@ -603,6 +599,7 @@ export default function ReportsPage() {
                   reportData={reportData}
                   startDate={startDate}
                   endDate={endDate}
+                  objective={objective}
                   selectedCampaignIds={selectedCampaigns}
                   insightsEnabled={insightsEnabled}
                 />
@@ -611,7 +608,7 @@ export default function ReportsPage() {
           )}
 
           {reportData ? (
-            <div className="sticky bottom-0 z-10 flex items-center justify-between border-t border-gray-200 bg-white/95 px-8 py-4 backdrop-blur">
+            <div className="sticky bottom-0 z-10 flex flex-col gap-3 border-t border-gray-200 bg-white/95 px-4 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6 md:px-8 print:hidden">
               <button
                 onClick={() => {
                   setSelectedClient(null)
@@ -622,7 +619,7 @@ export default function ReportsPage() {
                 <ChevronLeft className="h-4 w-4" />
                 Voltar
               </button>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
                 {currentReportId ? (
                   <Link
                     href={`/dashboard/reports/${currentReportId}`}
@@ -656,6 +653,26 @@ export default function ReportsPage() {
           ) : null}
         </section>
       </div>
+
+      {selectedClient && reportData ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed left-[-200vw] top-0 w-[1120px] overflow-hidden bg-white"
+        >
+          <div ref={pdfReportRef}>
+            <ReportPreview
+              client={selectedClient}
+              reportData={reportData}
+              startDate={startDate}
+              endDate={endDate}
+              objective={objective}
+              selectedCampaignIds={selectedCampaigns}
+              insightsEnabled={insightsEnabled}
+              variant="pdf"
+            />
+          </div>
+        </div>
+      ) : null}
     </>
   )
 }

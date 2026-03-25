@@ -1,28 +1,12 @@
-import type {
-  ReportAction,
-  ReportCampaign,
-  StoredReportPayload,
-} from "@/types/report.types"
-
-function getActionValue(actions: ReportAction[] | undefined, type: string) {
-  return actions?.find((action) => action.action_type === type)?.value ?? "0"
-}
-
-function parseNumber(value?: string) {
-  return Number.parseFloat(value ?? "0") || 0
-}
-
-function formatCurrency(value: number) {
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-  })
-}
-
-function formatInteger(value: number) {
-  return value.toLocaleString("pt-BR")
-}
+import type { StoredReportPayload } from "@/types/report.types"
+import {
+  findBestCampaignByObjective,
+  formatCurrency,
+  formatInteger,
+  formatPercentage,
+  parseReportNumber,
+  resolveObjectiveMetric,
+} from "@/lib/report-metrics"
 
 function formatDate(date: string) {
   if (!date) {
@@ -32,34 +16,25 @@ function formatDate(date: string) {
   return new Date(`${date}T00:00:00`).toLocaleDateString("pt-BR")
 }
 
-function findBestCampaign(campaigns: ReportCampaign[]) {
-  if (!campaigns.length) {
-    return null
-  }
-
-  return campaigns.reduce((best, current) => {
-    const bestClicks = parseNumber(best.insights?.data?.[0]?.clicks)
-    const currentClicks = parseNumber(current.insights?.data?.[0]?.clicks)
-
-    return currentClicks > bestClicks ? current : best
-  }, campaigns[0])
-}
-
 export function buildWhatsAppReportMessage(params: {
   reportId: string
   payload: StoredReportPayload
 }) {
   const { reportId, payload } = params
   const accountInsights = payload.accountInsights ?? {}
-  const spend = parseNumber(accountInsights.spend)
-  const impressions = parseNumber(accountInsights.impressions)
-  const reach = parseNumber(accountInsights.reach)
-  const clicks = parseNumber(accountInsights.clicks)
-  const ctr = parseNumber(accountInsights.ctr)
-  const conversions = parseNumber(
-    getActionValue(accountInsights.actions, "offsite_conversion.fb_pixel_purchase")
+  const spend = parseReportNumber(accountInsights.spend)
+  const impressions = parseReportNumber(accountInsights.impressions)
+  const reach = parseReportNumber(accountInsights.reach)
+  const clicks = parseReportNumber(accountInsights.clicks)
+  const ctr = parseReportNumber(accountInsights.ctr)
+  const objectiveMetric = resolveObjectiveMetric(
+    accountInsights,
+    payload.filters.objective
   )
-  const bestCampaign = findBestCampaign(payload.campaigns)
+  const bestCampaign =
+    findBestCampaignByObjective(payload.campaigns, payload.filters.objective) ??
+    payload.campaigns[0] ??
+    null
   const reportUrlBase = process.env.NEXTAUTH_URL?.replace(/\/+$/, "")
   const reportUrl = reportUrlBase
     ? `${reportUrlBase}/dashboard/reports/${reportId}`
@@ -74,8 +49,20 @@ export function buildWhatsAppReportMessage(params: {
     `Impressoes: ${formatInteger(impressions)}`,
     `Alcance: ${formatInteger(reach)}`,
     `Cliques: ${formatInteger(clicks)}`,
-    `CTR: ${ctr.toFixed(2)}%`,
-    `Conversoes: ${formatInteger(conversions)}`,
+    `CTR: ${formatPercentage(ctr)}`,
+    `${objectiveMetric.label}: ${formatInteger(objectiveMetric.value)}`,
+    objectiveMetric.costPerResult !== null
+      ? `${objectiveMetric.costLabel}: ${formatCurrency(objectiveMetric.costPerResult)}`
+      : null,
+    objectiveMetric.efficiencyLabel === "ROAS" &&
+    objectiveMetric.efficiencyValue !== null
+      ? `ROAS: ${objectiveMetric.efficiencyValue.toFixed(2)}x`
+      : objectiveMetric.efficiencyLabel && objectiveMetric.efficiencyValue !== null
+        ? `${objectiveMetric.efficiencyLabel}: ${formatPercentage(objectiveMetric.efficiencyValue)}`
+        : null,
+    objectiveMetric.valueLabel && objectiveMetric.valueAmount > 0
+      ? `${objectiveMetric.valueLabel}: ${formatCurrency(objectiveMetric.valueAmount)}`
+      : null,
     `Campanhas no relatorio: ${payload.campaigns.length}`,
     bestCampaign ? `Melhor campanha: ${bestCampaign.name}` : null,
     reportUrl ? "" : null,

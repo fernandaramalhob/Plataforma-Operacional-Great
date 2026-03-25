@@ -80,11 +80,11 @@ Legenda:
 - `[x]` Busca de campanhas por cliente
 - `[x]` Busca de insights da conta
 - `[x]` Busca de insights diarios
-- `[~]` Filtro por objetivo implementado no relatorio
-- `[ ]` Revisar cobertura de metricas para o que o negocio realmente precisa
-- `[ ]` Tratar melhor expiracao de token
-- `[ ]` Criar rotina de verificacao preventiva de token
-- `[ ]` Criar camada `lib/meta-api.ts` real para centralizar chamadas
+- `[x]` Filtro por objetivo implementado no relatorio
+- `[x]` Revisar cobertura de metricas para o que o negocio realmente precisa
+- `[x]` Tratar melhor expiracao de token
+- `[x]` Criar rotina de verificacao preventiva de token
+- `[x]` Criar camada `lib/meta-api.ts` real para centralizar chamadas
 
 ## 8. Relatorios
 
@@ -110,9 +110,9 @@ Legenda:
 - `[x]` Geracao de PDF com `html2canvas` + `jsPDF`
 - `[x]` Fluxo de PDF ligado ao relatorio real
 - `[x]` Gerar PDF a partir do relatorio real
-- `[ ]` Padronizar nome, layout e metadata do arquivo PDF
-- `[ ]` Garantir qualidade visual desktop/mobile/print
-- `[ ]` Validar pagina multipla e quebra correta
+- `[x]` Padronizar nome, layout e metadata do arquivo PDF
+- `[x]` Garantir qualidade visual desktop/mobile/print
+- `[x]` Validar pagina multipla e quebra correta
 
 ## 10. Historico e auditoria
 
@@ -124,7 +124,7 @@ Legenda:
 - `[x]` Exibir tentativas reais de envio
 - `[x]` Exibir mensagem de erro real
 - `[x]` Permitir abrir relatorio do historico
-- `[ ]` Permitir reenvio real de relatorio com falha
+- `[x]` Permitir reenvio real de relatorio com falha
 
 ## 11. WhatsApp / Evolution API
 
@@ -135,30 +135,30 @@ Legenda:
 - `[x]` Enviar relatorio formatado para grupo
 - `[x]` Tratar resposta de sucesso e falha
 - `[x]` Registrar tudo em `SendLog`
-- `[ ]` Implementar reenvio manual
+- `[x]` Implementar reenvio manual
 - `[x]` Implementar mensagens de erro operacionais para o time
 
 ## 12. Automacao e agendamento
 
-- `[ ]` Implementar fila de jobs
-- `[ ]` Adicionar Redis ao projeto
-- `[ ]` Adicionar BullMQ ou estrategia equivalente
-- `[ ]` Criar job semanal de envio
-- `[ ]` Buscar todos os clientes ativos no job
-- `[ ]` Processar clientes em lote/paralelo com controle
-- `[ ]` Retry com backoff
-- `[ ]` Dead-letter queue ou tratamento equivalente
-- `[ ]` Health checks do job
-- `[ ]` Alertas quando job falhar
+- `[x]` Implementar fila de jobs
+- `[x]` Adicionar Redis ao projeto
+- `[x]` Adicionar BullMQ ou estrategia equivalente
+- `[x]` Criar job semanal de envio
+- `[x]` Buscar todos os clientes ativos no job
+- `[x]` Processar clientes em lote/paralelo com controle
+- `[x]` Retry com backoff
+- `[x]` Dead-letter queue ou tratamento equivalente
+- `[x]` Health checks do job
+- `[x]` Alertas quando job falhar
 
 ## 13. Observabilidade e operacao
 
-- `[ ]` Logs estruturados para integracoes
-- `[ ]` Alertas para falha de token META
-- `[ ]` Alertas para falha de envio WhatsApp
-- `[ ]` Painel de status operacional
-- `[ ]` Indicador de ultimo envio por cliente
-- `[ ]` Indicador de clientes sem token ou sem grupo configurado
+- `[x]` Logs estruturados para integracoes
+- `[x]` Alertas para falha de token META
+- `[x]` Alertas para falha de envio WhatsApp
+- `[x]` Painel de status operacional
+- `[x]` Indicador de ultimo envio por cliente
+- `[x]` Indicador de clientes sem token ou sem grupo configurado
 
 ## 14. Qualidade de codigo
 
@@ -179,7 +179,7 @@ Legenda:
 2. `[x]` Remover login hardcoded e autenticar credenciais pelo banco
 3. `[x]` Implementar protecao de rotas de forma centralizada
 4. `[x]` Criptografar token META antes de salvar
-5. `[ ]` Organizar camada real de integracao com META em `lib/meta-api.ts`
+5. `[x]` Organizar camada real de integracao com META em `lib/meta-api.ts`
 
 ### Fase 2. Consolidar o relatorio real
 
@@ -195,7 +195,7 @@ Legenda:
 12. `[x]` Popular `SendLog` com eventos reais
 13. `[x]` Exibir historico funcional no dashboard
 14. `[x]` Permitir abrir relatorio salvo
-15. `[ ]` Permitir reenvio manual de falhas
+15. `[x]` Permitir reenvio manual de falhas
 
 ### Fase 4. Implementar envio operacional
 
@@ -206,11 +206,11 @@ Legenda:
 
 ### Fase 5. Automatizar
 
-20. `[ ]` Adicionar Redis
-21. `[ ]` Adicionar fila de jobs com BullMQ ou equivalente
-22. `[ ]` Criar job semanal de envio
-23. `[ ]` Implementar retries com backoff
-24. `[ ]` Implementar alertas e health checks
+20. `[x]` Adicionar Redis
+21. `[x]` Adicionar fila de jobs com BullMQ ou equivalente
+22. `[x]` Criar job semanal de envio
+23. `[x]` Implementar retries com backoff
+24. `[x]` Implementar alertas e health checks
 
 ### Fase 6. Endurecimento
 
@@ -228,7 +228,7 @@ Se precisar resumir em prioridade maxima:
 - `[x]` relatorio real persistido
 - `[x]` historico funcional
 - `[x]` envio real via WhatsApp
-- `[ ]` automacao semanal
+- `[x]` automacao semanal
 
 ## 17. Definicao de pronto do produto
 
@@ -238,4 +238,4 @@ O projeto pode ser considerado realmente pronto para a proposta original quando 
 - `[x]` relatorio e gerado com dados reais e salvo no banco
 - `[x]` historico mostra envios e falhas reais
 - `[x]` envio por WhatsApp funciona para grupos configurados
-- `[ ]` job semanal executa sozinho com log, retry e alerta
+- `[x]` job semanal executa sozinho com log, retry e alerta

@@ -1,14 +1,15 @@
 "use client"
 
 import { useState } from "react"
+import { FilterSelect } from "@/components/ui/filter-controls"
 import {
-  BarChart,
-  Bar,
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
 } from "recharts"
 import { DashboardChartData, DashboardChartFilter } from "@/lib/dashboard"
 
@@ -19,52 +20,94 @@ interface ReportsChartProps {
 export function ReportsChart({ data }: ReportsChartProps) {
   const [filter, setFilter] = useState<DashboardChartFilter>("weeks")
   const activeSeries = data[filter]
+  const hasData = activeSeries.data.some((item) => item.reports > 0)
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-full">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-base font-semibold text-gray-900">
-          Relatorios por periodo
-        </h2>
+    <section className="h-full rounded-[32px] border border-slate-200/80 bg-white px-8 py-7 shadow-[0_20px_50px_-34px_rgba(15,23,42,0.35)]">
+      <div className="mb-8 flex items-end justify-between gap-5 border-b border-slate-100 pb-6">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+            Linha do tempo
+          </p>
+          <h2 className="mt-2 whitespace-nowrap text-[34px] leading-none tracking-[-0.05em] text-slate-950">
+            Relatórios por período
+          </h2>
+          <p className="mt-3 text-sm text-slate-400">{activeSeries.label}</p>
+        </div>
+
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400">{activeSeries.label}</span>
-          <select
+          <FilterSelect
             value={filter}
-            onChange={(event) => setFilter(event.target.value as DashboardChartFilter)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-          >
-            <option value="weeks">Semanas</option>
-            <option value="months">Meses</option>
-            <option value="days">Dias</option>
-          </select>
+            onChange={(value) => setFilter(value as DashboardChartFilter)}
+            className="min-w-[96px]"
+            buttonClassName="justify-between rounded-full border-slate-200 bg-slate-50 py-1 pl-3 pr-3 text-[13px] shadow-none"
+            dropdownClassName="rounded-2xl"
+            options={[
+              { value: "weeks", label: "Semanas" },
+              { value: "months", label: "Meses" },
+              { value: "days", label: "Dias" },
+            ]}
+          />
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={activeSeries.data} barSize={32}>
-          <CartesianGrid vertical={false} stroke="#F1F5F9" />
-          <XAxis
-            dataKey="week"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fontSize: 12, fill: "#94A3B8" }}
-          />
-          <YAxis
-            axisLine={false}
-            tickLine={false}
-            tick={{ fontSize: 12, fill: "#94A3B8" }}
-            allowDecimals={false}
-          />
-          <Tooltip
-            cursor={{ fill: "#F8FAFC" }}
-            contentStyle={{
-              borderRadius: "12px",
-              border: "1px solid #E2E8F0",
-              fontSize: "13px",
-            }}
-          />
-          <Bar dataKey="reports" fill="#F8C4C9" radius={[6, 6, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+
+      {hasData ? (
+        <ResponsiveContainer width="100%" height={300}>
+          <AreaChart data={activeSeries.data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="reports-area-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#0F172A" stopOpacity={0.16} />
+                <stop offset="100%" stopColor="#0F172A" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} stroke="#E2E8F0" strokeDasharray="3 6" />
+            <XAxis
+              dataKey="week"
+              axisLine={false}
+              tickLine={false}
+              tickMargin={12}
+              tick={{ fontSize: 12, fill: "#94A3B8" }}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tickMargin={18}
+              tick={{ fontSize: 12, fill: "#94A3B8" }}
+              allowDecimals={false}
+            />
+            <Tooltip
+              cursor={{ stroke: "#CBD5E1", strokeDasharray: "4 4" }}
+              contentStyle={{
+                borderRadius: "18px",
+                border: "1px solid #E2E8F0",
+                boxShadow: "0 20px 50px -36px rgba(15, 23, 42, 0.55)",
+                fontSize: "13px",
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="reports"
+              stroke="#111827"
+              strokeWidth={2.5}
+              fill="url(#reports-area-fill)"
+              dot={{ r: 0 }}
+              activeDot={{ r: 4, fill: "#111827" }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="flex h-[300px] items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 text-center">
+          <div className="max-w-[280px]">
+            <p className="text-sm font-medium text-slate-700">
+              Ainda não há dados suficientes para exibir o gráfico.
+            </p>
+            <p className="mt-2 text-xs leading-6 text-slate-400">
+              Assim que os relatórios forem gerados, a evolução do período vai aparecer aqui.
+            </p>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
+

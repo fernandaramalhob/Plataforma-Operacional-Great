@@ -1,83 +1,89 @@
 import { NextResponse } from "next/server"
-import { hashPassword } from "@/lib/password"
 import { getCurrentUser, isAdmin } from "@/lib/authorization"
+import { hashPassword } from "@/lib/password"
 import { prisma } from "@/lib/prisma"
-
-type RegisterPayload = {
-  name?: string
-  email?: string
-  password?: string
-  role?: "ADMIN" | "MANAGER"
-}
-
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase()
-}
+import {
+  getAuthValidationMessage,
+  registerUserSchema,
+} from "@/lib/validations/auth.schema"
+import type {
+  ApiErrorResponse,
+  RegisterUserResponse,
+} from "@/types/api.types"
 
 export async function POST(request: Request) {
   const currentUser = await getCurrentUser()
 
   if (!currentUser) {
-    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    return NextResponse.json<ApiErrorResponse>(
+      { error: "Nao autorizado" },
+      { status: 401 }
+    )
   }
 
   if (!isAdmin(currentUser)) {
-    return NextResponse.json(
+    return NextResponse.json<ApiErrorResponse>(
       { error: "Apenas administradores podem cadastrar usuarios." },
       { status: 403 }
     )
   }
 
-  let payload: RegisterPayload
+  let parsedPayload: ReturnType<typeof registerUserSchema.safeParse>
 
   try {
-    payload = await request.json()
+    parsedPayload = registerUserSchema.safeParse(await request.json())
   } catch {
-    return NextResponse.json({ error: "Payload invalido" }, { status: 400 })
-  }
-
-  const name = payload.name?.trim()
-  const email = payload.email ? normalizeEmail(payload.email) : ""
-  const password = payload.password?.trim() ?? ""
-  const role = payload.role === "ADMIN" ? "ADMIN" : "MANAGER"
-
-  if (!name || !email || !password) {
-    return NextResponse.json({ error: "Preencha todos os campos" }, { status: 400 })
-  }
-
-  if (password.length < 6) {
-    return NextResponse.json(
-      { error: "A senha deve ter no minimo 6 caracteres" },
+    return NextResponse.json<ApiErrorResponse>(
+      { error: "Payload invalido" },
       { status: 400 }
     )
   }
 
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true },
-  })
-
-  if (existingUser) {
-    return NextResponse.json({ error: "Ja existe um usuario com esse e-mail" }, { status: 409 })
+  if (!parsedPayload.success) {
+    return NextResponse.json<ApiErrorResponse>(
+      { error: getAuthValidationMessage(parsedPayload.error) },
+      { status: 400 }
+    )
   }
 
-  const user = await prisma.user.create({
-    data: {
-      name,
-      email,
-      passwordHash: hashPassword(password),
-      role,
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-    },
-  })
+  try {
+    const { name, email, password, role } = parsedPayload.data
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    })
 
-  return NextResponse.json({
-    success: true,
-    user,
-  })
+    if (existingUser) {
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Ja existe um usuario com esse e-mail" },
+        { status: 409 }
+      )
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        passwordHash: hashPassword(password),
+        role,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    })
+
+    return NextResponse.json<RegisterUserResponse>({
+      success: true,
+      user,
+    })
+  } catch (error) {
+    console.error(error)
+    return NextResponse.json<ApiErrorResponse>(
+      { error: "Erro interno" },
+      { status: 500 }
+    )
+  }
 }

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import Image from "next/image"
 import { useState } from "react"
@@ -8,11 +8,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react"
-
-const loginSchema = z.object({
-  email: z.string().email("E-mail invalido"),
-  password: z.string().min(6, "Senha deve ter no minimo 6 caracteres"),
-})
+import { loginSchema } from "@/lib/validations/auth.schema"
 
 type LoginForm = z.infer<typeof loginSchema>
 
@@ -63,10 +59,10 @@ export default function LoginPage() {
           />
           <h1 className="text-2xl font-bold text-gray-900">GreatGo</h1>
           <p className="mt-1 text-sm text-gray-400">
-            Operacao de relatorios para META Ads
+            Operação de relatórios para META Ads
           </p>
           <p className="mt-3 rounded-full bg-[#FEF2F2] px-3 py-1 text-xs font-medium text-[#C1121F]">
-            Acesso para usuarios cadastrados
+            Acesso para usuários cadastrados
           </p>
         </div>
 
@@ -143,3 +139,4 @@ export default function LoginPage() {
     </main>
   )
 }
+

@@ -1,4 +1,18 @@
+export type ReportObjectiveValue =
+  | "ALL"
+  | "LINK_CLICKS"
+  | "CONVERSIONS"
+  | "MESSAGES"
+
 export type ReportStatusValue = "PENDING" | "SENT" | "FAILED"
+
+export type ReportJobStage = "GENERATION" | "SEND"
+
+export type ReportJobError = {
+  message: string
+  stage: ReportJobStage
+  failedAt: string
+}
 
 export type ReportAction = {
   action_type?: string
@@ -46,8 +60,15 @@ export type ReportPayload = {
 export type ReportFilters = {
   since: string
   until: string
-  objective: string
+  objective: ReportObjectiveValue | string
   generatedAt: string
+}
+
+export type ReportRequest = {
+  clientId: string
+  since: string
+  until: string
+  objective?: ReportObjectiveValue
 }
 
 export type StoredReportPayload = ReportPayload & {
@@ -61,12 +82,29 @@ export type ReportGenerationResponse = ReportPayload & {
   referenceWeek: string
 }
 
+export type QueuedReportResponse = {
+  reportId: string
+  status: ReportStatusValue
+  generatedAt: string
+  referenceWeek: string
+  queued: true
+}
+
+export type ReportSendResponse = {
+  ok: true
+  queued: true
+  reportId: string
+  jobId: string
+  status: ReportStatusValue
+}
+
 export type SavedReportResponse = {
   id: string
   status: ReportStatusValue
   generatedAt: string
   referenceWeek: string
-  payload: StoredReportPayload
+  payload: StoredReportPayload | null
+  errorMessage: string | null
 }
 
 export type HistoryRow = {

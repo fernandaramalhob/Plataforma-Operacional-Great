@@ -1,4 +1,6 @@
 import type { Metadata } from "next"
+import { GeistMono } from "geist/font/mono"
+import { GeistSans } from "geist/font/sans"
 import Providers from "@/components/providers"
 import "./globals.css"
 
@@ -23,7 +25,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body>
+      <body className={`${GeistSans.variable} ${GeistMono.variable} font-sans antialiased`}>
         <Providers>
           {children}
         </Providers>

@@ -1,27 +1,41 @@
-import type { Client, User } from "@prisma/client"
+import { Prisma, type Client, type User } from "@prisma/client"
+import {
+  buildMetaTimeRange,
+  getMetaCampaigns,
+  getMetaInsights,
+} from "@/lib/meta-api"
+import { buildReportJobErrorPayload } from "@/lib/report-domain"
+import { enqueueReportGenerationJob } from "@/lib/report-queue"
+import { resolveMetaTokenFromOwners, type MetaTokenOwner } from "@/lib/meta-token-status"
 import { prisma } from "@/lib/prisma"
-import { buildReferenceWeekDate, buildStoredReportPayload, serializeStoredReportPayload } from "@/lib/report-domain"
-import { resolveMetaTokenCandidate } from "@/lib/meta-token"
-import { logError } from "@/lib/safe-logger"
+import {
+  buildReferenceWeekDate,
+  buildStoredReportPayload,
+  serializeStoredReportPayload,
+} from "@/lib/report-domain"
 import type {
   ReportClient,
   ReportGenerationResponse,
   ReportPayload,
 } from "@/types/report.types"
 
-type ReportUser = Pick<User, "id" | "metaAccessToken">
+type ReportUser = Pick<User, "id" | "metaAccessToken" | "metaTokenExpiresAt">
 
 type ClientWithManager = Pick<
   Client,
   "id" | "name" | "company" | "adAccountId" | "managerId"
 > & {
-  manager: Pick<User, "id" | "metaAccessToken"> | null
+  manager: Pick<User, "id" | "metaAccessToken" | "metaTokenExpiresAt"> | null
 }
 
 type ReportFiltersInput = {
   since: string
   until: string
   objective: string
+}
+
+function formatDateUtc(date: Date) {
+  return date.toISOString().slice(0, 10)
 }
 
 function buildClientPayload(client: ClientWithManager): ReportClient {
@@ -33,42 +47,26 @@ function buildClientPayload(client: ClientWithManager): ReportClient {
   }
 }
 
-async function fetchMetaJson(url: string) {
-  const response = await fetch(url, { cache: "no-store" })
-  const data = (await response.json()) as {
-    error?: { message?: string }
-    data?: unknown
-  }
-
-  if (!response.ok || data.error) {
-    throw new Error(data.error?.message ?? "Falha ao consultar a META API")
-  }
-
-  return data
-}
-
 async function resolveMetaToken(user: ReportUser, client: ClientWithManager) {
-  const tokenCandidate = resolveMetaTokenCandidate(
-    client.manager?.metaAccessToken,
-    user.metaAccessToken
-  )
+  const owners: MetaTokenOwner[] = [
+    {
+      id: client.manager?.id ?? user.id,
+      metaAccessToken: client.manager?.metaAccessToken ?? null,
+      metaTokenExpiresAt: client.manager?.metaTokenExpiresAt ?? null,
+    },
+    {
+      id: user.id,
+      metaAccessToken: user.metaAccessToken,
+      metaTokenExpiresAt: user.metaTokenExpiresAt,
+    },
+  ]
+  const { health } = await resolveMetaTokenFromOwners(owners)
 
-  if (tokenCandidate?.encryptedToken) {
-    const tokenOwnerId = tokenCandidate.index === 0 ? client.manager?.id : user.id
-
-    if (tokenOwnerId) {
-      try {
-        await prisma.user.update({
-          where: { id: tokenOwnerId },
-          data: { metaAccessToken: tokenCandidate.encryptedToken },
-        })
-      } catch (error) {
-        logError("reports.reencrypt", error, { userId: tokenOwnerId })
-      }
-    }
+  if (!health.ok || !health.token) {
+    throw new Error(health.detail ?? "Token META nao configurado")
   }
 
-  return tokenCandidate?.token ?? null
+  return health.token
 }
 
 export async function generateLiveReportPayload(params: {
@@ -83,45 +81,56 @@ export async function generateLiveReportPayload(params: {
   }
 
   const token = await resolveMetaToken(user, client)
-
-  if (!token) {
-    throw new Error("Token META nao configurado")
-  }
-
-  const timeRange = `&time_range={"since":"${filters.since}","until":"${filters.until}"}`
-  const fields = [
+  const timeRange = buildMetaTimeRange(filters.since, filters.until)
+  const campaignFields = [
     "id",
     "name",
     "status",
     "objective",
     "insights{spend,impressions,reach,clicks,ctr,cpc,cpm,actions,action_values}",
   ].join(",")
-  const encodedToken = encodeURIComponent(token)
+  const filtering =
+    filters.objective !== "ALL"
+      ? JSON.stringify([
+          {
+            field: "objective",
+            operator: "IN",
+            value: [filters.objective],
+          },
+        ])
+      : undefined
 
-  let campaignsUrl = `https://graph.facebook.com/v18.0/${client.adAccountId}/campaigns?fields=${fields}&access_token=${encodedToken}&limit=50${timeRange}`
-
-  if (filters.objective !== "ALL") {
-    campaignsUrl += `&filtering=[{"field":"objective","operator":"IN","value":["${filters.objective}"]}]`
-  }
-
-  const [campaignsData, accountData, dailyData] = await Promise.all([
-    fetchMetaJson(campaignsUrl),
-    fetchMetaJson(
-      `https://graph.facebook.com/v18.0/${client.adAccountId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,actions,action_values&access_token=${encodedToken}${timeRange}`
-    ),
-    fetchMetaJson(
-      `https://graph.facebook.com/v18.0/${client.adAccountId}/insights?fields=spend,impressions,clicks,actions&time_increment=1&access_token=${encodedToken}${timeRange}`
-    ),
+  const [campaigns, accountInsights, dailyInsights] = await Promise.all([
+    getMetaCampaigns({
+      adAccountId: client.adAccountId,
+      token,
+      fields: campaignFields,
+      limit: 50,
+      timeRange,
+      filtering,
+    }),
+    getMetaInsights({
+      objectId: client.adAccountId,
+      token,
+      fields: "spend,impressions,reach,clicks,ctr,cpc,cpm,actions,action_values",
+      timeRange,
+    }),
+    getMetaInsights({
+      objectId: client.adAccountId,
+      token,
+      fields: "spend,impressions,clicks,actions",
+      timeRange,
+      timeIncrement: 1,
+    }),
   ])
 
   return {
     client: buildClientPayload(client),
-    campaigns: Array.isArray(campaignsData.data) ? campaignsData.data : [],
-    accountInsights:
-      Array.isArray(accountData.data) && accountData.data[0]
-        ? (accountData.data[0] as ReportPayload["accountInsights"])
-        : {},
-    dailyInsights: Array.isArray(dailyData.data) ? dailyData.data : [],
+    campaigns: campaigns as ReportPayload["campaigns"],
+    accountInsights: accountInsights[0]
+      ? (accountInsights[0] as ReportPayload["accountInsights"])
+      : {},
+    dailyInsights: dailyInsights as ReportPayload["dailyInsights"],
   }
 }
 
@@ -150,5 +159,72 @@ export async function persistGeneratedReport(params: {
     reportId: report.id,
     generatedAt: report.generatedAt.toISOString(),
     referenceWeek: report.referenceWeek.toISOString(),
+  }
+}
+
+export async function queueReportGeneration(params: {
+  clientId: string
+  filters: ReportFiltersInput
+  requestedByUserId: string
+  enqueueSendOnComplete?: boolean
+}) {
+  const report = await prisma.report.create({
+    data: {
+      clientId: params.clientId,
+      referenceWeek: buildReferenceWeekDate(params.filters.since),
+      status: "PENDING",
+      payloadJson: Prisma.DbNull,
+    },
+  })
+
+  try {
+    await enqueueReportGenerationJob({
+      reportId: report.id,
+      clientId: params.clientId,
+      since: params.filters.since,
+      until: params.filters.until,
+      objective: params.filters.objective,
+      requestedByUserId: params.requestedByUserId,
+      enqueueSendOnComplete: params.enqueueSendOnComplete ?? false,
+    })
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Erro ao enfileirar relatorio"
+
+    await prisma.report.update({
+      where: { id: report.id },
+      data: {
+        status: "FAILED",
+        payloadJson: buildReportJobErrorPayload(message, "GENERATION"),
+      },
+    })
+
+    throw error
+  }
+
+  return report
+}
+
+export function buildLastCompletedWeekRange(referenceDate = new Date()) {
+  const currentDate = new Date(
+    Date.UTC(
+      referenceDate.getUTCFullYear(),
+      referenceDate.getUTCMonth(),
+      referenceDate.getUTCDate()
+    )
+  )
+  const daysSinceMonday = (currentDate.getUTCDay() + 6) % 7
+  const currentWeekStart = new Date(currentDate)
+  currentWeekStart.setUTCDate(currentWeekStart.getUTCDate() - daysSinceMonday)
+
+  const since = new Date(currentWeekStart)
+  since.setUTCDate(since.getUTCDate() - 7)
+
+  const until = new Date(currentWeekStart)
+  until.setUTCDate(until.getUTCDate() - 1)
+
+  return {
+    since: formatDateUtc(since),
+    until: formatDateUtc(until),
   }
 }

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import Image from "next/image"
 import Link from "next/link"
@@ -19,9 +19,9 @@ import { cn } from "@/lib/utils"
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Clientes", href: "/dashboard/clients", icon: Users },
-  { label: "Relatorios", href: "/dashboard/reports", icon: FileText },
-  { label: "Historico", href: "/dashboard/history", icon: History },
-  { label: "Configuracoes", href: "/dashboard/settings", icon: Settings },
+  { label: "Relatórios", href: "/dashboard/reports", icon: FileText },
+  { label: "Histórico", href: "/dashboard/history", icon: History },
+  { label: "Configurações", href: "/dashboard/settings", icon: Settings },
 ]
 
 type SidebarProps = {
@@ -32,7 +32,7 @@ type SidebarProps = {
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const roleLabel = session?.user?.role === "ADMIN" ? "Administrador" : "Nao autenticado"
+  const roleLabel = session?.user?.role === "ADMIN" ? "Administrador" : "Não autenticado"
   const initials =
     session?.user?.name
       ?.split(" ")
@@ -156,7 +156,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             {!collapsed && (
               <div className="flex flex-col">
                 <span className="leading-tight text-sm font-semibold text-gray-900">
-                  {session?.user?.name ?? "Nao autenticado"}
+                  {session?.user?.name ?? "Não autenticado"}
                 </span>
                 <span className="text-xs text-gray-400">{roleLabel}</span>
               </div>
@@ -176,3 +176,5 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     </aside>
   )
 }
+
+

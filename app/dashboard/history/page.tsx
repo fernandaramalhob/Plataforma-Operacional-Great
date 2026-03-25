@@ -1,11 +1,17 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Header } from "@/components/layout/header"
-import type { HistoryRow } from "@/types/report.types"
+import { FilterSearchInput, FilterSelect } from "@/components/ui/filter-controls"
+import { EmptyState } from "@/components/shared/empty-state"
+import { ErrorState } from "@/components/shared/error-state"
+import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
+import { StatusBadge } from "@/components/shared/status-badge"
+import { fetchJsonOrThrow } from "@/lib/api-client"
+import type { ClientLookupOption } from "@/types/client.types"
+import type { HistoryRow, ReportSendResponse } from "@/types/report.types"
 import {
-  Search,
   Download,
   CheckCircle,
   XCircle,
@@ -41,37 +47,34 @@ function statusLabel(status: string): string {
   return "Pendente"
 }
 
-function statusColor(status: string): string {
-  if (status === "SENT") return "bg-green-50 text-green-600"
-  if (status === "FAILED") return "bg-red-50 text-red-500"
-  return "bg-gray-100 text-gray-500"
-}
-
-interface Client {
-  id: string
-  name: string
+function statusTone(status: string) {
+  if (status === "SENT") return "success" as const
+  if (status === "FAILED") return "danger" as const
+  return "neutral" as const
 }
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryRow[]>([])
-  const [clients, setClients] = useState<Client[]>([])
+  const [clients, setClients] = useState<ClientLookupOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [retryingReportId, setRetryingReportId] = useState<string | null>(null)
+  const [actionFeedback, setActionFeedback] = useState("")
+  const [actionError, setActionError] = useState("")
   const [statusFilter, setStatusFilter] = useState("Todos")
   const [clientFilter, setClientFilter] = useState("Todos os clientes")
   const [search, setSearch] = useState("")
 
   useEffect(() => {
-    fetch("/api/clients")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setClients(data)
-        }
-      })
+    void fetchJsonOrThrow<ClientLookupOption[]>(
+      "/api/clients",
+      undefined,
+      "Erro ao carregar clientes"
+    )
+      .then((data) => setClients(data))
       .catch(() => {})
   }, [])
 
-  useEffect(() => {
+  const loadHistory = useCallback(async () => {
     const params = new URLSearchParams()
 
     if (statusFilter !== "Todos") {
@@ -86,17 +89,26 @@ export default function HistoryPage() {
       }
     }
 
-    fetch(`/api/history?${params.toString()}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setHistory(data)
-        }
+    setLoading(true)
 
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+    try {
+      const data = await fetchJsonOrThrow<HistoryRow[]>(
+        `/api/history?${params.toString()}`,
+        undefined,
+        "Erro ao carregar historico"
+      )
+
+      setHistory(data)
+    } catch {
+      setHistory([])
+    } finally {
+      setLoading(false)
+    }
   }, [clientFilter, clients, statusFilter])
+
+  useEffect(() => {
+    void loadHistory()
+  }, [loadHistory])
 
   const filtered = history.filter(
     (item) =>
@@ -127,6 +139,31 @@ export default function HistoryPage() {
     anchor.click()
   }
 
+  async function handleRetryReport(reportId: string) {
+    setRetryingReportId(reportId)
+    setActionFeedback("")
+    setActionError("")
+
+    try {
+      await fetchJsonOrThrow<ReportSendResponse>(
+        `/api/reports/${reportId}/send`,
+        { method: "POST" },
+        "Nao foi possivel reenviar o relatorio"
+      )
+
+      setActionFeedback("Relatorio reenviado com sucesso.")
+      await loadHistory()
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel reenviar o relatorio"
+      )
+    } finally {
+      setRetryingReportId(null)
+    }
+  }
+
   return (
     <div>
       <Header
@@ -134,34 +171,47 @@ export default function HistoryPage() {
         subtitle={`${totalEnviados} relatorios enviados · ultimos 30 dias`}
       />
       <div className="p-8">
-        <div className="mb-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        {actionFeedback ? (
+          <div className="mb-4 rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {actionFeedback}
+          </div>
+        ) : null}
+
+        {actionError ? (
+          <ErrorState
+            message={actionError}
+            title="Falha ao reenviar"
+            className="mb-4"
+          />
+        ) : null}
+
+        <div className="mb-4 rounded-[28px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar cliente..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="w-full rounded-xl border border-gray-200 py-2.5 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-              />
-            </div>
+            <FilterSearchInput
+              type="text"
+              placeholder="Buscar cliente..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="max-w-[320px]"
+            />
 
-            <select
+            <FilterSelect
               value={clientFilter}
-              onChange={(event) => {
+              onChange={(value) => {
                 setLoading(true)
-                setClientFilter(event.target.value)
+                setClientFilter(value)
               }}
-              className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-            >
-              <option>Todos os clientes</option>
-              {clients.map((client) => (
-                <option key={client.id}>{client.name}</option>
-              ))}
-            </select>
+              className="min-w-[220px]"
+              options={[
+                { value: "Todos os clientes", label: "Todos os clientes" },
+                ...clients.map((client) => ({
+                  value: client.name,
+                  label: client.name,
+                })),
+              ]}
+            />
 
-            <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
+            <div className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
               {["Todos", "Enviado", "Falha", "Pendente"].map((status) => (
                 <button
                   key={status}
@@ -169,10 +219,10 @@ export default function HistoryPage() {
                     setLoading(true)
                     setStatusFilter(status)
                   }}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                  className={`rounded-xl px-3.5 py-2 text-sm font-medium transition ${
                     statusFilter === status
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
+                      ? "bg-white text-slate-900 shadow-[0_8px_20px_-16px_rgba(15,23,42,0.65)]"
+                      : "text-slate-500 hover:text-slate-700"
                   }`}
                 >
                   {status}
@@ -216,14 +266,13 @@ export default function HistoryPage() {
 
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-6 w-6 animate-spin text-[#C1121F]" />
-            </div>
+            <LoadingSkeleton label="Carregando historico..." />
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-              <p className="text-lg font-medium">Nenhum registro encontrado</p>
-              <p className="mt-1 text-sm">Tente ajustar os filtros</p>
-            </div>
+            <EmptyState
+              title="Nenhum registro encontrado"
+              description="Tente ajustar os filtros para encontrar outros relatorios."
+              className="m-6 border-none px-4 py-20"
+            />
           ) : (
             <table className="w-full">
               <thead>
@@ -293,11 +342,9 @@ export default function HistoryPage() {
                         {row.status === "PENDING" ? (
                           <Clock className="h-4 w-4 text-gray-400" />
                         ) : null}
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusColor(row.status)}`}
-                        >
+                        <StatusBadge tone={statusTone(row.status)}>
                           {statusLabel(row.status)}
-                        </span>
+                        </StatusBadge>
                       </div>
                       {row.errorMessage ? (
                         <p className="mt-1 max-w-[200px] truncate text-xs text-red-400">
@@ -324,8 +371,17 @@ export default function HistoryPage() {
                           Ver
                         </Link>
                         {row.status === "FAILED" ? (
-                          <button className="text-sm font-medium text-orange-500 hover:underline">
-                            Reenviar
+                          <button
+                            onClick={() => void handleRetryReport(row.id)}
+                            disabled={retryingReportId === row.id}
+                            className="inline-flex items-center gap-1 text-sm font-medium text-orange-500 hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-60"
+                          >
+                            {retryingReportId === row.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : null}
+                            {retryingReportId === row.id
+                              ? "Reenviando..."
+                              : "Reenviar"}
                           </button>
                         ) : null}
                       </div>

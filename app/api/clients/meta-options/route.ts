@@ -1,133 +1,84 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { resolveMetaToken } from "@/lib/meta-token"
+import {
+  getMetaAdAccounts,
+  getMetaBusinesses,
+  getMetaProfiles,
+  type MetaApiItem,
+  type MetaBusiness,
+} from "@/lib/meta-api"
+import { resolveMetaTokenFromOwners } from "@/lib/meta-token-status"
 import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
-
-type MetaItem = {
-  id?: string
-  name?: string
-  account_status?: number
-}
-
-type MetaListResponse = {
-  data?: MetaItem[]
-  error?: {
-    message?: string
-  }
-}
-
-type MetaBusiness = {
-  id?: string
-  name?: string
-  owned_ad_accounts?: {
-    data?: MetaItem[]
-  }
-  client_ad_accounts?: {
-    data?: MetaItem[]
-  }
-}
-
-type MetaBusinessResponse = {
-  data?: MetaBusiness[]
-  error?: {
-    message?: string
-  }
-}
-
-type ProfileOption = {
-  id: string
-  name: string
-}
-
-type BrandOption = {
-  id: string
-  name: string
-  displayName: string
-  businessName: string | null
-  adAccountId: string
-  adAccountName: string
-  accountStatus: number | null
-}
-
-async function fetchMetaResponse<T>(url: string) {
-  const res = await fetch(url, { cache: "no-store" })
-  const data = await res.json()
-
-  if (!res.ok || data?.error) {
-    const message =
-      data?.error?.message ??
-      `Erro ao consultar META API (${res.status})`
-
-    throw new Error(message)
-  }
-
-  return data as T
-}
+import type { ApiErrorResponse } from "@/types/api.types"
+import type {
+  ClientMetaBrandOption,
+  ClientMetaOptionsResponse,
+  ClientMetaProfileOption,
+} from "@/types/client.types"
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Nao autorizado" },
+        { status: 401 }
+      )
     }
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      select: {
+        id: true,
+        metaAccessToken: true,
+        metaTokenExpiresAt: true,
+      },
     })
 
     if (!user?.metaAccessToken) {
-      return NextResponse.json(
+      return NextResponse.json<ApiErrorResponse>(
         { error: "Token META nao configurado para o usuario logado" },
         { status: 400 }
       )
     }
 
-    const { token: rawToken, encryptedToken } = resolveMetaToken(
-      user.metaAccessToken
-    )
+    const { health } = await resolveMetaTokenFromOwners([user])
 
-    if (encryptedToken) {
-      try {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { metaAccessToken: encryptedToken },
-        })
-      } catch (error) {
-        logError("clients.meta-options.reencrypt", error, { userId: user.id })
-      }
+    if (!health.ok || !health.token) {
+      return NextResponse.json<ApiErrorResponse>(
+        {
+          error: health.detail ?? "Token META indisponivel",
+          tokenStatus: health.status,
+          expiresAt: health.expiresAt?.toISOString() ?? null,
+        },
+        { status: 400 }
+      )
     }
 
-    const token = encodeURIComponent(rawToken)
-    const baseUrl = "https://graph.facebook.com/v18.0"
-
-    const adAccountsData = await fetchMetaResponse<MetaListResponse>(
-      `${baseUrl}/me/adaccounts?fields=id,name,account_status&access_token=${token}&limit=100`
+    const adAccounts = await getMetaAdAccounts(
+      health.token,
+      "id,name,account_status",
+      100
     )
 
-    let profileItems: MetaItem[] = []
+    let profileItems: MetaApiItem[] = []
     try {
-      const profilesData = await fetchMetaResponse<MetaListResponse>(
-        `${baseUrl}/me/accounts?fields=id,name&access_token=${token}&limit=100`
-      )
-      profileItems = profilesData.data ?? []
+      profileItems = await getMetaProfiles(health.token, 100)
     } catch {
       profileItems = []
     }
 
     let businessesData: MetaBusiness[] = []
     try {
-      const businessesResponse = await fetchMetaResponse<MetaBusinessResponse>(
-        `${baseUrl}/me/businesses?fields=id,name,owned_ad_accounts.limit(100){id,name,account_status},client_ad_accounts.limit(100){id,name,account_status}&access_token=${token}&limit=100`
-      )
-      businessesData = businessesResponse.data ?? []
+      businessesData = await getMetaBusinesses(health.token, 100)
     } catch {
       businessesData = []
     }
 
-    const adAccounts = (adAccountsData.data ?? []).filter(
-      (item): item is Required<Pick<MetaItem, "id" | "name">> & MetaItem =>
+    const filteredAdAccounts = adAccounts.filter(
+      (item): item is Required<Pick<MetaApiItem, "id" | "name">> & MetaApiItem =>
         typeof item.id === "string" && typeof item.name === "string"
     )
 
@@ -150,7 +101,7 @@ export async function GET() {
       }
     }
 
-    const profileMap = new Map<string, ProfileOption>()
+    const profileMap = new Map<string, ClientMetaProfileOption>()
 
     for (const item of profileItems) {
       if (item.id && item.name) {
@@ -162,7 +113,7 @@ export async function GET() {
     }
 
     if (profileMap.size === 0) {
-      for (const account of adAccounts) {
+      for (const account of filteredAdAccounts) {
         profileMap.set(account.name.toLowerCase(), {
           id: account.id,
           name: account.name,
@@ -174,7 +125,7 @@ export async function GET() {
       a.name.localeCompare(b.name, "pt-BR")
     )
 
-    const brands: BrandOption[] = adAccounts
+    const brands: ClientMetaBrandOption[] = filteredAdAccounts
       .map((account) => {
         const businessName = businessNameByAdAccountId.get(account.id) ?? null
         const name = businessName ?? account.name
@@ -198,10 +149,10 @@ export async function GET() {
       })
       .sort((a, b) => a.displayName.localeCompare(b.displayName, "pt-BR"))
 
-    return NextResponse.json({ profiles, brands })
+    return NextResponse.json<ClientMetaOptionsResponse>({ profiles, brands })
   } catch (error) {
     logError("clients.meta-options.get", error)
-    return NextResponse.json(
+    return NextResponse.json<ApiErrorResponse>(
       { error: "Erro ao carregar opcoes META para clientes" },
       { status: 500 }
     )

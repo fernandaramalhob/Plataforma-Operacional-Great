@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { canAccessClient, getCurrentUser } from "@/lib/authorization"
-import { parseStoredReportPayload } from "@/lib/report-domain"
+import {
+  parseReportJobErrorPayload,
+  parseStoredReportPayload,
+} from "@/lib/report-domain"
+import { ensureReportWorkersStarted } from "@/lib/report-jobs"
 import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
 
@@ -9,6 +13,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureReportWorkersStarted()
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
@@ -23,6 +28,15 @@ export async function GET(
             managerId: true,
           },
         },
+        sendLogs: {
+          select: {
+            errorMessage: true,
+          },
+          orderBy: {
+            attemptNumber: "desc",
+          },
+          take: 1,
+        },
       },
     })
 
@@ -35,11 +49,20 @@ export async function GET(
     }
 
     const payload = parseStoredReportPayload(report.payloadJson)
+    const jobError = parseReportJobErrorPayload(report.payloadJson)
+    const errorMessage = report.sendLogs[0]?.errorMessage ?? jobError?.message ?? null
 
     if (!payload) {
       return NextResponse.json(
-        { error: "Payload do relatorio esta invalido" },
-        { status: 422 }
+        {
+          id: report.id,
+          status: report.status,
+          generatedAt: report.generatedAt.toISOString(),
+          referenceWeek: report.referenceWeek.toISOString(),
+          payload: null,
+          errorMessage,
+        },
+        { status: report.status === "PENDING" ? 202 : 200 }
       )
     }
 
@@ -49,6 +72,7 @@ export async function GET(
       generatedAt: report.generatedAt.toISOString(),
       referenceWeek: report.referenceWeek.toISOString(),
       payload,
+      errorMessage,
     })
   } catch (error) {
     logError("reports.by-id.get", error)

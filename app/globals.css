@@ -2,8 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
 body {
   background-color: #F4F4F5;
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  html,
+  body {
+    background-color: #FFFFFF !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-geist-mono), monospace;
 }
 
 ::selection {

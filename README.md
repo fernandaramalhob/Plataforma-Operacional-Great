@@ -105,3 +105,33 @@ Exemplo de setup local:
 2. preencha as credenciais necessarias
 3. gere um `NEXTAUTH_SECRET` forte
 4. gere uma chave independente para `META_TOKEN_ENCRYPTION_KEY`
+5. suba um Redis local ou remoto e configure `REDIS_URL`
+
+---
+
+# Filas e Redis
+
+O processamento pesado de relatorios agora roda em fila usando Redis + BullMQ.
+
+- `POST /api/reports` enfileira a geracao do relatorio
+- `POST /api/reports/:id/send` enfileira o envio por WhatsApp
+- o status permanece em `PENDING` enquanto o worker processa o job
+- falhas de geracao ficam salvas no proprio registro do relatorio
+
+Variaveis de ambiente:
+
+- `REDIS_URL`: conexao principal com o Redis
+- `REPORT_QUEUE_PREFIX`: prefixo das chaves BullMQ
+- `REPORT_GENERATION_CONCURRENCY`: concorrencia da fila de geracao
+- `REPORT_SEND_CONCURRENCY`: concorrencia da fila de envio
+- `REPORT_WEEKLY_CRON`: agenda semanal do disparo automatico
+- `REPORT_WEEKLY_TZ`: timezone usada pelo agendamento semanal
+- `REPORT_WEEKLY_BATCH_SIZE`: quantidade de clientes ativos processados por lote
+- `REPORT_WEEKLY_OBJECTIVE`: objetivo padrao usado no job semanal
+- `REPORT_ALERTS_RETENTION`: quantidade de alertas operacionais mantidos no Redis
+
+Operacao:
+
+- jobs que esgotam tentativas vao para a dead letter queue `report-dead-letter`
+- alertas operacionais recentes ficam persistidos no Redis
+- `GET /api/jobs/health` retorna scheduler, filas, dead letter e alertas recentes para administradores

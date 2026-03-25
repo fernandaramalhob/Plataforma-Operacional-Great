@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
 import { canAccessClient, getCurrentUser } from "@/lib/authorization"
-import { sendWhatsAppText } from "@/lib/evolution-api"
 import { parseStoredReportPayload } from "@/lib/report-domain"
-import { buildWhatsAppReportMessage } from "@/lib/report-message"
+import { ensureReportWorkersStarted } from "@/lib/report-jobs"
 import { prisma } from "@/lib/prisma"
+import { enqueueReportSendJob } from "@/lib/report-queue"
 import { logError } from "@/lib/safe-logger"
 
 export async function POST(
@@ -11,6 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureReportWorkersStarted()
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
@@ -54,91 +55,36 @@ export async function POST(
       )
     }
 
-    const attemptNumber = (report.sendLogs[0]?.attemptNumber ?? 0) + 1
-    const sendLog = await prisma.sendLog.create({
-      data: {
-        reportId: report.id,
-        channel: "WHATSAPP_GROUP",
-        attemptNumber,
-        status: "PENDING",
-      },
+    const payload = parseStoredReportPayload(report.payloadJson)
+
+    if (!payload) {
+      return NextResponse.json(
+        { error: "Relatorio ainda esta em processamento" },
+        { status: 409 }
+      )
+    }
+
+    if (!report.client.whatsappGroupId) {
+      return NextResponse.json(
+        { error: "Cliente sem grupo de WhatsApp configurado" },
+        { status: 400 }
+      )
+    }
+
+    const job = await enqueueReportSendJob({
+      reportId: report.id,
     })
 
-    try {
-      const payload = parseStoredReportPayload(report.payloadJson)
-
-      if (!payload) {
-        throw new Error("Payload do relatorio esta invalido")
-      }
-
-      if (!report.client.whatsappGroupId) {
-        throw new Error("Cliente sem grupo de WhatsApp configurado")
-      }
-
-      const message = buildWhatsAppReportMessage({
-        reportId: report.id,
-        payload,
-      })
-
-      const delivery = await sendWhatsAppText({
-        number: report.client.whatsappGroupId,
-        text: message,
-      })
-
-      await prisma.$transaction([
-        prisma.sendLog.update({
-          where: { id: sendLog.id },
-          data: {
-            status: "OK",
-            sentAt: new Date(),
-            errorMessage: null,
-          },
-        }),
-        prisma.report.update({
-          where: { id: report.id },
-          data: {
-            status: "SENT",
-          },
-        }),
-      ])
-
-      return NextResponse.json({
+    return NextResponse.json(
+      {
         ok: true,
+        queued: true,
         reportId: report.id,
-        sendLogId: sendLog.id,
-        status: "SENT",
-        deliveryStatus:
-          "status" in delivery && typeof delivery.status === "string"
-            ? delivery.status
-            : null,
-      })
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Erro ao enviar relatorio"
-
-      logError("reports.send.post", error, {
-        reportId: report.id,
-        sendLogId: sendLog.id,
-      })
-
-      await prisma.$transaction([
-        prisma.sendLog.update({
-          where: { id: sendLog.id },
-          data: {
-            status: "FAILED",
-            errorMessage: message,
-          },
-        }),
-        prisma.report.update({
-          where: { id: report.id },
-          data: {
-            status: "FAILED",
-          },
-        }),
-      ])
-
-      return NextResponse.json({ error: message }, { status: 400 })
-    }
+        jobId: job.id,
+        status: report.status,
+      },
+      { status: 202 }
+    )
   } catch (error) {
     logError("reports.send.unhandled", error)
     return NextResponse.json({ error: "Erro interno" }, { status: 500 })

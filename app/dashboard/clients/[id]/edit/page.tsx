@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react"
 import { Header } from "@/components/layout/header"
+import { ClientForm } from "@/components/clients/client-form"
 import { useParams, useRouter } from "next/navigation"
-import { ChevronLeft, Loader2, Mail, Phone } from "lucide-react"
+import { ChevronLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 import {
   clientPayloadSchema,
   getClientValidationMessage,
 } from "@/lib/validations/client.schema"
+import { fetchJsonOrThrow } from "@/lib/api-client"
+import type { ClientDetail, ClientFormValues } from "@/types/client.types"
 
 export default function EditClientPage() {
   const router = useRouter()
@@ -16,7 +19,7 @@ export default function EditClientPage() {
   const [loading, setLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState("")
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ClientFormValues>({
     name: "",
     company: "",
     email: "",
@@ -26,18 +29,12 @@ export default function EditClientPage() {
   })
 
   useEffect(() => {
-    fetch(`/api/clients/${id}`)
-      .then(async (res) => {
-        const data = await res.json()
-
-        if (!res.ok) {
-          throw new Error(
-            typeof data?.error === "string"
-              ? data.error
-              : "Erro ao carregar cliente"
-          )
-        }
-
+    void fetchJsonOrThrow<ClientDetail>(
+      `/api/clients/${id}`,
+      undefined,
+      "Erro ao carregar cliente"
+    )
+      .then((data) => {
         setForm({
           name: data.name ?? "",
           company: data.company ?? "",
@@ -79,18 +76,15 @@ export default function EditClientPage() {
     setError("")
 
     try {
-      const res = await fetch(`/api/clients/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsedPayload.data),
-      })
-      const data = await res.json().catch(() => ({}))
-
-      if (!res.ok) {
-        throw new Error(
-          typeof data?.error === "string" ? data.error : "Erro ao salvar"
-        )
-      }
+      await fetchJsonOrThrow(
+        `/api/clients/${id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(parsedPayload.data),
+        },
+        "Erro ao salvar"
+      )
 
       router.push("/dashboard/clients")
     } catch (saveError) {
@@ -158,105 +152,42 @@ export default function EditClientPage() {
           </div>
         )}
 
-        <div className="max-w-2xl rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
-          <h2 className="mb-1 text-lg font-bold text-gray-900">
-            Informacoes do Cliente
-          </h2>
-          <p className="mb-8 text-sm text-gray-400">
-            Edite os dados do cliente
-          </p>
-
-          <div className="space-y-5">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Nome completo *
-              </label>
-              <input
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                type="text"
-                maxLength={120}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Empresa
-              </label>
-              <input
-                name="company"
-                value={form.company}
-                onChange={handleChange}
-                type="text"
-                maxLength={120}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                E-mail
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <ClientForm
+          title="Informacoes do Cliente"
+          description="Edite os dados do cliente"
+          values={form}
+          onChange={handleChange}
+          leadFields={
+            <>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Nome completo *
+                </label>
                 <input
-                  name="email"
-                  value={form.email}
+                  name="name"
+                  value={form.name}
                   onChange={handleChange}
-                  type="email"
-                  maxLength={160}
-                  className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+                  type="text"
+                  maxLength={120}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
                 />
               </div>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Telefone
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Empresa
+                </label>
                 <input
-                  name="phone"
-                  value={form.phone}
+                  name="company"
+                  value={form.company}
                   onChange={handleChange}
-                  type="tel"
-                  maxLength={25}
-                  className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+                  type="text"
+                  maxLength={120}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
                 />
               </div>
-              <p className="mt-2 text-xs text-gray-400">
-                Use entre 10 e 15 digitos, com ou sem mascara.
-              </p>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                ID do Grupo WhatsApp
-              </label>
-              <input
-                name="whatsappGroupId"
-                value={form.whatsappGroupId}
-                onChange={handleChange}
-                type="text"
-                maxLength={60}
-                placeholder="5511999999999-1234567890@g.us"
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Observacoes
-              </label>
-              <textarea
-                name="notes"
-                value={form.notes}
-                onChange={handleChange}
-                rows={4}
-                maxLength={1000}
-                className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-              />
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         <div className="mt-8 flex max-w-2xl items-center justify-between">
           <button

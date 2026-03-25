@@ -3,37 +3,54 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
+import {
+  getMetaValidationMessage,
+  importClientSchema,
+} from "@/lib/validations/meta.schema"
+import type { ApiErrorResponse } from "@/types/api.types"
 
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Nao autorizado" },
+        { status: 401 }
+      )
     }
 
-    const { adAccountId, adAccountName } = await request.json()
+    const parsedBody = importClientSchema.safeParse(await request.json())
 
+    if (!parsedBody.success) {
+      return NextResponse.json<ApiErrorResponse>(
+        { error: getMetaValidationMessage(parsedBody.error) },
+        { status: 400 }
+      )
+    }
+
+    const { adAccountId, adAccountName } = parsedBody.data
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
     })
 
     if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Usuario nao encontrado" },
+        { status: 404 }
+      )
     }
 
-    // Verifica se cliente já existe
     const existing = await prisma.client.findFirst({
       where: { adAccountId },
     })
 
     if (existing) {
-      return NextResponse.json(
-        { error: "Esta conta já foi importada como cliente" },
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Esta conta ja foi importada como cliente" },
         { status: 409 }
       )
     }
 
-    // Cria o cliente a partir da AdAccount
     const client = await prisma.client.create({
       data: {
         name: adAccountName,
@@ -47,6 +64,9 @@ export async function POST(request: Request) {
     return NextResponse.json(client, { status: 201 })
   } catch (error) {
     logError("import-client.post", error)
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 })
+    return NextResponse.json<ApiErrorResponse>(
+      { error: "Erro interno" },
+      { status: 500 }
+    )
   }
 }

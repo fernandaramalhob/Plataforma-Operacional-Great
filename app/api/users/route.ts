@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser, isAdmin } from "@/lib/authorization"
 import { prisma } from "@/lib/prisma"
+import type { ApiErrorResponse, UsersListResponse } from "@/types/api.types"
 
 export async function GET() {
   const currentUser = await getCurrentUser()
 
   if (!currentUser) {
-    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    return NextResponse.json<ApiErrorResponse>(
+      { error: "Nao autorizado" },
+      { status: 401 }
+    )
   }
 
   if (!isAdmin(currentUser)) {
-    return NextResponse.json(
+    return NextResponse.json<ApiErrorResponse>(
       { error: "Apenas administradores podem visualizar usuarios." },
       { status: 403 }
     )
@@ -27,5 +31,10 @@ export async function GET() {
     },
   })
 
-  return NextResponse.json({ users })
+  return NextResponse.json<UsersListResponse>({
+    users: users.map((user) => ({
+      ...user,
+      createdAt: user.createdAt.toISOString(),
+    })),
+  })
 }

@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { encryptMetaToken, resolveMetaToken } from "@/lib/meta-token"
+import { encryptMetaToken } from "@/lib/meta-token"
+import {
+  getStoredMetaTokenHealth,
+  inspectMetaTokenValue,
+  type MetaTokenStatus,
+} from "@/lib/meta-token-status"
 import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
+import { metaTokenSchema } from "@/lib/validations/meta.schema"
+import type { ApiErrorResponse } from "@/types/api.types"
+import type {
+  MetaTokenSaveResponse,
+  MetaTokenStatusResponse,
+} from "@/types/meta.types"
 
-type TokenStatus = "missing" | "active" | "expired" | "invalid" | "unknown"
 type AuthenticatedContext = {
   session: Awaited<ReturnType<typeof getServerSession>>
   email: string
@@ -19,49 +29,6 @@ function maskToken(token: string) {
   }
 
   return `${token.slice(0, 8)}...${token.slice(-6)}`
-}
-
-async function validateMetaToken(token: string) {
-  try {
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/me?access_token=${encodeURIComponent(token)}&fields=id,name,email`,
-      { cache: "no-store" }
-    )
-    const data = await response.json()
-
-    if (data?.error) {
-      const message = String(data.error.message ?? "Token META invalido")
-      const lowerMessage = message.toLowerCase()
-      const tokenStatus: TokenStatus = lowerMessage.includes("session")
-        || lowerMessage.includes("expired")
-        || lowerMessage.includes("invalid oauth")
-        || lowerMessage.includes("invalid access token")
-        ? "expired"
-        : "invalid"
-
-      return {
-        ok: false,
-        tokenStatus,
-        detail: message,
-      }
-    }
-
-    return {
-      ok: true,
-      tokenStatus: "active" as TokenStatus,
-      metaUser: {
-        id: data.id ?? null,
-        name: data.name ?? null,
-        email: data.email ?? null,
-      },
-    }
-  } catch (error) {
-    return {
-      ok: false,
-      tokenStatus: "unknown" as TokenStatus,
-      detail: error instanceof Error ? error.message : "Falha ao validar token META",
-    }
-  }
 }
 
 async function getAuthenticatedContext() {
@@ -100,13 +67,16 @@ export async function GET() {
     const context = await getAuthenticatedContext()
 
     if (!context) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Nao autorizado" },
+        { status: 401 }
+      )
     }
 
     const { session, user, email, dbError } = context
 
     if (dbError) {
-      return NextResponse.json(
+      return NextResponse.json<MetaTokenStatusResponse>(
         {
           sessionUser: {
             id: session.user.id,
@@ -115,15 +85,16 @@ export async function GET() {
             name: session.user.name ?? email,
           },
           hasSavedToken: false,
-          tokenStatus: "unknown" satisfies TokenStatus,
+          tokenStatus: "unknown" satisfies MetaTokenStatus,
           detail: dbError,
+          expiresAt: null,
         },
         { status: 503 }
       )
     }
 
     if (!user?.metaAccessToken) {
-      return NextResponse.json({
+      return NextResponse.json<MetaTokenStatusResponse>({
         sessionUser: {
           id: session.user.id,
           email,
@@ -131,28 +102,38 @@ export async function GET() {
           name: session.user.name ?? email,
         },
         hasSavedToken: false,
-        tokenStatus: "missing" satisfies TokenStatus,
+        tokenStatus: "missing" satisfies MetaTokenStatus,
+        expiresAt: null,
       })
     }
 
-    const { token: decryptedToken, encryptedToken } = resolveMetaToken(
-      user.metaAccessToken
-    )
+    const validation = await getStoredMetaTokenHealth({
+      storedToken: user.metaAccessToken,
+      storedExpiresAt: user.metaTokenExpiresAt,
+      forceRemote: true,
+    })
 
-    if (encryptedToken) {
+    if (
+      validation.encryptedToken ||
+      (user.metaTokenExpiresAt?.getTime() ?? null) !==
+        (validation.expiresAt?.getTime() ?? null)
+    ) {
       try {
         await prisma.user.update({
           where: { id: user.id },
-          data: { metaAccessToken: encryptedToken },
+          data: {
+            ...(validation.encryptedToken
+              ? { metaAccessToken: validation.encryptedToken }
+              : {}),
+            metaTokenExpiresAt: validation.expiresAt,
+          },
         })
       } catch (error) {
-        logError("meta-token.reencrypt", error, { userId: user.id })
+        logError("meta-token.sync", error, { userId: user.id })
       }
     }
 
-    const validation = await validateMetaToken(decryptedToken)
-
-    return NextResponse.json({
+    return NextResponse.json<MetaTokenStatusResponse>({
       sessionUser: {
         id: session.user.id,
         email,
@@ -160,15 +141,15 @@ export async function GET() {
         name: session.user.name ?? email,
       },
       hasSavedToken: true,
-      tokenMasked: maskToken(decryptedToken),
-      tokenStatus: validation.tokenStatus,
+      tokenMasked: validation.token ? maskToken(validation.token) : null,
+      tokenStatus: validation.status,
       metaUser: validation.ok ? validation.metaUser : null,
-      detail: validation.ok ? null : validation.detail,
-      expiresAt: user.metaTokenExpiresAt,
+      detail: validation.detail,
+      expiresAt: validation.expiresAt?.toISOString() ?? null,
     })
   } catch (error) {
     logError("meta-token.get", error)
-    return NextResponse.json(
+    return NextResponse.json<ApiErrorResponse>(
       { error: "Erro interno", detail: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
@@ -180,13 +161,16 @@ export async function POST(request: Request) {
     const context = await getAuthenticatedContext()
 
     if (!context) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Nao autorizado" },
+        { status: 401 }
+      )
     }
 
     const { email, user, dbError } = context
 
     if (dbError) {
-      return NextResponse.json(
+      return NextResponse.json<ApiErrorResponse>(
         {
           error: "Banco de dados indisponivel",
           detail: dbError,
@@ -195,21 +179,24 @@ export async function POST(request: Request) {
       )
     }
 
-    const { token } = await request.json()
+    const parsedBody = metaTokenSchema.safeParse(await request.json())
 
-    if (!token || typeof token !== "string") {
-      return NextResponse.json({ error: "Token META obrigatorio" }, { status: 400 })
+    if (!parsedBody.success) {
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Token META obrigatorio" },
+        { status: 400 }
+      )
     }
 
-    const sanitizedToken = token.trim()
-    const validation = await validateMetaToken(sanitizedToken)
+    const sanitizedToken = parsedBody.data.token
+    const validation = await inspectMetaTokenValue(sanitizedToken)
 
     if (!validation.ok) {
-      return NextResponse.json(
+      return NextResponse.json<ApiErrorResponse>(
         {
           error: "Token META invalido",
           detail: validation.detail,
-          tokenStatus: validation.tokenStatus,
+          tokenStatus: validation.status,
         },
         { status: 400 }
       )
@@ -221,25 +208,28 @@ export async function POST(request: Request) {
       where: { email },
       update: {
         metaAccessToken: encryptedToken,
-        metaTokenExpiresAt: null,
+        metaTokenExpiresAt: validation.expiresAt,
       },
       create: {
         email,
         passwordHash: user?.passwordHash ?? "",
         role: user?.role ?? "MANAGER",
         metaAccessToken: encryptedToken,
+        metaTokenExpiresAt: validation.expiresAt,
       },
     })
 
-    return NextResponse.json({
+    return NextResponse.json<MetaTokenSaveResponse>({
       success: true,
-      tokenStatus: validation.tokenStatus,
+      tokenStatus: validation.status,
       tokenMasked: maskToken(sanitizedToken),
       metaUser: validation.metaUser,
+      expiresAt: validation.expiresAt?.toISOString() ?? null,
+      detail: validation.detail,
     })
   } catch (error) {
     logError("meta-token.post", error)
-    return NextResponse.json(
+    return NextResponse.json<ApiErrorResponse>(
       { error: "Erro interno", detail: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )

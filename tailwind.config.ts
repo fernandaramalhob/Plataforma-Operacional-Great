@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss"
+import defaultTheme from "tailwindcss/defaultTheme"
 
 const config: Config = {
   content: [
@@ -12,6 +13,10 @@ const config: Config = {
         primary: "#C1121F",
         "primary-hover": "#A50F1A",
         "primary-light": "#FEF2F2",
+      },
+      fontFamily: {
+        sans: ["var(--font-geist-sans)", ...defaultTheme.fontFamily.sans],
+        mono: ["var(--font-geist-mono)", ...defaultTheme.fontFamily.mono],
       },
     },
   },

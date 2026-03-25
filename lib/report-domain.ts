@@ -1,7 +1,10 @@
-import { Prisma, ReportStatus, SendLog } from "@prisma/client"
+import { Prisma, ReportStatus } from "@prisma/client"
+import type { SendLog } from "@prisma/client"
 import type {
   HistoryRow,
   ReportFilters,
+  ReportJobError,
+  ReportJobStage,
   ReportPayload,
   StoredReportPayload,
 } from "@/types/report.types"
@@ -76,6 +79,44 @@ export function parseStoredReportPayload(
   return payloadJson as unknown as StoredReportPayload
 }
 
+export function buildReportJobErrorPayload(
+  message: string,
+  stage: ReportJobStage
+) {
+  return {
+    jobError: {
+      message,
+      stage,
+      failedAt: new Date().toISOString(),
+    },
+  } as Prisma.InputJsonValue
+}
+
+export function parseReportJobErrorPayload(
+  payloadJson: Prisma.JsonValue | null
+): ReportJobError | null {
+  if (!isRecord(payloadJson) || !isRecord(payloadJson.jobError)) {
+    return null
+  }
+
+  const { message, stage, failedAt } = payloadJson.jobError
+
+  if (
+    typeof message !== "string" ||
+    typeof stage !== "string" ||
+    typeof failedAt !== "string" ||
+    (stage !== "GENERATION" && stage !== "SEND")
+  ) {
+    return null
+  }
+
+  return {
+    message,
+    stage,
+    failedAt,
+  }
+}
+
 export function buildReferenceWeekDate(date: string) {
   return new Date(`${date}T03:00:00.000Z`)
 }
@@ -112,6 +153,7 @@ export function mapReportToHistoryRow(report: {
   sendLogs: SendLogLike[]
 }): HistoryRow {
   const payload = parseStoredReportPayload(report.payloadJson)
+  const jobError = parseReportJobErrorPayload(report.payloadJson)
   const latestLog = [...report.sendLogs].sort(
     (left, right) => right.attemptNumber - left.attemptNumber
   )[0]
@@ -129,7 +171,7 @@ export function mapReportToHistoryRow(report: {
     company: report.client.company ?? "-",
     status: report.status,
     attempts,
-    errorMessage: latestLog?.errorMessage ?? null,
+    errorMessage: latestLog?.errorMessage ?? jobError?.message ?? null,
     referenceWeek,
   }
 }

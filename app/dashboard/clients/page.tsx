@@ -3,41 +3,13 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Header } from "@/components/layout/header"
-import { Download, Loader2, Plus, Search } from "lucide-react"
-
-interface Client {
-  id: string
-  name: string
-  company: string | null
-  email: string | null
-  phone: string | null
-  status: string
-  createdAt: string
-  adAccountId: string | null
-  campaigns: { id: string }[]
-}
-
-const colors = [
-  "bg-blue-500",
-  "bg-purple-500",
-  "bg-green-500",
-  "bg-orange-500",
-  "bg-pink-500",
-  "bg-teal-500",
-]
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase()
-}
-
-function getColor(name: string) {
-  return colors[name.charCodeAt(0) % colors.length]
-}
+import { FilterSearchInput, FilterSelect } from "@/components/ui/filter-controls"
+import { Download, Plus } from "lucide-react"
+import { ClientTable } from "@/components/clients/client-table"
+import { EmptyState } from "@/components/shared/empty-state"
+import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
+import { fetchJsonOrThrow } from "@/lib/api-client"
+import type { ClientListItem } from "@/types/client.types"
 
 function buildClientsQueryString(
   search: string,
@@ -67,7 +39,7 @@ function buildClientsQueryString(
 }
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([])
+  const [clients, setClients] = useState<ClientListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [search, setSearch] = useState("")
@@ -83,19 +55,19 @@ export default function ClientsPage() {
         metaFilter
       )
 
-      fetch(`/api/clients?${queryString}`, {
-        signal: controller.signal,
-      })
-        .then((res) => res.json())
+      void fetchJsonOrThrow<ClientListItem[]>(
+        `/api/clients?${queryString}`,
+        {
+          signal: controller.signal,
+        },
+        "Erro ao carregar clientes"
+      )
         .then((data) => {
-          setClients(Array.isArray(data) ? (data as Client[]) : [])
+          setClients(data)
           setLoading(false)
         })
         .catch((error: unknown) => {
-          if (
-            error instanceof DOMException &&
-            error.name === "AbortError"
-          ) {
+          if (error instanceof DOMException && error.name === "AbortError") {
             return
           }
 
@@ -163,50 +135,48 @@ export default function ClientsPage() {
           </Link>
         </div>
 
-        <div className="mb-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="mb-4 rounded-[28px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[200px] flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar por nome ou empresa..."
-                value={search}
-                onChange={(event) => {
-                  setLoading(true)
-                  setSearch(event.target.value)
-                }}
-                className="w-full rounded-xl border border-gray-200 py-2.5 pl-9 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-              />
-            </div>
-            <select
+            <FilterSearchInput
+              type="text"
+              placeholder="Buscar por nome ou empresa..."
+              value={search}
+              onChange={(event) => {
+                setLoading(true)
+                setSearch(event.target.value)
+              }}
+            />
+            <FilterSelect
               value={statusFilter}
-              onChange={(event) => {
+              onChange={(value) => {
                 setLoading(true)
-                setStatusFilter(event.target.value)
+                setStatusFilter(value)
               }}
-              className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-            >
-              <option value="ALL">Status: Todos</option>
-              <option value="ACTIVE">Ativo</option>
-              <option value="INACTIVE">Inativo</option>
-            </select>
-            <select
+              className="min-w-[190px]"
+              options={[
+                { value: "ALL", label: "Status: Todos" },
+                { value: "ACTIVE", label: "Ativo" },
+                { value: "INACTIVE", label: "Inativo" },
+              ]}
+            />
+            <FilterSelect
               value={metaFilter}
-              onChange={(event) => {
+              onChange={(value) => {
                 setLoading(true)
-                setMetaFilter(event.target.value)
+                setMetaFilter(value)
               }}
-              className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-            >
-              <option value="ALL">Integracao META: Todos</option>
-              <option value="CONNECTED">Conectado</option>
-              <option value="DISCONNECTED">Desconectado</option>
-            </select>
+              className="min-w-[220px]"
+              options={[
+                { value: "ALL", label: "Integracao META: Todos" },
+                { value: "CONNECTED", label: "Conectado" },
+                { value: "DISCONNECTED", label: "Desconectado" },
+              ]}
+            />
             <button
               type="button"
               onClick={() => void handleExportCsv()}
               disabled={exporting || loading}
-              className="ml-auto flex items-center gap-2 text-sm font-medium text-[#C1121F] hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+              className="ml-auto inline-flex items-center gap-2 rounded-2xl border border-[#C1121F]/15 bg-[#FFF5F6] px-4 py-3 text-sm font-semibold text-[#C1121F] transition hover:border-[#C1121F]/30 hover:bg-[#FDEBEC] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Download className="h-4 w-4" />
               {exporting ? "Exportando..." : "Exportar CSV"}
@@ -216,111 +186,15 @@ export default function ClientsPage() {
 
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-6 w-6 animate-spin text-[#C1121F]" />
-            </div>
+            <LoadingSkeleton label="Carregando clientes..." />
           ) : clients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-              <p className="text-lg font-medium">Nenhum cliente encontrado</p>
-              <p className="mt-1 text-sm">
-                Ajuste os filtros ou adicione um novo cliente.
-              </p>
-            </div>
+            <EmptyState
+              title="Nenhum cliente encontrado"
+              description="Ajuste os filtros atuais ou cadastre um novo cliente para começar."
+              className="m-6 border-none px-4 py-20"
+            />
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="w-10 px-4 py-4">
-                    <input type="checkbox" className="rounded" />
-                  </th>
-                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Cliente
-                  </th>
-                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Empresa
-                  </th>
-                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Status META
-                  </th>
-                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Campanhas
-                  </th>
-                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Cadastrado em
-                  </th>
-                  <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Acoes
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map((client) => (
-                  <tr
-                    key={client.id}
-                    className="border-b border-gray-50 transition hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-4">
-                      <input type="checkbox" className="rounded" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${getColor(client.name)}`}
-                        >
-                          <span className="text-xs font-semibold text-white">
-                            {getInitials(client.name)}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">
-                            {client.name}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {client.email ?? "-"}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {client.company ?? "-"}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          client.adAccountId
-                            ? "bg-green-50 text-green-600"
-                            : "bg-gray-100 text-gray-400"
-                        }`}
-                      >
-                        {client.adAccountId ? "Conectado" : "Nao conectado"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {client.campaigns.length} campanhas
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {new Date(client.createdAt).toLocaleDateString("pt-BR")}
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <Link
-                          href={`/dashboard/clients/${client.id}`}
-                          className="text-sm font-medium text-[#C1121F] hover:underline"
-                        >
-                          Ver
-                        </Link>
-                        <Link
-                          href={`/dashboard/clients/${client.id}/edit`}
-                          className="text-sm text-gray-400 hover:text-gray-600"
-                        >
-                          Editar
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <ClientTable clients={clients} />
           )}
         </div>
       </div>

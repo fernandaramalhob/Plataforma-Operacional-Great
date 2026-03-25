@@ -1,54 +1,48 @@
-"use client"
+﻿"use client"
 
+import Image from "next/image"
 import { useCallback, useEffect, useState } from "react"
+import { MetaTokenInput } from "@/components/clients/meta-token-input"
 import { Header } from "@/components/layout/header"
-import { Eye, EyeOff, Loader2, CheckCircle, XCircle, Plus } from "lucide-react"
-
-type ApiResult = Record<string, unknown> | unknown[]
-
-type SessionUser = {
-  id: string
-  email: string
-  role: string
-  name: string
-}
-
-type MetaUser = {
-  id: string | null
-  name: string | null
-  email: string | null
-}
-
-type TokenStatus = "missing" | "active" | "expired" | "invalid" | "unknown"
-
-type MetaAccount = {
-  id: string
-  name: string
-  account_status: number
-}
+import { ErrorState } from "@/components/shared/error-state"
+import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
+import { StatusBadge } from "@/components/shared/status-badge"
+import { Loader2, CheckCircle, Plus } from "lucide-react"
+import {
+  fetchJsonOrThrow,
+  getApiErrorMessage,
+  readJsonResponse,
+} from "@/lib/api-client"
+import type {
+  MetaAccount,
+  MetaTokenSaveResponse,
+  MetaSessionUser,
+  MetaTokenStatus,
+  MetaTokenStatusResponse,
+  MetaUser,
+} from "@/types/meta.types"
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-async function readApiResponse(res: Response) {
-  const text = await res.text()
-
-  if (!text) {
-    return {}
-  }
-
-  try {
-    return JSON.parse(text) as ApiResult
-  } catch {
-    return { error: text }
-  }
+function isTokenStatus(value: unknown): value is MetaTokenStatus {
+  return (
+    value === "missing" ||
+    value === "active" ||
+    value === "expiring_soon" ||
+    value === "expired" ||
+    value === "invalid" ||
+    value === "unknown"
+  )
 }
 
-function getTokenStatusLabel(status: TokenStatus) {
+function getTokenStatusLabel(status: MetaTokenStatus) {
   switch (status) {
     case "active":
       return "Token ativo"
+    case "expiring_soon":
+      return "Expira em breve"
     case "expired":
       return "Token expirado"
     case "invalid":
@@ -60,18 +54,36 @@ function getTokenStatusLabel(status: TokenStatus) {
   }
 }
 
-function getTokenStatusColor(status: TokenStatus) {
+function getTokenStatusColor(status: MetaTokenStatus) {
   switch (status) {
     case "active":
       return "bg-green-50 text-green-600"
+    case "expiring_soon":
+      return "bg-yellow-50 text-yellow-700"
     case "expired":
     case "invalid":
       return "bg-red-50 text-red-500"
     case "unknown":
-      return "bg-yellow-50 text-yellow-700"
+      return "bg-orange-50 text-orange-700"
     default:
       return "bg-gray-100 text-gray-500"
   }
+}
+
+function formatExpiry(value: string | null) {
+  if (!value) {
+    return null
+  }
+
+  return new Date(value).toLocaleString("pt-BR")
+}
+
+function readMetaUser(value: unknown) {
+  return isObject(value) ? (value as MetaUser) : null
+}
+
+function readSessionUser(value: unknown) {
+  return isObject(value) ? (value as MetaSessionUser) : null
 }
 
 export default function SettingsPage() {
@@ -85,29 +97,20 @@ export default function SettingsPage() {
   const [errorMsg, setErrorMsg] = useState("")
   const [importing, setImporting] = useState<string | null>(null)
   const [imported, setImported] = useState<string[]>([])
-  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null)
+  const [sessionUser, setSessionUser] = useState<MetaSessionUser | null>(null)
   const [savedTokenMasked, setSavedTokenMasked] = useState<string | null>(null)
-  const [tokenStatus, setTokenStatus] = useState<TokenStatus>("missing")
+  const [tokenStatus, setTokenStatus] = useState<MetaTokenStatus>("missing")
   const [statusDetail, setStatusDetail] = useState("")
+  const [tokenExpiresAt, setTokenExpiresAt] = useState<string | null>(null)
 
   const loadAccounts = useCallback(async () => {
-    const res = await fetch("/api/settings/meta-account")
-    const data = await readApiResponse(res)
+    const data = await fetchJsonOrThrow<MetaAccount[]>(
+      "/api/settings/meta-account",
+      undefined,
+      "Nao foi possivel carregar as contas META"
+    )
 
-    if (!res.ok) {
-      if (isObject(data)) {
-        throw new Error(String(data.detail ?? data.error ?? `Erro ${res.status}`))
-      }
-
-      throw new Error(`Erro ${res.status}`)
-    }
-
-    if (Array.isArray(data)) {
-      setAccounts(data as MetaAccount[])
-      return
-    }
-
-    setAccounts([])
+    setAccounts(Array.isArray(data) ? data : [])
   }, [])
 
   const loadMetaStatus = useCallback(async () => {
@@ -116,40 +119,29 @@ export default function SettingsPage() {
 
     try {
       const res = await fetch("/api/settings/meta-token", { cache: "no-store" })
-      const data = await readApiResponse(res)
+      const data = await readJsonResponse<MetaTokenStatusResponse>(res)
+      const payload = isObject(data) ? (data as Record<string, unknown>) : {}
 
       if (!res.ok) {
         setResult("error")
-        if (isObject(data) && isObject(data.sessionUser)) {
-          setSessionUser(data.sessionUser as unknown as SessionUser)
-        }
-        if (isObject(data) && typeof data.tokenMasked === "string") {
-          setSavedTokenMasked(data.tokenMasked)
-        }
-        if (
-          isObject(data) &&
-          (data.tokenStatus === "active"
-            || data.tokenStatus === "expired"
-            || data.tokenStatus === "invalid"
-            || data.tokenStatus === "unknown")
-        ) {
-          setTokenStatus(data.tokenStatus)
-        } else {
-          setTokenStatus("unknown")
-        }
-        if (isObject(data) && typeof data.detail === "string") {
-          setStatusDetail(data.detail)
-        }
+        setSessionUser(readSessionUser(payload.sessionUser))
+        setSavedTokenMasked(
+          typeof payload.tokenMasked === "string" ? payload.tokenMasked : null
+        )
+        setTokenStatus(
+          isTokenStatus(payload.tokenStatus) ? payload.tokenStatus : "unknown"
+        )
+        setStatusDetail(typeof payload.detail === "string" ? payload.detail : "")
+        setTokenExpiresAt(
+          typeof payload.expiresAt === "string" ? payload.expiresAt : null
+        )
+
         if (res.status === 401) {
           setErrorMsg("Sessão expirada ou inexistente. Faça login novamente.")
           return
         }
 
-        if (isObject(data)) {
-          setErrorMsg(String(data.detail ?? data.error ?? `Erro ${res.status}`))
-        } else {
-          setErrorMsg(`Erro ${res.status}`)
-        }
+        setErrorMsg(getApiErrorMessage(data, `Erro ${res.status}`))
         return
       }
 
@@ -158,23 +150,37 @@ export default function SettingsPage() {
         return
       }
 
-      setSessionUser(
-        isObject(data.sessionUser) ? (data.sessionUser as unknown as SessionUser) : null
+      const successPayload = data as MetaTokenStatusResponse
+
+      setSessionUser(readSessionUser(successPayload.sessionUser))
+      setSavedTokenMasked(
+        typeof successPayload.tokenMasked === "string"
+          ? successPayload.tokenMasked
+          : null
       )
-      setSavedTokenMasked(typeof data.tokenMasked === "string" ? data.tokenMasked : null)
       setTokenStatus(
-        data.tokenStatus === "active"
-          || data.tokenStatus === "expired"
-          || data.tokenStatus === "invalid"
-          || data.tokenStatus === "unknown"
-          ? data.tokenStatus
+        isTokenStatus(successPayload.tokenStatus)
+          ? successPayload.tokenStatus
           : "missing"
       )
-      setStatusDetail(typeof data.detail === "string" ? data.detail : "")
-      setMetaUser(isObject(data.metaUser) ? (data.metaUser as unknown as MetaUser) : null)
+      setStatusDetail(
+        typeof successPayload.detail === "string" ? successPayload.detail : ""
+      )
+      setTokenExpiresAt(
+        typeof successPayload.expiresAt === "string"
+          ? successPayload.expiresAt
+          : null
+      )
+      setMetaUser(readMetaUser(successPayload.metaUser))
 
-      const hasSavedToken = data.hasSavedToken === true
-      if (hasSavedToken && data.tokenStatus === "active") {
+      const hasSavedToken = successPayload.hasSavedToken === true
+      if (
+        hasSavedToken &&
+        (
+          successPayload.tokenStatus === "active" ||
+          successPayload.tokenStatus === "expiring_soon"
+        )
+      ) {
         setResult("success")
         await loadAccounts()
       } else {
@@ -196,7 +202,10 @@ export default function SettingsPage() {
   }, [loadMetaStatus])
 
   async function handleValidateAndSave() {
-    if (!token) return
+    if (!token) {
+      return
+    }
+
     setIsValidating(true)
     setResult(null)
     setErrorMsg("")
@@ -208,29 +217,30 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
       })
-      const data = await readApiResponse(res)
+      const data = await readJsonResponse<MetaTokenSaveResponse>(res)
 
       if (!res.ok) {
         setResult("error")
         if (res.status === 401) {
           setErrorMsg("Sessão expirada ou inexistente. Faça login novamente.")
-        } else if (isObject(data)) {
-          setErrorMsg(String(data.detail ?? data.error ?? `Erro ${res.status}`))
         } else {
-          setErrorMsg(`Erro ${res.status}`)
+          setErrorMsg(getApiErrorMessage(data, `Erro ${res.status}`))
         }
         return
       }
 
       setResult("success")
-      if (isObject(data) && isObject(data.metaUser)) {
-        setMetaUser(data.metaUser as unknown as MetaUser)
+      if (isObject(data)) {
+        const successPayload = data as MetaTokenSaveResponse
+        setMetaUser(readMetaUser(successPayload.metaUser))
       }
       setToken("")
       await loadMetaStatus()
     } catch (error) {
       setResult("error")
-      setErrorMsg(error instanceof Error ? error.message : "Erro ao conectar com a META API")
+      setErrorMsg(
+        error instanceof Error ? error.message : "Erro ao conectar com a META API"
+      )
     } finally {
       setIsValidating(false)
     }
@@ -247,9 +257,21 @@ export default function SettingsPage() {
           adAccountName: acc.name,
         }),
       })
+      const data = await readJsonResponse<Record<string, unknown>>(res)
+
       if (res.ok || res.status === 409) {
         setImported((prev) => [...prev, acc.id])
+        return
       }
+
+      throw new Error(getApiErrorMessage(data, "Nao foi possivel importar a conta"))
+    } catch (error) {
+      setResult("error")
+      setErrorMsg(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel importar a conta"
+      )
     } finally {
       setImporting(null)
     }
@@ -257,18 +279,18 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Header title="Configurações" subtitle="Gerencie as integrações da plataforma" />
-      <div className="p-8 max-w-4xl space-y-6">
+      <Header
+        title="Configurações"
+        subtitle="Gerencie as integrações da plataforma"
+      />
+      <div className="max-w-4xl space-y-6 p-8">
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
               Sessão atual
             </p>
             {isLoadingStatus ? (
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Carregando sessão...
-              </div>
+              <LoadingSkeleton label="Carregando sessão..." className="py-6" />
             ) : sessionUser ? (
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-gray-900">{sessionUser.name}</p>
@@ -276,7 +298,7 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-400">Perfil: {sessionUser.role}</p>
               </div>
             ) : errorMsg ? (
-              <p className="text-sm text-red-500">{errorMsg}</p>
+              <ErrorState title="Sessão indisponível" message={errorMsg} />
             ) : (
               <p className="text-sm text-red-500">
                 Sessão não encontrada. Faça login novamente.
@@ -284,8 +306,8 @@ export default function SettingsPage() {
             )}
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
               Token salvo
             </p>
             <div className="flex items-center justify-between gap-3">
@@ -293,74 +315,60 @@ export default function SettingsPage() {
                 <p className="text-sm font-semibold text-gray-900">
                   {savedTokenMasked ?? "Nenhum token salvo"}
                 </p>
-                {statusDetail && <p className="text-xs text-gray-400 mt-1">{statusDetail}</p>}
+                {statusDetail ? (
+                  <p className="mt-1 text-xs text-gray-400">{statusDetail}</p>
+                ) : null}
+                {tokenExpiresAt ? (
+                  <p className="mt-1 text-xs text-gray-400">
+                    Expira em {formatExpiry(tokenExpiresAt)}
+                  </p>
+                ) : null}
               </div>
-              <span
-                className={`text-xs font-semibold px-3 py-1 rounded-full ${getTokenStatusColor(tokenStatus)}`}
-              >
+              <StatusBadge className={getTokenStatusColor(tokenStatus)}>
                 {getTokenStatusLabel(tokenStatus)}
-              </span>
+              </StatusBadge>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-          <div className="flex items-center justify-between mb-2">
+        <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-bold text-gray-900">Integração META Ads</h2>
-            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">f</span>
+            <div className="relative h-7 w-11 overflow-hidden">
+              <Image
+                src="/meta-logo-blue.png"
+                alt="Meta"
+                width={1365}
+                height={768}
+                className="absolute left-0 top-1/2 h-7 w-auto max-w-none -translate-y-1/2 origin-left scale-[2.65]"
+              />
             </div>
           </div>
-          <p className="text-sm text-gray-400 mb-6">
-            Atualize o token da conta logada para carregar clientes e contas de anúncio da META com segurança.
+          <p className="mb-6 text-sm text-gray-400">
+            Atualize o token da conta logada para carregar clientes e contas de
+            anúncio da META com segurança.
           </p>
-          <div className="bg-blue-50 border-l-4 border-[#C1121F] rounded-lg px-4 py-3 mb-6">
+          <div className="mb-6 rounded-lg border-l-4 border-[#C1121F] bg-blue-50 px-4 py-3">
             <p className="text-sm text-blue-700">
-              Acesse business.facebook.com - Configurações - Acesso à API para obter seu token pessoal.
+              Acesse `business.facebook.com`, abra Configurações e localize o
+              acesso à API para obter seu token pessoal.
             </p>
           </div>
 
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Novo token de acesso META
-          </label>
-          <div className="flex gap-2 mb-4">
-            <div className="relative flex-1">
-              <input
-                type={showToken ? "text" : "password"}
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="EAAxxxxxxxxxxxxxxxx..."
-                className="w-full pr-10 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowToken(!showToken)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-              >
-                {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            <button
-              onClick={handleValidateAndSave}
-              disabled={isValidating || !token || !sessionUser}
-              className="bg-[#C1121F] hover:bg-[#A50F1A] text-white font-semibold px-5 py-3 rounded-xl text-sm transition disabled:opacity-60 flex items-center gap-2 whitespace-nowrap"
-            >
-              {isValidating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Validando...
-                </>
-              ) : savedTokenMasked ? (
-                "Atualizar token"
-              ) : (
-                "Validar e Salvar"
-              )}
-            </button>
-          </div>
+          <MetaTokenInput
+            value={token}
+            showToken={showToken}
+            isSubmitting={isValidating}
+            disabled={!sessionUser}
+            hasSavedToken={Boolean(savedTokenMasked)}
+            onChange={setToken}
+            onToggleVisibility={() => setShowToken((current) => !current)}
+            onSubmit={() => void handleValidateAndSave()}
+          />
 
-          {result === "success" && (
-            <div className="flex items-center gap-2 text-green-600 bg-green-50 px-4 py-3 rounded-xl text-sm">
-              <CheckCircle className="w-4 h-4" />
+          {result === "success" ? (
+            <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
+              <CheckCircle className="h-4 w-4" />
               {metaUser ? (
                 <>
                   Token válido. Conectado como{" "}
@@ -370,65 +378,64 @@ export default function SettingsPage() {
                 "Token salvo com sucesso."
               )}
             </div>
-          )}
-          {result === "error" && (
-            <div className="flex items-center gap-2 text-red-500 bg-red-50 px-4 py-3 rounded-xl text-sm">
-              <XCircle className="w-4 h-4" />
-              {errorMsg}
-            </div>
-          )}
+          ) : null}
+
+          {result === "error" ? (
+            <ErrorState
+              title="Falha ao validar o token"
+              message={errorMsg}
+              className="border-none bg-red-50 px-4 py-3 text-red-500"
+            />
+          ) : null}
         </div>
 
-        {accounts.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-            <h2 className="text-lg font-bold text-gray-900 mb-1">
+        {accounts.length > 0 ? (
+          <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
+            <h2 className="mb-1 text-lg font-bold text-gray-900">
               Contas de anúncios encontradas
             </h2>
-            <p className="text-sm text-gray-400 mb-6">
+            <p className="mb-6 text-sm text-gray-400">
               {accounts.length} conta(s) vinculada(s) ao token ativo da sessão atual.
             </p>
             <div className="space-y-3">
               {accounts.map((acc) => {
                 const isImported = imported.includes(acc.id)
                 const isImporting = importing === acc.id
+
                 return (
                   <div
                     key={acc.id}
-                    className="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3"
+                    className="flex items-center justify-between rounded-xl border border-gray-100 px-4 py-3"
                   >
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{acc.name}</p>
                       <p className="text-xs text-gray-400">{acc.id}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span
-                        className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                          acc.account_status === 1
-                            ? "bg-green-50 text-green-600"
-                            : "bg-red-50 text-red-500"
-                        }`}
+                      <StatusBadge
+                        tone={acc.account_status === 1 ? "success" : "danger"}
                       >
                         {acc.account_status === 1 ? "Ativo" : "Inativo"}
-                      </span>
+                      </StatusBadge>
                       <button
-                        onClick={() => handleImport(acc)}
+                        onClick={() => void handleImport(acc)}
                         disabled={isImported || isImporting}
-                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition ${
+                        className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
                           isImported
-                            ? "bg-green-50 text-green-600 cursor-default"
-                            : "bg-[#C1121F] hover:bg-[#A50F1A] text-white"
+                            ? "cursor-default bg-green-50 text-green-600"
+                            : "bg-[#C1121F] text-white hover:bg-[#A50F1A]"
                         }`}
                       >
                         {isImporting ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <Loader2 className="h-3 w-3 animate-spin" />
                         ) : isImported ? (
                           <>
-                            <CheckCircle className="w-3 h-3" />
+                            <CheckCircle className="h-3 w-3" />
                             Importado
                           </>
                         ) : (
                           <>
-                            <Plus className="w-3 h-3" />
+                            <Plus className="h-3 w-3" />
                             Importar como cliente
                           </>
                         )}
@@ -439,8 +446,9 @@ export default function SettingsPage() {
               })}
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </>
   )
 }
+

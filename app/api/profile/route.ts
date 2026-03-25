@@ -1,34 +1,70 @@
+import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
 import { hashPassword } from "@/lib/password"
+import { prisma } from "@/lib/prisma"
+import {
+  getProfileValidationMessage,
+  profileUpdateSchema,
+} from "@/lib/validations/profile.schema"
+import type {
+  ApiErrorResponse,
+  ProfileResponse,
+  UpdateProfileResponse,
+} from "@/types/api.types"
+
+function toProfileResponse(user: {
+  id: string
+  email: string
+  name: string | null
+  role: ProfileResponse["role"]
+  avatarUrl: string | null
+}): ProfileResponse {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name ?? user.email,
+    role: user.role,
+    avatarUrl: user.avatarUrl,
+  }
+}
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Nao autorizado" },
+        { status: 401 }
+      )
     }
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        avatarUrl: true,
+      },
     })
 
     if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Usuario nao encontrado" },
+        { status: 404 }
+      )
     }
 
-    return NextResponse.json({
-      id: user.id,
-      email: user.email,
-      name: user.email,
-      role: user.role,
-      avatarUrl: (user as any).avatarUrl ?? null,
-    })
+    return NextResponse.json<ProfileResponse>(toProfileResponse(user))
   } catch (error) {
     console.error(error)
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 })
+    return NextResponse.json<ApiErrorResponse>(
+      { error: "Erro interno" },
+      { status: 500 }
+    )
   }
 }
 
@@ -36,25 +72,56 @@ export async function PUT(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Nao autorizado" },
+        { status: 401 }
+      )
     }
 
-    const body = await request.json()
-    const { name, password, avatarUrl } = body
+    const parsedBody = profileUpdateSchema.safeParse(await request.json())
 
-    const updateData: any = {}
-    if (name) updateData.name = name
-    if (avatarUrl) updateData.avatarUrl = avatarUrl
-    if (password) updateData.passwordHash = hashPassword(password)
+    if (!parsedBody.success) {
+      return NextResponse.json<ApiErrorResponse>(
+        { error: getProfileValidationMessage() },
+        { status: 400 }
+      )
+    }
+
+    const { name, password, avatarUrl } = parsedBody.data
+
+    const updateData: Prisma.UserUpdateInput = {}
+    if (name !== undefined) updateData.name = name
+    if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl
+    if (password !== undefined) updateData.passwordHash = hashPassword(password)
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Nenhum campo enviado para atualizacao" },
+        { status: 400 }
+      )
+    }
 
     const user = await prisma.user.update({
       where: { email: session.user.email },
       data: updateData,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        avatarUrl: true,
+      },
     })
 
-    return NextResponse.json({ success: true, user })
+    return NextResponse.json<UpdateProfileResponse>({
+      success: true,
+      user: toProfileResponse(user),
+    })
   } catch (error) {
     console.error(error)
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 })
+    return NextResponse.json<ApiErrorResponse>(
+      { error: "Erro interno" },
+      { status: 500 }
+    )
   }
 }

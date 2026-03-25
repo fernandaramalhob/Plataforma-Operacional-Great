@@ -12,30 +12,9 @@ import {
   BarChart2,
 } from "lucide-react"
 import Link from "next/link"
-
-type Client = {
-  id: string
-  name: string
-  company: string | null
-  email: string | null
-  adAccountId: string | null
-}
-
-type CampaignInsight = {
-  spend?: string
-  impressions?: string
-  clicks?: string
-}
-
-type Campaign = {
-  id: string
-  name: string
-  status: string
-  objective?: string | null
-  insights?: {
-    data?: CampaignInsight[]
-  }
-}
+import { fetchJsonOrThrow } from "@/lib/api-client"
+import type { ClientDetail } from "@/types/client.types"
+import type { ReportCampaign } from "@/types/report.types"
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
@@ -56,25 +35,19 @@ function getColor(name: string) {
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const [client, setClient] = useState<Client | null>(null)
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [client, setClient] = useState<ClientDetail | null>(null)
+  const [campaigns, setCampaigns] = useState<ReportCampaign[]>([])
   const [loadingClient, setLoadingClient] = useState(true)
   const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    fetch(`/api/clients/${id}`)
-      .then(async (res) => {
-        const data = await res.json()
-
-        if (!res.ok) {
-          throw new Error(
-            typeof data?.error === "string" ? data.error : "Erro ao buscar cliente"
-          )
-        }
-
-        setClient(data as Client)
-      })
+    void fetchJsonOrThrow<ClientDetail>(
+      `/api/clients/${id}`,
+      undefined,
+      "Erro ao buscar cliente"
+    )
+      .then((data) => setClient(data))
       .catch((fetchError) => {
         setError(
           fetchError instanceof Error ? fetchError.message : "Erro ao buscar cliente"
@@ -84,18 +57,12 @@ export default function ClientDetailPage() {
   }, [id])
 
   useEffect(() => {
-    fetch(`/api/clients/${id}/campaigns`)
-      .then(async (res) => {
-        const data = await res.json()
-
-        if (!res.ok) {
-          throw new Error(
-            typeof data?.error === "string" ? data.error : "Erro ao buscar campanhas"
-          )
-        }
-
-        setCampaigns(Array.isArray(data) ? (data as Campaign[]) : [])
-      })
+    void fetchJsonOrThrow<ReportCampaign[]>(
+      `/api/clients/${id}/campaigns`,
+      undefined,
+      "Erro ao buscar campanhas"
+    )
+      .then((data) => setCampaigns(data))
       .catch((fetchError) => {
         setError(
           fetchError instanceof Error ? fetchError.message : "Erro ao buscar campanhas"
@@ -106,8 +73,8 @@ export default function ClientDetailPage() {
 
   if (loadingClient) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="w-6 h-6 animate-spin text-[#C1121F]" />
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[#C1121F]" />
       </div>
     )
   }
@@ -119,12 +86,12 @@ export default function ClientDetailPage() {
         <div className="p-8">
           <Link
             href="/dashboard/clients"
-            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6"
+            className="mb-6 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="h-4 w-4" />
             Voltar para Clientes
           </Link>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-sm text-red-500">
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 text-sm text-red-500 shadow-sm">
             {error || "Cliente nao encontrado."}
           </div>
         </div>
@@ -138,18 +105,18 @@ export default function ClientDetailPage() {
       <div className="p-8">
         <Link
           href="/dashboard/clients"
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6"
+          className="mb-6 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="h-4 w-4" />
           Voltar para Clientes
         </Link>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-4">
             <div
-              className={`w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 ${getColor(client.name)}`}
+              className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full ${getColor(client.name)}`}
             >
-              <span className="text-white text-lg font-bold">
+              <span className="text-lg font-bold text-white">
                 {getInitials(client.name)}
               </span>
             </div>
@@ -158,28 +125,28 @@ export default function ClientDetailPage() {
               <p className="text-sm text-gray-400">
                 {client.company ?? "-"} · {client.email ?? "-"}
               </p>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="mt-0.5 text-xs text-gray-400">
                 AdAccount: {client.adAccountId ?? "-"}
               </p>
             </div>
           </div>
           <Link
             href={`/dashboard/clients/${id}/edit`}
-            className="bg-[#C1121F] hover:bg-[#A50F1A] text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition"
+            className="rounded-xl bg-[#C1121F] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A]"
           >
             Editar Cliente
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-1">Campanhas META Ads</h3>
-          <p className="text-sm text-gray-400 mb-6">
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <h3 className="mb-1 text-lg font-bold text-gray-900">Campanhas META Ads</h3>
+          <p className="mb-6 text-sm text-gray-400">
             Dados da ultima semana via META Graph API
           </p>
 
           {loadingCampaigns ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-[#C1121F]" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#C1121F]" />
             </div>
           ) : error ? (
             <div className="flex items-center justify-center py-16 text-gray-400">
@@ -202,16 +169,19 @@ export default function ClientDetailPage() {
                     : "0.00"
 
                 return (
-                  <div key={campaign.id} className="border border-gray-100 rounded-2xl p-5">
-                    <div className="flex items-center justify-between mb-4">
+                  <div
+                    key={campaign.id}
+                    className="rounded-2xl border border-gray-100 p-5"
+                  >
+                    <div className="mb-4 flex items-center justify-between">
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{campaign.name}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="mt-0.5 text-xs text-gray-400">
                           {campaign.objective ?? "-"}
                         </p>
                       </div>
                       <span
-                        className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
                           campaign.status === "ACTIVE"
                             ? "bg-green-50 text-green-600"
                             : campaign.status === "PAUSED"
@@ -227,11 +197,11 @@ export default function ClientDetailPage() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div className="bg-blue-50 rounded-xl p-3">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <DollarSign className="w-3.5 h-3.5 text-blue-500" />
-                          <span className="text-xs text-blue-500 font-medium">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                      <div className="rounded-xl bg-blue-50 p-3">
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <DollarSign className="h-3.5 w-3.5 text-blue-500" />
+                          <span className="text-xs font-medium text-blue-500">
                             Investimento
                           </span>
                         </div>
@@ -242,10 +212,10 @@ export default function ClientDetailPage() {
                           })}
                         </p>
                       </div>
-                      <div className="bg-purple-50 rounded-xl p-3">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <BarChart2 className="w-3.5 h-3.5 text-purple-500" />
-                          <span className="text-xs text-purple-500 font-medium">
+                      <div className="rounded-xl bg-purple-50 p-3">
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <BarChart2 className="h-3.5 w-3.5 text-purple-500" />
+                          <span className="text-xs font-medium text-purple-500">
                             Impressoes
                           </span>
                         </div>
@@ -253,10 +223,10 @@ export default function ClientDetailPage() {
                           {impressions.toLocaleString("pt-BR")}
                         </p>
                       </div>
-                      <div className="bg-teal-50 rounded-xl p-3">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <MousePointer className="w-3.5 h-3.5 text-teal-500" />
-                          <span className="text-xs text-teal-500 font-medium">
+                      <div className="rounded-xl bg-teal-50 p-3">
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <MousePointer className="h-3.5 w-3.5 text-teal-500" />
+                          <span className="text-xs font-medium text-teal-500">
                             Cliques
                           </span>
                         </div>
@@ -264,10 +234,10 @@ export default function ClientDetailPage() {
                           {clicks.toLocaleString("pt-BR")}
                         </p>
                       </div>
-                      <div className="bg-orange-50 rounded-xl p-3">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <TrendingUp className="w-3.5 h-3.5 text-orange-500" />
-                          <span className="text-xs text-orange-500 font-medium">
+                      <div className="rounded-xl bg-orange-50 p-3">
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <TrendingUp className="h-3.5 w-3.5 text-orange-500" />
+                          <span className="text-xs font-medium text-orange-500">
                             CTR
                           </span>
                         </div>
