@@ -4,8 +4,10 @@ import { prisma } from "@/lib/prisma"
 import { ensureReportWorkersStarted } from "@/lib/report-jobs"
 import {
   generateLiveReportPayload,
+  persistGeneratedReport,
   queueReportGeneration,
 } from "@/lib/report-service"
+import { isRedisConfigured } from "@/lib/redis"
 import { logError } from "@/lib/safe-logger"
 import {
   getReportValidationMessage,
@@ -17,7 +19,6 @@ import type { QueuedReportResponse } from "@/types/report.types"
 
 export async function GET(request: Request) {
   try {
-    await ensureReportWorkersStarted()
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json<ApiErrorResponse>(
@@ -83,7 +84,6 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await ensureReportWorkersStarted()
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json<ApiErrorResponse>(
@@ -120,6 +120,40 @@ export async function POST(request: Request) {
         { status: 403 }
       )
     }
+
+    if (!isRedisConfigured()) {
+      const payload = await generateLiveReportPayload({
+        user,
+        client,
+        filters: {
+          since,
+          until,
+          objective,
+        },
+      })
+      const persistedReport = await persistGeneratedReport({
+        clientId,
+        payload,
+        filters: {
+          since,
+          until,
+          objective,
+        },
+      })
+
+      return NextResponse.json<QueuedReportResponse>(
+        {
+          reportId: persistedReport.reportId,
+          status: "PENDING",
+          generatedAt: persistedReport.generatedAt,
+          referenceWeek: persistedReport.referenceWeek,
+          queued: true,
+        },
+        { status: 202 }
+      )
+    }
+
+    await ensureReportWorkersStarted()
 
     const report = await queueReportGeneration({
       clientId,

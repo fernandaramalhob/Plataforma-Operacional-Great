@@ -12,15 +12,17 @@ import {
 import { CampaignSelector } from "@/components/clients/campaign-selector"
 import { Header } from "@/components/layout/header"
 import { ReportPreview } from "@/components/reports/report-preview"
+import { SendReportComposer } from "@/components/reports/send-report-composer"
 import { ErrorState } from "@/components/shared/error-state"
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
-import { exportReportPdf } from "@/lib/report-pdf"
+import { buildReportPdfFilePayload, exportReportPdf } from "@/lib/report-pdf"
+import { buildReportSendPreview } from "@/lib/report-message"
 import {
   pollSavedReportUntilReady,
   sendReportToWhatsApp,
 } from "@/lib/report-client"
 import { logError } from "@/lib/safe-logger"
-import type { SavedReportResponse } from "@/types/report.types"
+import type { ReportSendMode, SavedReportResponse } from "@/types/report.types"
 
 export default function ReportPreviewPage() {
   const params = useParams<{ id: string }>()
@@ -36,6 +38,8 @@ export default function ReportPreviewPage() {
   const [generating, setGenerating] = useState(false)
   const [sending, setSending] = useState(false)
   const [actionFeedback, setActionFeedback] = useState("")
+  const [sendMode, setSendMode] = useState<ReportSendMode>("PDF_AND_MESSAGE")
+  const [sendMessage, setSendMessage] = useState("")
 
   const sleep = useCallback(
     (milliseconds: number) =>
@@ -57,6 +61,14 @@ export default function ReportPreviewPage() {
           setSelectedCampaignIds(
             report.payload?.campaigns.map((campaign) => campaign.id) ?? []
           )
+          if (report.payload) {
+            setSendMessage(
+              buildReportSendPreview({
+                reportId: report.id,
+                payload: report.payload,
+              })
+            )
+          }
 
           if (!report.payload && report.status !== "FAILED") {
             setActionFeedback(
@@ -145,7 +157,9 @@ export default function ReportPreviewPage() {
   }
 
   async function handleSendReport() {
-    if (!savedReport?.payload) {
+    const sourceElement = pdfReportRef.current ?? reportRef.current
+
+    if (!savedReport?.payload || !sourceElement) {
       return
     }
 
@@ -154,8 +168,26 @@ export default function ReportPreviewPage() {
     setActionFeedback("")
 
     try {
-      await sendReportToWhatsApp(savedReport.id)
-      setActionFeedback("Envio enfileirado. O worker vai concluir o WhatsApp em segundo plano.")
+      const pdfAttachment =
+        sendMode === "PDF_ONLY" || sendMode === "PDF_AND_MESSAGE"
+          ? await buildReportPdfFilePayload({
+              sourceElement,
+              clientName: savedReport.payload.client.name,
+              startDate: savedReport.payload.filters.since,
+              endDate: savedReport.payload.filters.until,
+              objective: savedReport.payload.filters.objective,
+              generatedAt: savedReport.generatedAt,
+              reportId: savedReport.id,
+            })
+          : null
+
+      await sendReportToWhatsApp(savedReport.id, {
+        mode: sendMode,
+        message: sendMode === "PDF_ONLY" ? undefined : sendMessage,
+        pdfBase64: pdfAttachment?.base64,
+        pdfFileName: pdfAttachment?.fileName,
+      })
+      setActionFeedback("Envio concluido com o formato selecionado.")
     } catch (sendError) {
       setError(
         sendError instanceof Error
@@ -332,6 +364,16 @@ export default function ReportPreviewPage() {
                 {error}
               </div>
             ) : null}
+
+            <div className="mb-6">
+              <SendReportComposer
+                mode={sendMode}
+                message={sendMessage}
+                disabled={sending}
+                onModeChange={setSendMode}
+                onMessageChange={setSendMessage}
+              />
+            </div>
 
             <div ref={reportRef}>
               <ReportPreview

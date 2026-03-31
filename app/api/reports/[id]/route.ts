@@ -4,7 +4,6 @@ import {
   parseReportJobErrorPayload,
   parseStoredReportPayload,
 } from "@/lib/report-domain"
-import { ensureReportWorkersStarted } from "@/lib/report-jobs"
 import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
 
@@ -13,7 +12,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await ensureReportWorkersStarted()
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })

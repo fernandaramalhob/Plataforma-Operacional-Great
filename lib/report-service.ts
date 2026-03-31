@@ -14,6 +14,7 @@ import {
   serializeStoredReportPayload,
 } from "@/lib/report-domain"
 import type {
+  ReportAction,
   ReportClient,
   ReportGenerationResponse,
   ReportPayload,
@@ -100,7 +101,13 @@ export async function generateLiveReportPayload(params: {
         ])
       : undefined
 
-  const [campaigns, accountInsights, dailyInsights] = await Promise.all([
+  const [
+    campaigns,
+    accountInsights,
+    dailyInsights,
+    topAds,
+    genderBreakdown,
+  ] = await Promise.all([
     getMetaCampaigns({
       adAccountId: client.adAccountId,
       token,
@@ -122,6 +129,22 @@ export async function generateLiveReportPayload(params: {
       timeRange,
       timeIncrement: 1,
     }),
+    getMetaInsights({
+      objectId: client.adAccountId,
+      token,
+      fields: "ad_id,ad_name,spend,impressions,reach,clicks,actions",
+      timeRange,
+      level: "ad",
+      limit: 20,
+    }),
+    getMetaInsights({
+      objectId: client.adAccountId,
+      token,
+      fields: "spend,impressions,reach,clicks,actions",
+      timeRange,
+      breakdowns: "gender",
+      limit: 20,
+    }),
   ])
 
   return {
@@ -131,6 +154,31 @@ export async function generateLiveReportPayload(params: {
       ? (accountInsights[0] as ReportPayload["accountInsights"])
       : {},
     dailyInsights: dailyInsights as ReportPayload["dailyInsights"],
+    topAds: topAds
+      .slice()
+      .sort(
+        (left, right) =>
+          Number.parseFloat(right.impressions ?? "0") -
+          Number.parseFloat(left.impressions ?? "0")
+      )
+      .slice(0, 5)
+      .map((ad) => ({
+        id: ad.ad_id ?? crypto.randomUUID(),
+        name: ad.ad_name ?? "Anuncio sem nome",
+        impressions: ad.impressions,
+        reach: ad.reach,
+        clicks: ad.clicks,
+        spend: ad.spend,
+        actions: ad.actions as ReportAction[] | undefined,
+      })),
+    genderBreakdown: genderBreakdown.map((row) => ({
+      dimension: row.gender ?? "nao informado",
+      spend: row.spend,
+      impressions: row.impressions,
+      reach: row.reach,
+      clicks: row.clicks,
+      actions: row.actions as ReportAction[] | undefined,
+    })),
   }
 }
 

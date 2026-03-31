@@ -1,6 +1,8 @@
-import type { ChangeEventHandler, ReactNode } from "react"
-import { Mail, Phone } from "lucide-react"
+import { useEffect, useState, type ChangeEventHandler, type ReactNode } from "react"
+import { Mail, Phone, RefreshCw, Users } from "lucide-react"
+import { fetchJsonOrThrow } from "@/lib/api-client"
 import type { ClientFormValues } from "@/types/client.types"
+import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
 type SharedClientFields = Pick<
   ClientFormValues,
@@ -13,6 +15,7 @@ type ClientFormProps = {
   leadFields?: ReactNode
   values: SharedClientFields
   onChange: ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>
+  onValueChange?: (name: keyof SharedClientFields, value: string) => void
 }
 
 export function ClientForm({
@@ -21,7 +24,44 @@ export function ClientForm({
   leadFields,
   values,
   onChange,
+  onValueChange,
 }: ClientFormProps) {
+  const [isLoadingGroups, setIsLoadingGroups] = useState(true)
+  const [groupsError, setGroupsError] = useState("")
+  const [groupsResponse, setGroupsResponse] = useState<EvolutionSettingsResponse | null>(
+    null
+  )
+
+  async function loadEvolutionGroups() {
+    setIsLoadingGroups(true)
+    setGroupsError("")
+
+    try {
+      const response = await fetchJsonOrThrow<EvolutionSettingsResponse>(
+        "/api/settings/evolution",
+        { cache: "no-store" },
+        "Nao foi possivel carregar os grupos da Evolution"
+      )
+
+      setGroupsResponse(response)
+    } catch (error) {
+      setGroupsError(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel carregar os grupos da Evolution"
+      )
+      setGroupsResponse(null)
+    } finally {
+      setIsLoadingGroups(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadEvolutionGroups()
+  }, [])
+
+  const availableGroups = groupsResponse?.groups ?? []
+
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
       <h2 className="mb-1 text-lg font-bold text-gray-900">{title}</h2>
@@ -73,17 +113,72 @@ export function ClientForm({
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
             ID do Grupo WhatsApp
           </label>
+          <div className="mb-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-gray-400" />
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Grupos da Evolution
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadEvolutionGroups()}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[#C1121F] hover:underline"
+              >
+                <RefreshCw className={`h-3 w-3 ${isLoadingGroups ? "animate-spin" : ""}`} />
+                Atualizar
+              </button>
+            </div>
+
+            {isLoadingGroups ? (
+              <p className="text-xs text-gray-400">Carregando grupos da instancia...</p>
+            ) : groupsError ? (
+              <p className="text-xs text-red-500">{groupsError}</p>
+            ) : !groupsResponse?.configured ? (
+              <p className="text-xs text-gray-500">
+                Evolution nao configurada neste ambiente.
+              </p>
+            ) : !groupsResponse.connected ? (
+              <p className="text-xs text-red-500">
+                {groupsResponse.detail ?? "Nao foi possivel consultar os grupos."}
+              </p>
+            ) : availableGroups.length === 0 ? (
+              <p className="text-xs text-gray-500">
+                Nenhum grupo encontrado na instancia ativa.
+              </p>
+            ) : (
+              <select
+                value={
+                  availableGroups.some((group) => group.id === values.whatsappGroupId)
+                    ? values.whatsappGroupId
+                    : ""
+                }
+                onChange={(event) =>
+                  onValueChange?.("whatsappGroupId", event.target.value)
+                }
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+              >
+                <option value="">Selecione um grupo para preencher o campo</option>
+                {availableGroups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.subject} · {group.size} participante(s)
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
           <input
             name="whatsappGroupId"
             value={values.whatsappGroupId}
             onChange={onChange}
             type="text"
-            placeholder="5511999999999-1234567890@g.us"
+            placeholder="120363407411420148@g.us"
             maxLength={60}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
           />
           <p className="mt-2 text-xs text-gray-400">
-            O numero da Evolution API deve estar no grupo antes de salvar.
+            Aceita IDs de grupo antigos e novos da Evolution, como `120363407411420148@g.us`.
           </p>
         </div>
 

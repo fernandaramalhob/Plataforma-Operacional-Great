@@ -64,6 +64,17 @@ export default function EditClientPage() {
     }))
   }
 
+  function handleFieldValueChange(
+    name: "email" | "phone" | "notes" | "whatsappGroupId",
+    value: string
+  ) {
+    setError("")
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }))
+  }
+
   async function handleSave() {
     const parsedPayload = clientPayloadSchema.safeParse(form)
 
@@ -157,6 +168,7 @@ export default function EditClientPage() {
           description="Edite os dados do cliente"
           values={form}
           onChange={handleChange}
+          onValueChange={handleFieldValueChange}
           leadFields={
             <>
               <div>

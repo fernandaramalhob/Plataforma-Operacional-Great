@@ -1,5 +1,7 @@
 "use client"
 
+import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
+
 type ExportReportPdfInput = {
   sourceElement: HTMLElement
   clientName: string
@@ -12,38 +14,12 @@ type ExportReportPdfInput = {
 
 const PDF_MARGIN_MM = 8
 
-function sanitizeFileNamePart(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9-_]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase()
-}
-
 function formatDateForTitle(value: string) {
   if (!value) {
     return "-"
   }
 
   return new Date(`${value}T00:00:00`).toLocaleDateString("pt-BR")
-}
-
-export function buildReportPdfFileName(input: {
-  clientName: string
-  startDate: string
-  endDate: string
-}) {
-  return [
-    "greatgo-relatorio-meta-ads",
-    sanitizeFileNamePart(input.clientName),
-    input.startDate,
-    "a",
-    input.endDate,
-  ]
-    .filter(Boolean)
-    .join("-")
 }
 
 function buildReportPdfTitle(input: {
@@ -135,15 +111,7 @@ function createPageCanvas(
   return pageCanvas
 }
 
-export async function exportReportPdf({
-  sourceElement,
-  clientName,
-  startDate,
-  endDate,
-  objective,
-  generatedAt,
-  reportId,
-}: ExportReportPdfInput) {
+async function buildPdfDocument(input: ExportReportPdfInput) {
   const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
     import("html2canvas"),
     import("jspdf"),
@@ -158,9 +126,9 @@ export async function exportReportPdf({
   })
 
   const fileName = buildReportPdfFileName({
-    clientName,
-    startDate,
-    endDate,
+    clientName: input.clientName,
+    startDate: input.startDate,
+    endDate: input.endDate,
   })
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
@@ -168,7 +136,7 @@ export async function exportReportPdf({
   const contentHeight = pageHeight - PDF_MARGIN_MM * 2
 
   pdf.setDocumentProperties({
-    title: buildReportPdfTitle({ clientName, startDate, endDate }),
+    title: buildReportPdfTitle(input),
     subject: "Relatorio de performance META Ads",
     author: "GreatGo",
     creator: "GreatGo",
@@ -176,19 +144,19 @@ export async function exportReportPdf({
       "greatgo",
       "meta ads",
       "relatorio",
-      clientName,
-      objective,
-      reportId,
+      input.clientName,
+      input.objective,
+      input.reportId,
     ]
       .filter(Boolean)
       .join(", "),
   })
-  pdf.setCreationDate(generatedAt ? new Date(generatedAt) : new Date())
+  pdf.setCreationDate(input.generatedAt ? new Date(input.generatedAt) : new Date())
   pdf.setDisplayMode("fullwidth", "continuous")
   pdf.viewerPreferences({ DisplayDocTitle: true })
 
   const pageElements = Array.from(
-    sourceElement.querySelectorAll<HTMLElement>("[data-report-pdf-page]")
+    input.sourceElement.querySelectorAll<HTMLElement>("[data-report-pdf-page]")
   )
 
   if (pageElements.length > 0) {
@@ -207,11 +175,10 @@ export async function exportReportPdf({
       })
     }
 
-    pdf.save(`${fileName}.pdf`)
-    return
+    return { pdf, fileName }
   }
 
-  const canvas = await renderCanvas(html2canvas, sourceElement, renderScale)
+  const canvas = await renderCanvas(html2canvas, input.sourceElement, renderScale)
   const pxPerMm = canvas.width / contentWidth
   const pagePixelHeight = Math.max(Math.floor(contentHeight * pxPerMm), 1)
   let currentY = 0
@@ -236,5 +203,47 @@ export async function exportReportPdf({
     isFirstPage = false
   }
 
+  return { pdf, fileName }
+}
+
+export async function exportReportPdf({
+  sourceElement,
+  clientName,
+  startDate,
+  endDate,
+  objective,
+  generatedAt,
+  reportId,
+}: ExportReportPdfInput) {
+  const { pdf, fileName } = await buildPdfDocument({
+    sourceElement,
+    clientName,
+    startDate,
+    endDate,
+    objective,
+    generatedAt,
+    reportId,
+  })
+
   pdf.save(`${fileName}.pdf`)
+}
+
+export async function buildReportPdfFilePayload(input: ExportReportPdfInput) {
+  const { pdf, fileName } = await buildPdfDocument(input)
+  const blob = pdf.output("blob")
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const result = typeof reader.result === "string" ? reader.result : ""
+      const [, payload = ""] = result.split(",", 2)
+      resolve(payload)
+    }
+    reader.onerror = () => reject(new Error("Nao foi possivel codificar o PDF"))
+    reader.readAsDataURL(blob)
+  })
+
+  return {
+    fileName: `${fileName}.pdf`,
+    base64,
+  }
 }

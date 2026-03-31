@@ -194,6 +194,10 @@ function buildMessageMetric(insight: ReportInsight): ObjectiveMetricSummary {
   }
 }
 
+export function resolveMessageMetric(insight: ReportInsight | undefined) {
+  return buildMessageMetric(insight ?? {})
+}
+
 function buildConversionMetric(insight: ReportInsight): ObjectiveMetricSummary {
   const clicks = parseReportNumber(insight.clicks)
   const spend = parseReportNumber(insight.spend)

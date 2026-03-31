@@ -12,6 +12,10 @@ function trimString(value: unknown) {
   return typeof value === "string" ? value.trim() : value
 }
 
+function isValidWhatsAppGroupId(value: string) {
+  return /^(?:\d{10,25}-\d+|\d{12,30})@g\.us$/i.test(value)
+}
+
 function optionalTrimmedString(maxLength: number, label: string) {
   return z.preprocess(
     (value) => {
@@ -85,14 +89,12 @@ export const clientPayloadSchema = z
       }
     }
 
-    if (
-      data.whatsappGroupId &&
-      !/^\d{10,25}-\d+@g\.us$/i.test(data.whatsappGroupId)
-    ) {
+    if (data.whatsappGroupId && !isValidWhatsAppGroupId(data.whatsappGroupId)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["whatsappGroupId"],
-        message: "ID do grupo WhatsApp deve seguir o formato 5511...-123@g.us",
+        message:
+          "ID do grupo WhatsApp deve seguir um formato valido, como 120363407411420148@g.us",
       })
     }
 

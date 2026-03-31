@@ -21,6 +21,15 @@ test("clientPayloadSchema normalizes optional values", () => {
   assert.equal(result.notes, "observacao interna")
 })
 
+test("clientPayloadSchema accepts modern WhatsApp group ids", () => {
+  const result = clientPayloadSchema.parse({
+    name: "Cliente Teste",
+    whatsappGroupId: "120363407411420148@g.us",
+  })
+
+  assert.equal(result.whatsappGroupId, "120363407411420148@g.us")
+})
+
 test("clientPayloadSchema rejects invalid phone numbers", () => {
   const result = clientPayloadSchema.safeParse({
     name: "Cliente Teste",

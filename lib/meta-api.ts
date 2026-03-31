@@ -77,6 +77,10 @@ export type MetaCampaign = {
 }
 
 export type MetaInsightRow = {
+  ad_id?: string
+  ad_name?: string
+  age?: string
+  gender?: string
   spend?: string
   impressions?: string
   reach?: string
@@ -288,6 +292,8 @@ export async function getMetaInsights(params: {
   timeRange?: string
   timeIncrement?: number
   limit?: number
+  level?: "account" | "campaign" | "adset" | "ad"
+  breakdowns?: string
 }) {
   return metaApiListRequest<MetaInsightRow>({
     path: `/${params.objectId}/insights`,
@@ -297,6 +303,8 @@ export async function getMetaInsights(params: {
       time_range: params.timeRange,
       time_increment: params.timeIncrement,
       limit: params.limit,
+      level: params.level,
+      breakdowns: params.breakdowns,
     },
   })
 }

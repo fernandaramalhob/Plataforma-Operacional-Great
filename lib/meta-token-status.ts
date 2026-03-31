@@ -41,6 +41,22 @@ export type MetaTokenHealth = {
   metaUser: MetaTokenUser | null
 }
 
+export function getMetaTokenReadErrorDetail(error: unknown) {
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+
+  if (
+    message.includes("unsupported state or unable to authenticate data") ||
+    message.includes("invalid authentication tag") ||
+    message.includes("descriptografar") ||
+    message.includes("criptografado invalido")
+  ) {
+    return "O token META salvo nao pode ser lido neste ambiente. Confirme se META_TOKEN_ENCRYPTION_KEY ou NEXTAUTH_SECRET sao os mesmos do PC de origem, ou salve um novo token."
+  }
+
+  return "Nao foi possivel ler o token META salvo. Salve um novo token ou revise a configuracao deste ambiente."
+}
+
 function inferMetaTokenStatus(message: string): MetaTokenStatus {
   const lowerMessage = message.toLowerCase()
 
@@ -170,7 +186,26 @@ export async function getStoredMetaTokenHealth(params: {
   forceRemote?: boolean
 }): Promise<MetaTokenHealth> {
   const { storedToken, storedExpiresAt, forceRemote = false } = params
-  const { token, encryptedToken } = resolveMetaToken(storedToken)
+  let token: string
+  let encryptedToken: string | null
+
+  try {
+    const resolvedToken = resolveMetaToken(storedToken)
+    token = resolvedToken.token
+    encryptedToken = resolvedToken.encryptedToken
+  } catch (error) {
+    logError("meta-token.resolve", error)
+
+    return {
+      ok: false,
+      status: "invalid",
+      detail: getMetaTokenReadErrorDetail(error),
+      expiresAt: storedExpiresAt,
+      token: null,
+      encryptedToken: null,
+      metaUser: null,
+    }
+  }
 
   if (storedExpiresAt && storedExpiresAt.getTime() <= Date.now()) {
     return {

@@ -7,7 +7,14 @@ import { Header } from "@/components/layout/header"
 import { ErrorState } from "@/components/shared/error-state"
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
 import { StatusBadge } from "@/components/shared/status-badge"
-import { Loader2, CheckCircle, Plus } from "lucide-react"
+import {
+  Loader2,
+  CheckCircle,
+  Plus,
+  RefreshCw,
+  Copy,
+  MessageCircle,
+} from "lucide-react"
 import {
   fetchJsonOrThrow,
   getApiErrorMessage,
@@ -21,6 +28,7 @@ import type {
   MetaTokenStatusResponse,
   MetaUser,
 } from "@/types/meta.types"
+import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -102,6 +110,12 @@ export default function SettingsPage() {
   const [tokenStatus, setTokenStatus] = useState<MetaTokenStatus>("missing")
   const [statusDetail, setStatusDetail] = useState("")
   const [tokenExpiresAt, setTokenExpiresAt] = useState<string | null>(null)
+  const [isLoadingEvolution, setIsLoadingEvolution] = useState(true)
+  const [evolutionData, setEvolutionData] = useState<EvolutionSettingsResponse | null>(
+    null
+  )
+  const [evolutionError, setEvolutionError] = useState("")
+  const [copiedGroupId, setCopiedGroupId] = useState("")
 
   const loadAccounts = useCallback(async () => {
     const data = await fetchJsonOrThrow<MetaAccount[]>(
@@ -197,9 +211,44 @@ export default function SettingsPage() {
     }
   }, [loadAccounts])
 
+  const loadEvolutionStatus = useCallback(async () => {
+    setIsLoadingEvolution(true)
+    setEvolutionError("")
+
+    try {
+      const data = await fetchJsonOrThrow<EvolutionSettingsResponse>(
+        "/api/settings/evolution",
+        { cache: "no-store" },
+        "Nao foi possivel carregar a Evolution"
+      )
+
+      setEvolutionData(data)
+    } catch (error) {
+      setEvolutionError(
+        error instanceof Error ? error.message : "Erro ao carregar a Evolution"
+      )
+      setEvolutionData(null)
+    } finally {
+      setIsLoadingEvolution(false)
+    }
+  }, [])
+
   useEffect(() => {
     void loadMetaStatus()
-  }, [loadMetaStatus])
+    void loadEvolutionStatus()
+  }, [loadEvolutionStatus, loadMetaStatus])
+
+  async function handleCopyGroupId(groupId: string) {
+    try {
+      await navigator.clipboard.writeText(groupId)
+      setCopiedGroupId(groupId)
+      window.setTimeout(() => {
+        setCopiedGroupId((current) => (current === groupId ? "" : current))
+      }, 2000)
+    } catch {
+      setEvolutionError("Nao foi possivel copiar o ID do grupo.")
+    }
+  }
 
   async function handleValidateAndSave() {
     if (!token) {
@@ -447,6 +496,119 @@ export default function SettingsPage() {
             </div>
           </div>
         ) : null}
+
+        <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Conexao Evolution</h2>
+              <p className="text-sm text-gray-400">
+                Consulte a instancia ativa e copie o ID correto dos grupos do WhatsApp.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadEvolutionStatus()}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoadingEvolution ? "animate-spin" : ""}`} />
+              Atualizar
+            </button>
+          </div>
+
+          {evolutionError ? (
+            <ErrorState
+              title="Falha ao consultar a Evolution"
+              message={evolutionError}
+              className="mb-4 border-none bg-red-50 px-4 py-3 text-red-500"
+            />
+          ) : null}
+
+          {isLoadingEvolution ? (
+            <LoadingSkeleton label="Carregando instancia Evolution..." className="py-6" />
+          ) : evolutionData ? (
+            <>
+              <div className="mb-6 grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    Instancia
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-gray-900">
+                    {evolutionData.instance ?? "Nao informada"}
+                  </p>
+                  {evolutionData.detail ? (
+                    <p className="mt-1 text-xs text-gray-500">{evolutionData.detail}</p>
+                  ) : null}
+                </div>
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    Status
+                  </p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <StatusBadge
+                      className={
+                        evolutionData.connected
+                          ? "bg-green-50 text-green-600"
+                          : evolutionData.configured
+                            ? "bg-yellow-50 text-yellow-700"
+                            : "bg-gray-100 text-gray-500"
+                      }
+                    >
+                      {evolutionData.connected
+                        ? "Conectada"
+                        : evolutionData.configured
+                          ? "Configurada"
+                          : "Nao configurada"}
+                    </StatusBadge>
+                    <span className="text-sm text-gray-500">
+                      {evolutionData.groups.length} grupo(s)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-100">
+                <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
+                  <MessageCircle className="h-4 w-4 text-gray-400" />
+                  <p className="text-sm font-semibold text-gray-900">
+                    Grupos ativos na instancia
+                  </p>
+                </div>
+
+                {evolutionData.groups.length === 0 ? (
+                  <div className="px-4 py-6 text-sm text-gray-500">
+                    Nenhum grupo encontrado para esta instancia.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {evolutionData.groups.map((group) => (
+                      <div
+                        key={group.id}
+                        className="flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{group.subject}</p>
+                          <p className="mt-1 break-all text-xs text-gray-400">{group.id}</p>
+                          <p className="mt-1 text-xs text-gray-400">
+                            {group.size} participante(s)
+                            {group.announce ? " · Somente administradores enviam" : ""}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyGroupId(group.id)}
+                          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          {copiedGroupId === group.id ? "Copiado" : "Copiar ID"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : null}
+        </div>
       </div>
     </>
   )

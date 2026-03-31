@@ -8,6 +8,50 @@ export type ReportStatusValue = "PENDING" | "SENT" | "FAILED"
 
 export type ReportJobStage = "GENERATION" | "SEND"
 
+export type ReportSendMode =
+  | "PDF_AND_MESSAGE"
+  | "PDF_ONLY"
+  | "MESSAGE_ONLY"
+
+export type ReportSectionKey =
+  | "overview"
+  | "advancedMetrics"
+  | "chart"
+  | "campaignTable"
+  | "topAds"
+  | "gender"
+  | "insights"
+  | "summary"
+  | "notes"
+
+export type ReportSectionVisibility = Record<ReportSectionKey, boolean>
+
+export type ReportMetricKey =
+  | "spend"
+  | "impressions"
+  | "reach"
+  | "clicks"
+  | "ctr"
+  | "cpc"
+  | "cpm"
+  | "conversationsStarted"
+  | "costPerConversation"
+  | "conversationRate"
+
+export type ReportMetricVisibility = Record<ReportMetricKey, boolean>
+
+export type ReportTemplateDraft = {
+  name: string
+  customTitle: string
+  executiveSummary: string
+  closingNotes: string
+  sections: ReportSectionVisibility
+  metrics: ReportMetricVisibility
+  sendMode: ReportSendMode
+  sendMessage: string
+  updatedAt?: string
+}
+
 export type ReportJobError = {
   message: string
   stage: ReportJobStage
@@ -42,6 +86,25 @@ export type ReportCampaign = {
   }
 }
 
+export type ReportBreakdownRow = {
+  dimension: string
+  spend?: string
+  impressions?: string
+  reach?: string
+  clicks?: string
+  actions?: ReportAction[]
+}
+
+export type ReportAd = {
+  id: string
+  name: string
+  impressions?: string
+  reach?: string
+  clicks?: string
+  spend?: string
+  actions?: ReportAction[]
+}
+
 export type ReportClient = {
   id: string
   name: string
@@ -55,6 +118,8 @@ export type ReportPayload = {
   campaigns: ReportCampaign[]
   accountInsights?: ReportInsight
   dailyInsights?: ReportInsight[]
+  topAds?: ReportAd[]
+  genderBreakdown?: ReportBreakdownRow[]
 }
 
 export type ReportFilters = {
@@ -92,10 +157,17 @@ export type QueuedReportResponse = {
 
 export type ReportSendResponse = {
   ok: true
-  queued: true
+  queued: boolean
   reportId: string
-  jobId: string
+  jobId: string | null
   status: ReportStatusValue
+}
+
+export type ReportSendRequest = {
+  mode?: ReportSendMode
+  message?: string
+  pdfBase64?: string
+  pdfFileName?: string
 }
 
 export type SavedReportResponse = {

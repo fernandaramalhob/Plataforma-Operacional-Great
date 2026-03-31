@@ -95,24 +95,35 @@ test("pollSavedReportUntilReady resolves when payload becomes available", async 
 })
 
 test("sendReportToWhatsApp posts to the send endpoint", async () => {
-  globalThis.fetch = async () =>
-    new Response(
+  const calls = []
+
+  globalThis.fetch = async (input, init) => {
+    calls.push({ input, init })
+
+    return new Response(
       JSON.stringify({
         ok: true,
-        queued: true,
+        queued: false,
         reportId: "report-1",
-        jobId: "job-1",
-        status: "PENDING",
+        jobId: null,
+        status: "SENT",
       }),
       {
-        status: 202,
+        status: 200,
         headers: { "Content-Type": "application/json" },
       }
     )
+  }
 
-  const response = await sendReportToWhatsApp("report-1")
+  const response = await sendReportToWhatsApp("report-1", {
+    mode: "PDF_AND_MESSAGE",
+    message: "Resumo customizado",
+  })
 
-  assert.equal(response.jobId, "job-1")
+  assert.equal(response.jobId, null)
   assert.equal(response.reportId, "report-1")
+  assert.equal(calls[0]?.input, "/api/reports/report-1/send")
+  assert.equal(calls[0]?.init?.method, "POST")
+  assert.match(calls[0]?.init?.body ?? "", /PDF_AND_MESSAGE/)
   globalThis.fetch = originalFetch
 })

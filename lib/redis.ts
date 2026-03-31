@@ -17,6 +17,10 @@ function getRedisUrl() {
   return redisUrl
 }
 
+export function isRedisConfigured() {
+  return Boolean(process.env.REDIS_URL?.trim())
+}
+
 function createRedisConnection(kind: RedisConnectionKind) {
   const options: RedisOptions = {
     enableReadyCheck: false,

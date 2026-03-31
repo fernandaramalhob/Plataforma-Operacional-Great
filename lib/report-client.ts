@@ -1,5 +1,6 @@
 import { fetchJsonOrThrow } from "@/lib/api-client"
 import type {
+  ReportSendRequest,
   QueuedReportResponse,
   ReportRequest,
   ReportSendResponse,
@@ -75,11 +76,18 @@ export async function pollSavedReportUntilReady({
   )
 }
 
-export async function sendReportToWhatsApp(reportId: string) {
+export async function sendReportToWhatsApp(
+  reportId: string,
+  payload?: ReportSendRequest
+) {
   return fetchJsonOrThrow<ReportSendResponse>(
     `/api/reports/${reportId}/send`,
     {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload ?? {}),
     },
     "Nao foi possivel enviar o relatorio"
   )

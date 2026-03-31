@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server"
 import { canAccessClient, getCurrentUser } from "@/lib/authorization"
 import { parseStoredReportPayload } from "@/lib/report-domain"
-import { ensureReportWorkersStarted } from "@/lib/report-jobs"
+import { sendPersistedReportNow } from "@/lib/report-delivery"
 import { prisma } from "@/lib/prisma"
-import { enqueueReportSendJob } from "@/lib/report-queue"
 import { logError } from "@/lib/safe-logger"
+import type { ReportSendRequest } from "@/types/report.types"
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await ensureReportWorkersStarted()
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
@@ -71,22 +70,29 @@ export async function POST(
       )
     }
 
-    const job = await enqueueReportSendJob({
-      reportId: report.id,
+    const body = (await request.json().catch(() => ({}))) as ReportSendRequest
+    const delivery = await sendPersistedReportNow(report.id, {
+      mode: body.mode,
+      message: body.message,
+      pdfBase64: body.pdfBase64,
+      pdfFileName: body.pdfFileName,
     })
 
     return NextResponse.json(
       {
         ok: true,
-        queued: true,
+        queued: false,
         reportId: report.id,
-        jobId: job.id,
-        status: report.status,
+        jobId: null,
+        status: delivery.status,
       },
-      { status: 202 }
+      { status: 200 }
     )
   } catch (error) {
     logError("reports.send.unhandled", error)
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro interno" },
+      { status: 500 }
+    )
   }
 }

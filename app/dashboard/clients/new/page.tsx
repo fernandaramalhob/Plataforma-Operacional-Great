@@ -47,6 +47,11 @@ export default function NewClientPage() {
     setForm((current) => ({ ...current, [e.target.name]: e.target.value }))
   }
 
+  function handleFieldValueChange(name: "email" | "phone" | "notes" | "whatsappGroupId", value: string) {
+    setError("")
+    setForm((current) => ({ ...current, [name]: value }))
+  }
+
   function handleSelectChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setError("")
     setForm((current) => ({ ...current, [e.target.name]: e.target.value }))
@@ -163,6 +168,7 @@ export default function NewClientPage() {
             description="Selecione o perfil e a marca vinculada na sua integracao META."
             values={form}
             onChange={handleChange}
+            onValueChange={handleFieldValueChange}
             leadFields={
               <>
                 <div>

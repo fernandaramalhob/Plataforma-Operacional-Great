@@ -37,6 +37,7 @@ export type ClientListItem = {
   company: string | null
   email: string | null
   phone: string | null
+  whatsappGroupId?: string | null
   status: ClientStatusValue
   createdAt: string
   adAccountId: string | null

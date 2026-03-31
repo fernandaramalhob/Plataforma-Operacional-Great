@@ -16,11 +16,12 @@ function formatDate(date: string) {
   return new Date(`${date}T00:00:00`).toLocaleDateString("pt-BR")
 }
 
-export function buildWhatsAppReportMessage(params: {
-  reportId: string
+export function buildWhatsAppReportMessageFromPayload(params: {
   payload: StoredReportPayload
+  reportId?: string | null
+  reportUrlBase?: string | null
 }) {
-  const { reportId, payload } = params
+  const { payload, reportId, reportUrlBase } = params
   const accountInsights = payload.accountInsights ?? {}
   const spend = parseReportNumber(accountInsights.spend)
   const impressions = parseReportNumber(accountInsights.impressions)
@@ -35,9 +36,9 @@ export function buildWhatsAppReportMessage(params: {
     findBestCampaignByObjective(payload.campaigns, payload.filters.objective) ??
     payload.campaigns[0] ??
     null
-  const reportUrlBase = process.env.NEXTAUTH_URL?.replace(/\/+$/, "")
-  const reportUrl = reportUrlBase
-    ? `${reportUrlBase}/dashboard/reports/${reportId}`
+  const sanitizedReportUrlBase = reportUrlBase?.replace(/\/+$/, "")
+  const reportUrl = sanitizedReportUrlBase && reportId
+    ? `${sanitizedReportUrlBase}/dashboard/reports/${reportId}`
     : null
 
   return [
@@ -70,4 +71,29 @@ export function buildWhatsAppReportMessage(params: {
   ]
     .filter((line): line is string => Boolean(line))
     .join("\n")
+}
+
+export function buildWhatsAppReportMessage(params: {
+  reportId: string
+  payload: StoredReportPayload
+}) {
+  return buildWhatsAppReportMessageFromPayload({
+    payload: params.payload,
+    reportId: params.reportId,
+    reportUrlBase: process.env.NEXTAUTH_URL?.replace(/\/+$/, "") ?? null,
+  })
+}
+
+export function buildReportSendPreview(params: {
+  reportId?: string | null
+  payload: StoredReportPayload
+  message?: string | null
+}) {
+  const defaultMessage = buildWhatsAppReportMessageFromPayload({
+    payload: params.payload,
+    reportId: params.reportId ?? null,
+    reportUrlBase: null,
+  })
+
+  return params.message?.trim() || defaultMessage
 }

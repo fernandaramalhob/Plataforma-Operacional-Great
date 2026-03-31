@@ -12,6 +12,8 @@ import {
 import { CampaignSelector } from "@/components/clients/campaign-selector"
 import { Header } from "@/components/layout/header"
 import { ReportPreview } from "@/components/reports/report-preview"
+import { ReportTemplateEditor } from "@/components/reports/report-template-editor"
+import { SendReportComposer } from "@/components/reports/send-report-composer"
 import { EmptyState } from "@/components/shared/empty-state"
 import { ErrorState } from "@/components/shared/error-state"
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
@@ -21,17 +23,28 @@ import {
   FilterSearchInput,
 } from "@/components/ui/filter-controls"
 import { fetchJsonOrThrow } from "@/lib/api-client"
-import { exportReportPdf } from "@/lib/report-pdf"
+import { buildReportPdfFilePayload, exportReportPdf } from "@/lib/report-pdf"
+import { buildReportSendPreview } from "@/lib/report-message"
 import {
   pollSavedReportUntilReady,
   requestQueuedReport,
   sendReportToWhatsApp,
 } from "@/lib/report-client"
+import {
+  loadReportTemplate,
+  saveReportTemplate,
+} from "@/lib/report-template-storage"
 import { logError } from "@/lib/safe-logger"
 import type { ClientListItem } from "@/types/client.types"
 import type {
+  ReportMetricKey,
+  ReportMetricVisibility,
   ReportObjectiveValue,
   ReportPayload,
+  ReportSectionKey,
+  ReportSectionVisibility,
+  ReportSendMode,
+  ReportTemplateDraft,
   SavedReportResponse,
 } from "@/types/report.types"
 
@@ -43,6 +56,33 @@ const colors = [
   "bg-pink-500",
   "bg-teal-500",
 ]
+
+const DEFAULT_TEMPLATE_NAME = "Template padrao"
+
+const DEFAULT_REPORT_SECTIONS: ReportSectionVisibility = {
+  overview: true,
+  advancedMetrics: true,
+  chart: true,
+  campaignTable: true,
+  topAds: true,
+  gender: true,
+  insights: true,
+  summary: true,
+  notes: true,
+}
+
+const DEFAULT_REPORT_METRICS: ReportMetricVisibility = {
+  spend: true,
+  impressions: true,
+  reach: true,
+  clicks: true,
+  ctr: true,
+  cpc: true,
+  cpm: true,
+  conversationsStarted: true,
+  costPerConversation: true,
+  conversationRate: true,
+}
 
 function getColor(name: string) {
   return colors[name.charCodeAt(0) % colors.length]
@@ -77,6 +117,19 @@ export default function ReportsPage() {
     string | null
   >(null)
   const [actionFeedback, setActionFeedback] = useState("")
+  const [sendMode, setSendMode] = useState<ReportSendMode>("PDF_AND_MESSAGE")
+  const [sendMessage, setSendMessage] = useState("")
+  const [templateName, setTemplateName] = useState(DEFAULT_TEMPLATE_NAME)
+  const [customTitle, setCustomTitle] = useState("FACEBOOK - Visao Geral")
+  const [executiveSummary, setExecutiveSummary] = useState("")
+  const [closingNotes, setClosingNotes] = useState("")
+  const [sectionVisibility, setSectionVisibility] = useState<ReportSectionVisibility>(
+    DEFAULT_REPORT_SECTIONS
+  )
+  const [metricVisibility, setMetricVisibility] = useState<ReportMetricVisibility>(
+    DEFAULT_REPORT_METRICS
+  )
+  const [savedTemplateLabel, setSavedTemplateLabel] = useState<string | null>(null)
 
   const [activePeriod, setActivePeriod] = useState("7d")
   const [startDate, setStartDate] = useState("")
@@ -92,6 +145,39 @@ export default function ReportsPage() {
     []
   )
 
+  const resetCustomization = useCallback(() => {
+    setTemplateName(DEFAULT_TEMPLATE_NAME)
+    setCustomTitle("FACEBOOK - Visao Geral")
+    setExecutiveSummary("")
+    setClosingNotes("")
+    setSectionVisibility(DEFAULT_REPORT_SECTIONS)
+    setMetricVisibility(DEFAULT_REPORT_METRICS)
+    setSavedTemplateLabel(null)
+  }, [])
+
+  const applyTemplate = useCallback(
+    (template: ReportTemplateDraft | null, fallbackMessage?: string) => {
+      if (!template) {
+        setSavedTemplateLabel(null)
+        if (fallbackMessage !== undefined) {
+          setSendMessage(fallbackMessage)
+        }
+        return
+      }
+
+      setTemplateName(template.name || DEFAULT_TEMPLATE_NAME)
+      setCustomTitle(template.customTitle || "FACEBOOK - Visao Geral")
+      setExecutiveSummary(template.executiveSummary || "")
+      setClosingNotes(template.closingNotes || "")
+      setSectionVisibility(template.sections || DEFAULT_REPORT_SECTIONS)
+      setMetricVisibility(template.metrics || DEFAULT_REPORT_METRICS)
+      setSendMode(template.sendMode || "PDF_AND_MESSAGE")
+      setSendMessage(template.sendMessage || fallbackMessage || "")
+      setSavedTemplateLabel(template.name || DEFAULT_TEMPLATE_NAME)
+    },
+    []
+  )
+
   const applySavedReport = useCallback((savedReport: SavedReportResponse) => {
     if (!savedReport.payload) {
       return false
@@ -102,15 +188,26 @@ export default function ReportsPage() {
       campaigns: savedReport.payload.campaigns,
       accountInsights: savedReport.payload.accountInsights,
       dailyInsights: savedReport.payload.dailyInsights,
+      topAds: savedReport.payload.topAds,
+      genderBreakdown: savedReport.payload.genderBreakdown,
     }
 
     setCurrentReportId(savedReport.id)
     setCurrentReportGeneratedAt(savedReport.generatedAt)
     setReportData(payload)
     setSelectedCampaigns(payload.campaigns.map((campaign) => campaign.id))
+    const previewMessage = buildReportSendPreview({
+      reportId: savedReport.id,
+      payload: savedReport.payload,
+    })
+    const savedTemplate = selectedClient
+      ? loadReportTemplate(selectedClient.id)
+      : null
+
+    applyTemplate(savedTemplate, previewMessage)
 
     return true
-  }, [])
+  }, [applyTemplate, selectedClient])
 
   const clearCurrentReport = useCallback(() => {
     reportPollSequenceRef.current += 1
@@ -121,7 +218,18 @@ export default function ReportsPage() {
     setCurrentReportGeneratedAt(null)
     setActionFeedback("")
     setLoadingReportMessage("")
+    setSendMode("PDF_AND_MESSAGE")
+    setSendMessage("")
   }, [])
+
+  useEffect(() => {
+    if (!selectedClient) {
+      resetCustomization()
+      return
+    }
+
+    applyTemplate(loadReportTemplate(selectedClient.id))
+  }, [applyTemplate, resetCustomization, selectedClient])
 
   useEffect(() => {
     const today = new Date()
@@ -259,6 +367,56 @@ export default function ReportsPage() {
     )
   }
 
+  function toggleSection(section: ReportSectionKey) {
+    setSectionVisibility((current) => ({
+      ...current,
+      [section]: !current[section],
+    }))
+  }
+
+  function toggleMetric(metric: ReportMetricKey) {
+    setMetricVisibility((current) => ({
+      ...current,
+      [metric]: !current[metric],
+    }))
+  }
+
+  function handleSaveTemplate() {
+    if (!selectedClient) {
+      return
+    }
+
+    const template: ReportTemplateDraft = {
+      name: templateName.trim() || DEFAULT_TEMPLATE_NAME,
+      customTitle,
+      executiveSummary,
+      closingNotes,
+      sections: sectionVisibility,
+      metrics: metricVisibility,
+      sendMode,
+      sendMessage,
+    }
+
+    saveReportTemplate(selectedClient.id, template)
+    setSavedTemplateLabel(template.name)
+    setActionFeedback(`Template "${template.name}" salvo para este cliente.`)
+  }
+
+  function handleLoadTemplate() {
+    if (!selectedClient) {
+      return
+    }
+
+    const template = loadReportTemplate(selectedClient.id)
+    if (!template) {
+      setActionFeedback("Ainda nao existe template salvo para este cliente.")
+      return
+    }
+
+    applyTemplate(template, sendMessage)
+    setActionFeedback(`Template "${template.name}" carregado.`)
+  }
+
   async function handleGeneratePdf() {
     const sourceElement = pdfReportRef.current ?? reportRef.current
 
@@ -287,7 +445,9 @@ export default function ReportsPage() {
   }
 
   async function handleSendReport() {
-    if (!currentReportId) {
+    const sourceElement = pdfReportRef.current ?? reportRef.current
+
+    if (!currentReportId || !selectedClient || !sourceElement) {
       return
     }
 
@@ -296,8 +456,27 @@ export default function ReportsPage() {
     setActionFeedback("")
 
     try {
-      await sendReportToWhatsApp(currentReportId)
-      setActionFeedback("Envio enfileirado. Vamos processar o WhatsApp em segundo plano.")
+      const pdfAttachment =
+        sendMode === "PDF_ONLY" || sendMode === "PDF_AND_MESSAGE"
+          ? await buildReportPdfFilePayload({
+              sourceElement,
+              clientName: selectedClient.name,
+              startDate,
+              endDate,
+              objective,
+              generatedAt: currentReportGeneratedAt ?? new Date(),
+              reportId: currentReportId,
+            })
+          : null
+
+      await sendReportToWhatsApp(currentReportId, {
+        mode: sendMode,
+        message:
+          sendMode === "PDF_ONLY" ? undefined : sendMessage,
+        pdfBase64: pdfAttachment?.base64,
+        pdfFileName: pdfAttachment?.fileName,
+      })
+      setActionFeedback("Envio concluido com o formato selecionado.")
     } catch (error) {
       setReportError(
         error instanceof Error
@@ -393,7 +572,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="flex flex-col xl:h-[calc(100vh-72px)] xl:flex-row print:block">
-        <aside className="w-full flex-shrink-0 overflow-y-auto border-b border-slate-200/80 bg-[#FCFDFE] p-4 sm:p-6 xl:w-[320px] xl:border-b-0 xl:border-r print:hidden">
+        <aside className="w-full flex-shrink-0 overflow-y-auto border-b border-slate-200/80 bg-[#FCFDFE] p-4 sm:p-6 xl:w-[420px] xl:border-b-0 xl:border-r print:hidden">
           <button
             onClick={() => {
               setSelectedClient(null)
@@ -515,6 +694,27 @@ export default function ReportsPage() {
             </div>
           ) : null}
 
+          <div className="mb-5">
+            <ReportTemplateEditor
+              templateName={templateName}
+              customTitle={customTitle}
+              executiveSummary={executiveSummary}
+              closingNotes={closingNotes}
+              sections={sectionVisibility}
+              metrics={metricVisibility}
+              hasSavedTemplate={Boolean(savedTemplateLabel)}
+              savedTemplateLabel={savedTemplateLabel}
+              onTemplateNameChange={setTemplateName}
+              onCustomTitleChange={setCustomTitle}
+              onExecutiveSummaryChange={setExecutiveSummary}
+              onClosingNotesChange={setClosingNotes}
+              onSectionToggle={toggleSection}
+              onMetricToggle={toggleMetric}
+              onSaveTemplate={handleSaveTemplate}
+              onLoadTemplate={handleLoadTemplate}
+            />
+          </div>
+
           <div className="mb-5 rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
             <label className="flex items-center justify-between gap-3">
               <span>
@@ -593,6 +793,20 @@ export default function ReportsPage() {
                 </div>
               ) : null}
 
+              {currentReportId ? (
+                <div className="mb-5">
+                  <SendReportComposer
+                    mode={sendMode}
+                    message={sendMessage}
+                    groupLabel={selectedClient.whatsappGroupId || "Grupo do cliente"}
+                    templateName={templateName}
+                    disabled={isSending}
+                    onModeChange={setSendMode}
+                    onMessageChange={setSendMessage}
+                  />
+                </div>
+              ) : null}
+
               <div ref={reportRef}>
                 <ReportPreview
                   client={selectedClient}
@@ -602,6 +816,11 @@ export default function ReportsPage() {
                   objective={objective}
                   selectedCampaignIds={selectedCampaigns}
                   insightsEnabled={insightsEnabled}
+                  metricVisibility={metricVisibility}
+                  customTitle={customTitle}
+                  executiveSummary={executiveSummary}
+                  closingNotes={closingNotes}
+                  sectionVisibility={sectionVisibility}
                 />
               </div>
             </div>
@@ -668,6 +887,11 @@ export default function ReportsPage() {
               objective={objective}
               selectedCampaignIds={selectedCampaigns}
               insightsEnabled={insightsEnabled}
+              metricVisibility={metricVisibility}
+              customTitle={customTitle}
+              executiveSummary={executiveSummary}
+              closingNotes={closingNotes}
+              sectionVisibility={sectionVisibility}
               variant="pdf"
             />
           </div>

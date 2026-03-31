@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Header } from "@/components/layout/header"
 import { useParams } from "next/navigation"
 import {
@@ -10,11 +10,12 @@ import {
   MousePointer,
   DollarSign,
   BarChart2,
+  Send,
 } from "lucide-react"
 import Link from "next/link"
 import { fetchJsonOrThrow } from "@/lib/api-client"
 import type { ClientDetail } from "@/types/client.types"
-import type { ReportCampaign } from "@/types/report.types"
+import type { ReportCampaign, ReportObjectiveValue, ReportSendResponse } from "@/types/report.types"
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
@@ -33,6 +34,10 @@ function getColor(name: string) {
   return colors[name.charCodeAt(0) % colors.length]
 }
 
+function formatDateInput(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [client, setClient] = useState<ClientDetail | null>(null)
@@ -40,6 +45,19 @@ export default function ClientDetailPage() {
   const [loadingClient, setLoadingClient] = useState(true)
   const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const [error, setError] = useState("")
+  const [isSendingReport, setIsSendingReport] = useState(false)
+  const [sendFeedback, setSendFeedback] = useState("")
+  const [sendError, setSendError] = useState("")
+  const [lastSentReportId, setLastSentReportId] = useState<string | null>(null)
+  const [objective, setObjective] = useState<ReportObjectiveValue>("ALL")
+  const defaultStartDate = useMemo(() => {
+    const date = new Date()
+    date.setDate(date.getDate() - 7)
+    return formatDateInput(date)
+  }, [])
+  const defaultEndDate = useMemo(() => formatDateInput(new Date()), [])
+  const [startDate, setStartDate] = useState(defaultStartDate)
+  const [endDate, setEndDate] = useState(defaultEndDate)
 
   useEffect(() => {
     void fetchJsonOrThrow<ClientDetail>(
@@ -55,6 +73,43 @@ export default function ClientDetailPage() {
       })
       .finally(() => setLoadingClient(false))
   }, [id])
+
+  async function handleManualSend() {
+    setIsSendingReport(true)
+    setSendFeedback("")
+    setSendError("")
+
+    try {
+      const response = await fetchJsonOrThrow<ReportSendResponse>(
+        `/api/clients/${id}/send-report`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            since: startDate,
+            until: endDate,
+            objective,
+          }),
+        },
+        "Nao foi possivel enviar o relatorio manualmente"
+      )
+
+      setLastSentReportId(response.reportId)
+      setSendFeedback(
+        response.queued
+          ? "Envio manual enfileirado com sucesso."
+          : "Relatorio enviado com sucesso para o grupo do cliente."
+      )
+    } catch (sendReportError) {
+      setSendError(
+        sendReportError instanceof Error
+          ? sendReportError.message
+          : "Nao foi possivel enviar o relatorio manualmente"
+      )
+    } finally {
+      setIsSendingReport(false)
+    }
+  }
 
   useEffect(() => {
     void fetchJsonOrThrow<ReportCampaign[]>(
@@ -136,6 +191,109 @@ export default function ClientDetailPage() {
           >
             Editar Cliente
           </Link>
+        </div>
+
+        <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Envio manual de relatorio</h3>
+              <p className="mt-1 text-sm text-gray-400">
+                Gere e envie um relatorio agora para o grupo configurado deste cliente.
+              </p>
+            </div>
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+              Grupo: {client.whatsappGroupId ?? "Nao configurado"}
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Data inicial
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(event) => setStartDate(event.target.value)}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Data final
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(event) => setEndDate(event.target.value)}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Objetivo
+              </label>
+              <select
+                value={objective}
+                onChange={(event) =>
+                  setObjective(event.target.value as ReportObjectiveValue)
+                }
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+              >
+                <option value="ALL">Todos</option>
+                <option value="LINK_CLICKS">Trafego</option>
+                <option value="CONVERSIONS">Conversao</option>
+                <option value="MESSAGES">Mensagens</option>
+              </select>
+            </div>
+          </div>
+
+          {sendError ? (
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              {sendError}
+            </div>
+          ) : null}
+
+          {sendFeedback ? (
+            <div className="mt-4 rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {sendFeedback}
+              {lastSentReportId ? (
+                <>
+                  {" "}
+                  <Link
+                    href={`/dashboard/reports/${lastSentReportId}`}
+                    className="font-semibold underline"
+                  >
+                    Abrir relatorio salvo
+                  </Link>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="mt-5 flex items-center justify-between gap-4">
+            <p className="text-xs text-gray-400">
+              O envio usa o `whatsappGroupId` salvo no cadastro do cliente.
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleManualSend()}
+              disabled={isSendingReport || !client.whatsappGroupId}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
+            >
+              {isSendingReport ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  Enviar relatorio agora
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
