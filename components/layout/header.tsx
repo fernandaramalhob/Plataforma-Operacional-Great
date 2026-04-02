@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { Bell, CalendarDays, CheckCheck, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 
 interface HeaderProps {
   title?: string
@@ -263,6 +264,8 @@ export function Header({ title }: HeaderProps) {
             </div>
 
             <div className="flex items-center justify-end gap-2">
+              <ThemeToggle />
+
               <div className="relative">
                 {isNotificationsOpen ? (
                   <button

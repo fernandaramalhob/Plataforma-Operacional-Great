@@ -44,7 +44,7 @@ export function ClientSendStatus({ items }: ClientSendStatusProps) {
       <div className="mb-6 flex items-end justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
-            Ultimo envio por cliente
+            Último envio por cliente
           </p>
           <h2 className="mt-2 text-[30px] leading-none tracking-[-0.04em] text-slate-950">
             Status de entrega
@@ -54,7 +54,7 @@ export function ClientSendStatus({ items }: ClientSendStatusProps) {
           href="/dashboard/history"
           className="text-sm font-medium text-[#C1121F] transition hover:opacity-70"
         >
-          Ver historico
+          Ver histórico
         </Link>
       </div>
 
@@ -96,7 +96,7 @@ export function ClientSendStatus({ items }: ClientSendStatusProps) {
 
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
                     <span>{item.time}</span>
-                    <span>{item.referenceWeek ? `Ref. ${item.referenceWeek}` : "Sem referencia"}</span>
+                    <span>{item.referenceWeek ? `Ref. ${item.referenceWeek}` : "Sem referência"}</span>
                     <span>
                       {item.attempts > 0
                         ? `${item.attempts} tentativa(s)`

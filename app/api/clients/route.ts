@@ -107,7 +107,7 @@ function serializeClientsToCsv(
       client.email ?? "",
       client.phone ?? "",
       client.status,
-      client.adAccountId ? "Conectado" : "Nao conectado",
+      client.adAccountId ? "Conectado" : "Não conectado",
       client.adAccountId ?? "",
       client.adAccountName ?? "",
       client.whatsappGroupId ?? "",
@@ -125,7 +125,7 @@ export async function GET(request: Request) {
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const body = await request.json()

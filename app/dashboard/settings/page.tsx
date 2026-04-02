@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import Image from "next/image"
 import { useCallback, useEffect, useState } from "react"
@@ -121,7 +121,7 @@ export default function SettingsPage() {
     const data = await fetchJsonOrThrow<MetaAccount[]>(
       "/api/settings/meta-account",
       undefined,
-      "Nao foi possivel carregar as contas META"
+      "Não foi possível carregar as contas META"
     )
 
     setAccounts(Array.isArray(data) ? data : [])
@@ -219,7 +219,7 @@ export default function SettingsPage() {
       const data = await fetchJsonOrThrow<EvolutionSettingsResponse>(
         "/api/settings/evolution",
         { cache: "no-store" },
-        "Nao foi possivel carregar a Evolution"
+        "Não foi possível carregar a Evolution"
       )
 
       setEvolutionData(data)
@@ -246,7 +246,7 @@ export default function SettingsPage() {
         setCopiedGroupId((current) => (current === groupId ? "" : current))
       }, 2000)
     } catch {
-      setEvolutionError("Nao foi possivel copiar o ID do grupo.")
+      setEvolutionError("Não foi possível copiar o ID do grupo.")
     }
   }
 
@@ -313,13 +313,13 @@ export default function SettingsPage() {
         return
       }
 
-      throw new Error(getApiErrorMessage(data, "Nao foi possivel importar a conta"))
+      throw new Error(getApiErrorMessage(data, "Não foi possível importar a conta"))
     } catch (error) {
       setResult("error")
       setErrorMsg(
         error instanceof Error
           ? error.message
-          : "Nao foi possivel importar a conta"
+          : "Não foi possível importar a conta"
       )
     } finally {
       setImporting(null)
@@ -500,9 +500,9 @@ export default function SettingsPage() {
         <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Conexao Evolution</h2>
+              <h2 className="text-lg font-bold text-gray-900">Conexão Evolution</h2>
               <p className="text-sm text-gray-400">
-                Consulte a instancia ativa e copie o ID correto dos grupos do WhatsApp.
+                Consulte a instância ativa e copie o ID correto dos grupos do WhatsApp.
               </p>
             </div>
             <button
@@ -524,16 +524,16 @@ export default function SettingsPage() {
           ) : null}
 
           {isLoadingEvolution ? (
-            <LoadingSkeleton label="Carregando instancia Evolution..." className="py-6" />
+            <LoadingSkeleton label="Carregando instância Evolution..." className="py-6" />
           ) : evolutionData ? (
             <>
               <div className="mb-6 grid gap-4 md:grid-cols-2">
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    Instancia
+                    Instância
                   </p>
                   <p className="mt-2 text-sm font-semibold text-gray-900">
-                    {evolutionData.instance ?? "Nao informada"}
+                    {evolutionData.instance ?? "Não informada"}
                   </p>
                   {evolutionData.detail ? (
                     <p className="mt-1 text-xs text-gray-500">{evolutionData.detail}</p>
@@ -557,7 +557,7 @@ export default function SettingsPage() {
                         ? "Conectada"
                         : evolutionData.configured
                           ? "Configurada"
-                          : "Nao configurada"}
+                          : "Não configurada"}
                     </StatusBadge>
                     <span className="text-sm text-gray-500">
                       {evolutionData.groups.length} grupo(s)
@@ -570,13 +570,13 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
                   <MessageCircle className="h-4 w-4 text-gray-400" />
                   <p className="text-sm font-semibold text-gray-900">
-                    Grupos ativos na instancia
+                    Grupos ativos na instância
                   </p>
                 </div>
 
                 {evolutionData.groups.length === 0 ? (
                   <div className="px-4 py-6 text-sm text-gray-500">
-                    Nenhum grupo encontrado para esta instancia.
+                    Nenhum grupo encontrado para esta instância.
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-100">

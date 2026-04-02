@@ -42,6 +42,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<ClientListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
+  const [deletingClientId, setDeletingClientId] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [metaFilter, setMetaFilter] = useState("ALL")
@@ -112,9 +113,42 @@ export default function ClientsPage() {
       document.body.removeChild(link)
       window.URL.revokeObjectURL(downloadUrl)
     } catch {
-      window.alert("Nao foi possivel exportar a listagem em CSV.")
+      window.alert("Não foi possível exportar a listagem em CSV.")
     } finally {
       setExporting(false)
+    }
+  }
+
+  async function handleDeleteClient(client: ClientListItem) {
+    const shouldDelete = window.confirm(
+      `Tem certeza que deseja excluir o cliente "${client.name}"? Esta ação não pode ser desfeita.`
+    )
+
+    if (!shouldDelete) {
+      return
+    }
+
+    setDeletingClientId(client.id)
+
+    try {
+      const response = await fetch(`/api/clients/${client.id}`, {
+        method: "DELETE",
+      })
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string; message?: string }
+        | null
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Não foi possível excluir o cliente.")
+      }
+
+      setClients((current) => current.filter((item) => item.id !== client.id))
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "Não foi possível excluir o cliente."
+      )
+    } finally {
+      setDeletingClientId(null)
     }
   }
 
@@ -167,7 +201,7 @@ export default function ClientsPage() {
               }}
               className="min-w-[220px]"
               options={[
-                { value: "ALL", label: "Integracao META: Todos" },
+                { value: "ALL", label: "Integração META: Todos" },
                 { value: "CONNECTED", label: "Conectado" },
                 { value: "DISCONNECTED", label: "Desconectado" },
               ]}
@@ -194,7 +228,11 @@ export default function ClientsPage() {
               className="m-6 border-none px-4 py-20"
             />
           ) : (
-            <ClientTable clients={clients} />
+            <ClientTable
+              clients={clients}
+              deletingClientId={deletingClientId}
+              onDeleteClient={handleDeleteClient}
+            />
           )}
         </div>
       </div>

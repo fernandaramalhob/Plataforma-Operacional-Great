@@ -42,12 +42,12 @@ export function buildWhatsAppReportMessageFromPayload(params: {
     : null
 
   return [
-    "*GreatGo | Relatorio META Ads*",
+    "*GreatGo | Relatório META Ads*",
     `Cliente: ${payload.client.name}`,
-    `Periodo: ${formatDate(payload.filters.since)} ate ${formatDate(payload.filters.until)}`,
+    `Período: ${formatDate(payload.filters.since)} até ${formatDate(payload.filters.until)}`,
     "",
     `Investimento: ${formatCurrency(spend)}`,
-    `Impressoes: ${formatInteger(impressions)}`,
+    `Impressões: ${formatInteger(impressions)}`,
     `Alcance: ${formatInteger(reach)}`,
     `Cliques: ${formatInteger(clicks)}`,
     `CTR: ${formatPercentage(ctr)}`,
@@ -64,10 +64,10 @@ export function buildWhatsAppReportMessageFromPayload(params: {
     objectiveMetric.valueLabel && objectiveMetric.valueAmount > 0
       ? `${objectiveMetric.valueLabel}: ${formatCurrency(objectiveMetric.valueAmount)}`
       : null,
-    `Campanhas no relatorio: ${payload.campaigns.length}`,
+    `Campanhas no relatório: ${payload.campaigns.length}`,
     bestCampaign ? `Melhor campanha: ${bestCampaign.name}` : null,
     reportUrl ? "" : null,
-    reportUrl ? `Abrir relatorio: ${reportUrl}` : null,
+    reportUrl ? `Abrir relatório: ${reportUrl}` : null,
   ]
     .filter((line): line is string => Boolean(line))
     .join("\n")

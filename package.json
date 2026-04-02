@@ -8,6 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --experimental-strip-types --loader ./tests/alias-loader.mjs ./tests/run.mjs",
+    "report:weekly": "node --env-file ./.env.local --experimental-strip-types --loader ./tests/alias-loader.mjs ./scripts/run_weekly_doctor_reports.mts",
+    "report:weekly:dry-run": "node --env-file ./.env.local --experimental-strip-types --loader ./tests/alias-loader.mjs ./scripts/run_weekly_doctor_reports.mts --dry-run",
+    "report:weekly:daemon": "node --env-file ./.env.local --experimental-strip-types --loader ./tests/alias-loader.mjs ./scripts/run_weekly_doctor_reports_daemon.mts",
+    "report:weekly:daemon:dry-run": "node --env-file ./.env.local --experimental-strip-types --loader ./tests/alias-loader.mjs ./scripts/run_weekly_doctor_reports_daemon.mts --dry-run --once --force-run",
     "user:create": "node scripts/create-user.mjs",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate"

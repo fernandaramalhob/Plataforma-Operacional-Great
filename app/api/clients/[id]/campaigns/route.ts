@@ -12,7 +12,7 @@ export async function GET(
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -30,7 +30,7 @@ export async function GET(
     })
 
     if (!client) {
-      return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     if (!canAccessClient(user, client.managerId)) {
@@ -51,7 +51,7 @@ export async function GET(
         {
           error:
             health.detail ??
-            "Token META ou conta de anuncio nao configurados",
+            "Token META ou conta de anúncio não configurados",
           tokenStatus: health.status,
           expiresAt: health.expiresAt,
         },

@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import Image from "next/image"
 import { useState } from "react"
@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { loginSchema } from "@/lib/validations/auth.schema"
 
 type LoginForm = z.infer<typeof loginSchema>
@@ -37,7 +38,7 @@ export default function LoginPage() {
     })
 
     if (result?.error) {
-      setError("E-mail ou senha invalidos")
+      setError("E-mail ou senha inválidos")
       setIsLoading(false)
       return
     }
@@ -46,9 +47,16 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f0f4f8] flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-sm w-full max-w-[480px] px-10 py-10">
-        <div className="flex flex-col items-center mb-8">
+    <main
+      className="relative flex min-h-screen items-center justify-center px-4"
+      style={{ backgroundColor: "var(--color-app-background)" }}
+    >
+      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+        <ThemeToggle />
+      </div>
+
+      <div className="w-full max-w-[480px] rounded-2xl bg-white px-10 py-10 shadow-sm">
+        <div className="mb-8 flex flex-col items-center">
           <Image
             src="/logo.png"
             alt="Logo GreatGo"
@@ -61,47 +69,53 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-gray-400">
             Operação de relatórios para META Ads
           </p>
-          <p className="mt-3 rounded-full bg-[#FEF2F2] px-3 py-1 text-xs font-medium text-[#C1121F]">
+          <p
+            className="mt-3 rounded-full px-3 py-1 text-xs font-medium"
+            style={{
+              backgroundColor: "var(--color-primary-soft)",
+              color: "var(--color-primary)",
+            }}
+          >
             Acesso para usuários cadastrados
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3 mb-6">
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
               E-mail
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 {...register("email")}
                 type="email"
                 placeholder="seuemail@empresa.com"
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C1121F] focus:border-transparent transition"
+                className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 text-sm text-gray-900 transition placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
               />
             </div>
             {errors.email && (
-              <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+              <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
               Senha
             </label>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 {...register("password")}
                 type={showPassword ? "text" : "password"}
                 placeholder="********"
-                className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C1121F] focus:border-transparent transition"
+                className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-10 text-sm text-gray-900 transition placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
               />
               <button
                 type="button"
@@ -109,25 +123,25 @@ export default function LoginPage() {
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 {showPassword ? (
-                  <EyeOff className="w-4 h-4" />
+                  <EyeOff className="h-4 w-4" />
                 ) : (
-                  <Eye className="w-4 h-4" />
+                  <Eye className="h-4 w-4" />
                 )}
               </button>
             </div>
             {errors.password && (
-              <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
+              <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
             )}
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#C1121F] hover:bg-[#A50F1A] text-white font-semibold py-3.5 rounded-xl transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#C1121F] py-3.5 font-semibold text-white transition hover:bg-[#A50F1A] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Entrando...
               </>
             ) : (
@@ -139,4 +153,3 @@ export default function LoginPage() {
     </main>
   )
 }
-

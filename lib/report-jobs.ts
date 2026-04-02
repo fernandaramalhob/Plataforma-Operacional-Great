@@ -1,12 +1,15 @@
 import { Worker, type Job } from "bullmq"
 import {
+  buildAutomationReferenceWeekDate,
+  loadReportAutomationSettings,
+  maskAutomationGroupId,
+} from "@/lib/report-automation"
+import {
   buildReferenceWeekDate,
   buildReportJobErrorPayload,
   buildStoredReportPayload,
-  parseStoredReportPayload,
   serializeStoredReportPayload,
 } from "@/lib/report-domain"
-import { sendWhatsAppText } from "@/lib/evolution-api"
 import {
   handleTerminalJobFailure,
   recordReportAlert,
@@ -24,12 +27,12 @@ import {
   getReportQueuePrefix,
   upsertWeeklyReportJobScheduler,
 } from "@/lib/report-queue"
-import { buildWhatsAppReportMessage } from "@/lib/report-message"
 import {
   buildLastCompletedWeekRange,
   generateLiveReportPayload,
   queueReportGeneration,
 } from "@/lib/report-service"
+import { sendPersistedReportNow } from "@/lib/report-delivery"
 import { getRedisConnection } from "@/lib/redis"
 import { logError } from "@/lib/safe-logger"
 
@@ -60,20 +63,6 @@ function getBatchSize(envName: string, fallback: number) {
   return value
 }
 
-function maskWhatsAppDestination(destination: string | null) {
-  if (!destination) {
-    return null
-  }
-
-  const normalized = destination.trim()
-
-  if (normalized.length <= 6) {
-    return "[REDACTED]"
-  }
-
-  return `${normalized.slice(0, 4)}***${normalized.slice(-2)}`
-}
-
 async function resolveWeeklyRequestedByUserId(clientManagerId: string | null) {
   if (clientManagerId) {
     return clientManagerId
@@ -92,7 +81,7 @@ async function resolveWeeklyRequestedByUserId(clientManagerId: string | null) {
   })
 
   if (!admin) {
-    throw new Error("Nenhum administrador disponivel para executar o job semanal")
+    throw new Error("Nenhum administrador disponível para executar o job semanal")
   }
 
   return admin.id
@@ -117,7 +106,7 @@ async function processReportGeneration(job: Job<GenerateReportJobData>) {
   })
 
   if (!report) {
-    throw new Error("Relatorio nao encontrado para processamento")
+    throw new Error("Relatório não encontrado para processamento")
   }
 
   const user = await prisma.user.findUnique({
@@ -130,7 +119,7 @@ async function processReportGeneration(job: Job<GenerateReportJobData>) {
   })
 
   if (!user) {
-    throw new Error("Usuario responsavel pelo job nao encontrado")
+    throw new Error("Usuário responsável pelo job não encontrado")
   }
 
   let failureStage: "GENERATION" | "SEND" = "GENERATION"
@@ -173,7 +162,7 @@ async function processReportGeneration(job: Job<GenerateReportJobData>) {
     }
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Erro ao gerar relatorio"
+      error instanceof Error ? error.message : "Erro ao gerar relatório"
 
     logError("report-jobs.generate", error, {
       reportId: job.data.reportId,
@@ -193,6 +182,7 @@ async function processReportGeneration(job: Job<GenerateReportJobData>) {
 }
 
 async function processReportSend(job: Job<SendReportJobData>) {
+  const automationSettings = loadReportAutomationSettings()
   const report = await prisma.report.findUnique({
     where: { id: job.data.reportId },
     include: {
@@ -203,79 +193,26 @@ async function processReportSend(job: Job<SendReportJobData>) {
           whatsappGroupId: true,
         },
       },
-      sendLogs: {
-        select: {
-          attemptNumber: true,
-        },
-        orderBy: {
-          attemptNumber: "desc",
-        },
-        take: 1,
-      },
     },
   })
 
   if (!report) {
-    throw new Error("Relatorio nao encontrado para envio")
+    throw new Error("Relatório não encontrado para envio")
   }
 
-  const attemptNumber = (report.sendLogs[0]?.attemptNumber ?? 0) + 1
-  const sendLog = await prisma.sendLog.create({
-    data: {
-      reportId: report.id,
-      channel: "WHATSAPP_GROUP",
-      attemptNumber,
-      status: "PENDING",
-    },
-  })
-
   try {
-    const payload = parseStoredReportPayload(report.payloadJson)
-
-    if (!payload) {
-      throw new Error("Relatorio ainda nao foi gerado")
-    }
-
-    if (!report.client.whatsappGroupId) {
-      throw new Error("Cliente sem grupo de WhatsApp configurado")
-    }
-
-    const message = buildWhatsAppReportMessage({
-      reportId: report.id,
-      payload,
+    return await sendPersistedReportNow(report.id, {
+      mode: automationSettings.sendMode,
+      groupId: automationSettings.groupId,
     })
-    const delivery = await sendWhatsAppText({
-      number: report.client.whatsappGroupId,
-      text: message,
-    })
-
-    await prisma.$transaction([
-      prisma.sendLog.update({
-        where: { id: sendLog.id },
-        data: {
-          status: "OK",
-          sentAt: new Date(),
-          errorMessage: null,
-        },
-      }),
-      prisma.report.update({
-        where: { id: report.id },
-        data: {
-          status: "SENT",
-        },
-      }),
-    ])
-
-    return delivery
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Erro ao enviar relatorio"
+      error instanceof Error ? error.message : "Erro ao enviar relatório"
     const attemptsConfigured = job.opts.attempts ?? 1
     const currentAttempt = job.attemptsMade + 1
 
     logError("report-jobs.send", error, {
       reportId: report.id,
-      sendLogId: sendLog.id,
       jobId: job.id,
     })
 
@@ -285,38 +222,24 @@ async function processReportSend(job: Job<SendReportJobData>) {
       source: "send-report",
       message:
         currentAttempt >= attemptsConfigured
-          ? "Falha definitiva ao enviar relatorio para o WhatsApp."
-          : "Falha ao enviar relatorio para o WhatsApp. O sistema vai tentar novamente.",
-      dedupeKey: `${report.id}:${sendLog.id}:${currentAttempt}`,
+          ? "Falha definitiva ao enviar relatório para o WhatsApp."
+          : "Falha ao enviar relatório para o WhatsApp. O sistema vai tentar novamente.",
+      dedupeKey: `${report.id}:send:${currentAttempt}`,
       details: {
         reportId: report.id,
         clientId: report.client.id,
         clientName: report.client.name,
-        sendLogId: sendLog.id,
-        attemptNumber,
+        sendLogId: null,
+        attemptNumber: null,
         currentAttempt,
         attemptsConfigured,
         jobId: job.id ? String(job.id) : null,
-        whatsappGroupId: maskWhatsAppDestination(report.client.whatsappGroupId),
+        whatsappGroupId: maskAutomationGroupId(
+          automationSettings.groupId || report.client.whatsappGroupId
+        ),
         errorMessage: message,
       },
     })
-
-    await prisma.$transaction([
-      prisma.sendLog.update({
-        where: { id: sendLog.id },
-        data: {
-          status: "FAILED",
-          errorMessage: message,
-        },
-      }),
-      prisma.report.update({
-        where: { id: report.id },
-        data: {
-          status: "FAILED",
-        },
-      }),
-    ])
 
     throw error
   }
@@ -326,12 +249,16 @@ async function processWeeklyReportDispatch(
   job: Job<WeeklyReportDispatchJobData>
 ) {
   const batchSize = getBatchSize("REPORT_WEEKLY_BATCH_SIZE", 10)
-  const objective = process.env.REPORT_WEEKLY_OBJECTIVE?.trim() || "ALL"
+  const automationSettings = loadReportAutomationSettings()
+  const objective =
+    process.env.REPORT_WEEKLY_OBJECTIVE?.trim() || automationSettings.objective
   const { since, until } = buildLastCompletedWeekRange(new Date(job.timestamp))
+  const referenceWeekDate = buildAutomationReferenceWeekDate({ since, until })
   let cursor: string | undefined
   let totalClients = 0
   let queuedReports = 0
   let failedClients = 0
+  let skippedClients = 0
 
   while (true) {
     const clients = await prisma.client.findMany({
@@ -351,6 +278,8 @@ async function processWeeklyReportDispatch(
       select: {
         id: true,
         name: true,
+        adAccountId: true,
+        whatsappGroupId: true,
         managerId: true,
       },
     })
@@ -363,6 +292,34 @@ async function processWeeklyReportDispatch(
 
     const results = await Promise.allSettled(
       clients.map(async (client) => {
+        if (!String(client.adAccountId ?? "").trim()) {
+          throw new Error("Cliente ativo sem conta META conectada")
+        }
+
+        if (
+          !automationSettings.groupId &&
+          !String(client.whatsappGroupId ?? "").trim()
+        ) {
+          throw new Error("Cliente ativo sem grupo de WhatsApp configurado")
+        }
+
+        if (automationSettings.skipIfAlreadySent) {
+          const existingReport = await prisma.report.findFirst({
+            where: {
+              clientId: client.id,
+              status: "SENT",
+              referenceWeek: referenceWeekDate,
+            },
+            select: {
+              id: true,
+            },
+          })
+
+          if (existingReport) {
+            return null
+          }
+        }
+
         const requestedByUserId = await resolveWeeklyRequestedByUserId(
           client.managerId
         )
@@ -383,7 +340,12 @@ async function processWeeklyReportDispatch(
 
     results.forEach((result) => {
       if (result.status === "fulfilled") {
-        queuedReports += 1
+        if (result.value) {
+          queuedReports += 1
+          return
+        }
+
+        skippedClients += 1
         return
       }
 
@@ -405,7 +367,10 @@ async function processWeeklyReportDispatch(
         details: {
           clientId: clients[index]?.id,
           clientName: clients[index]?.name,
-          reason: result.reason,
+          reason:
+            result.reason instanceof Error
+              ? result.reason.message
+              : result.reason,
         },
       })
     }
@@ -418,13 +383,14 @@ async function processWeeklyReportDispatch(
       severity: "warning",
       source: "weekly-dispatch-summary",
       queueName: REPORT_WEEKLY_QUEUE_NAME,
-      message: "Job semanal concluiu com clientes que nao puderam ser enfileirados.",
+      message: "Job semanal concluiu com clientes que não puderam ser enfileirados.",
       jobId: job.id ? String(job.id) : null,
       jobName: job.name,
       details: {
         totalClients,
         queuedReports,
         failedClients,
+        skippedClients,
       },
     })
   }
@@ -437,6 +403,7 @@ async function processWeeklyReportDispatch(
     totalClients,
     queuedReports,
     failedClients,
+    skippedClients,
   }
 }
 

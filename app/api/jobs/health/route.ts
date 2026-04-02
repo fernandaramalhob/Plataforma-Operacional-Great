@@ -6,20 +6,20 @@ import { logError } from "@/lib/safe-logger"
 
 export async function GET() {
   try {
-    await ensureReportWorkersStarted()
     const user = await getCurrentUser()
 
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     if (!isAdmin(user)) {
       return NextResponse.json(
-        { error: "Apenas administradores podem consultar a saude dos jobs" },
+        { error: "Apenas administradores podem consultar a saúde dos jobs" },
         { status: 403 }
       )
     }
 
+    await ensureReportWorkersStarted()
     const health = await getReportQueuesHealth()
 
     return NextResponse.json(health, {
@@ -28,7 +28,7 @@ export async function GET() {
   } catch (error) {
     logError("jobs.health.get", error)
     return NextResponse.json(
-      { error: "Nao foi possivel verificar a saude dos jobs" },
+      { error: "Não foi possível verificar a saúde dos jobs" },
       { status: 500 }
     )
   }

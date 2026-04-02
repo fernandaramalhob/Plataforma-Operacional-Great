@@ -8,14 +8,14 @@ export async function GET() {
 
   if (!currentUser) {
     return NextResponse.json<ApiErrorResponse>(
-      { error: "Nao autorizado" },
+      { error: "Não autorizado" },
       { status: 401 }
     )
   }
 
   if (!isAdmin(currentUser)) {
     return NextResponse.json<ApiErrorResponse>(
-      { error: "Apenas administradores podem visualizar usuarios." },
+      { error: "Apenas administradores podem visualizar usuários." },
       { status: 403 }
     )
   }

@@ -83,7 +83,7 @@ Este projeto e destinado ao **uso interno da operacao da empresa**, com foco na 
 
 # Ambiente
 
-Use o arquivo `.env.example` como referencia e mantenha os segredos reais apenas em `.env.local` ou no provedor de ambiente do deploy.
+Use os arquivos `.env.example` e `.env.local.example` como referencia e mantenha os segredos reais apenas em `.env.local` ou no provedor de ambiente do deploy.
 
 Padrao recomendado:
 
@@ -105,7 +105,14 @@ Exemplo de setup local:
 2. preencha as credenciais necessarias
 3. gere um `NEXTAUTH_SECRET` forte
 4. gere uma chave independente para `META_TOKEN_ENCRYPTION_KEY`
-5. suba um Redis local ou remoto e configure `REDIS_URL`
+5. defina `ADMIN_PASSWORD` para permitir o bootstrap automatico do primeiro administrador ou deixe vazio e execute `npm run user:create`
+6. suba um Redis local ou remoto e configure `REDIS_URL`
+
+Bootstrap inicial de autenticacao:
+
+- `ADMIN_EMAIL` e `ADMIN_PASSWORD` controlam o administrador inicial criado automaticamente no primeiro login
+- se `ADMIN_PASSWORD` estiver vazio, nenhum admin e criado automaticamente
+- `SEED_USER_EMAIL`, `SEED_USER_PASSWORD` e `SEED_USER_ROLE` continuam disponiveis para o script `npm run user:create`
 
 ---
 
@@ -135,3 +142,4 @@ Operacao:
 - jobs que esgotam tentativas vao para a dead letter queue `report-dead-letter`
 - alertas operacionais recentes ficam persistidos no Redis
 - `GET /api/jobs/health` retorna scheduler, filas, dead letter e alertas recentes para administradores
+- para rodar a automacao semanal sem depender do Windows, use `npm run report:weekly:daemon` em um host Linux/container sempre ligado

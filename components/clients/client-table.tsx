@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Loader2, Trash2 } from "lucide-react"
 import { StatusBadge } from "@/components/shared/status-badge"
 import type { ClientListItem } from "@/types/client.types"
 
@@ -26,9 +27,15 @@ function getColor(name: string) {
 
 type ClientTableProps = {
   clients: ClientListItem[]
+  deletingClientId?: string | null
+  onDeleteClient?: (client: ClientListItem) => void
 }
 
-export function ClientTable({ clients }: ClientTableProps) {
+export function ClientTable({
+  clients,
+  deletingClientId = null,
+  onDeleteClient,
+}: ClientTableProps) {
   return (
     <table className="w-full">
       <thead>
@@ -52,7 +59,7 @@ export function ClientTable({ clients }: ClientTableProps) {
             Cadastrado em
           </th>
           <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Acoes
+            Ações
           </th>
         </tr>
       </thead>
@@ -87,7 +94,7 @@ export function ClientTable({ clients }: ClientTableProps) {
             </td>
             <td className="px-4 py-4">
               <StatusBadge tone={client.adAccountId ? "success" : "neutral"}>
-                {client.adAccountId ? "Conectado" : "Nao conectado"}
+                {client.adAccountId ? "Conectado" : "Não conectado"}
               </StatusBadge>
             </td>
             <td className="px-4 py-4 text-sm text-gray-600">
@@ -106,12 +113,21 @@ export function ClientTable({ clients }: ClientTableProps) {
                 >
                   Ver
                 </Link>
-                <Link
-                  href={`/dashboard/clients/${client.id}/edit`}
-                  className="text-sm text-gray-400 hover:text-gray-600"
+
+                <button
+                  type="button"
+                  onClick={() => onDeleteClient?.(client)}
+                  disabled={deletingClientId === client.id}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label={`Excluir cliente ${client.name}`}
+                  title="Excluir cliente"
                 >
-                  Editar
-                </Link>
+                  {deletingClientId === client.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </td>
           </tr>

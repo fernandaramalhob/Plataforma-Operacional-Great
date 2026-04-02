@@ -13,6 +13,8 @@ export type ReportSendMode =
   | "PDF_ONLY"
   | "MESSAGE_ONLY"
 
+export type ReportScheduleFrequency = "ONCE" | "WEEKLY"
+
 export type ReportSectionKey =
   | "overview"
   | "advancedMetrics"
@@ -168,6 +170,45 @@ export type ReportSendRequest = {
   message?: string
   pdfBase64?: string
   pdfFileName?: string
+  groupId?: string
+}
+
+export type ReportSchedulePayload = {
+  frequency: ReportScheduleFrequency
+  weekday?: number | null
+  scheduledDate?: string | null
+  hour: number
+  minute: number
+  filtersSince: string
+  filtersUntil: string
+  objective: ReportObjectiveValue | string
+  sendMode: ReportSendMode
+  message?: string | null
+  groupId?: string | null
+  active?: boolean
+}
+
+export type ReportScheduleResponse = {
+  id: string
+  clientId: string
+  frequency: ReportScheduleFrequency
+  weekday: number | null
+  scheduledDate: string | null
+  hour: number
+  minute: number
+  timeZone: string
+  filtersSince: string
+  filtersUntil: string
+  objective: string
+  sendMode: ReportSendMode
+  message: string | null
+  groupId: string | null
+  active: boolean
+  nextRunAt: string
+  lastRunAt: string | null
+  lastError: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export type SavedReportResponse = {

@@ -95,7 +95,7 @@ export default function HistoryPage() {
       const data = await fetchJsonOrThrow<HistoryRow[]>(
         `/api/history?${params.toString()}`,
         undefined,
-        "Erro ao carregar historico"
+        "Erro ao carregar histórico"
       )
 
       setHistory(data)
@@ -135,7 +135,7 @@ export default function HistoryPage() {
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
-    anchor.download = "historico-relatorios.csv"
+    anchor.download = "histórico-relatórios.csv"
     anchor.click()
   }
 
@@ -148,16 +148,16 @@ export default function HistoryPage() {
       await fetchJsonOrThrow<ReportSendResponse>(
         `/api/reports/${reportId}/send`,
         { method: "POST" },
-        "Nao foi possivel reenviar o relatorio"
+        "Não foi possível reenviar o relatório"
       )
 
-      setActionFeedback("Relatorio reenviado com sucesso.")
+      setActionFeedback("Relatório reenviado com sucesso.")
       await loadHistory()
     } catch (error) {
       setActionError(
         error instanceof Error
           ? error.message
-          : "Nao foi possivel reenviar o relatorio"
+          : "Não foi possível reenviar o relatório"
       )
     } finally {
       setRetryingReportId(null)
@@ -167,8 +167,8 @@ export default function HistoryPage() {
   return (
     <div>
       <Header
-        title="Historico de Relatorios"
-        subtitle={`${totalEnviados} relatorios enviados · ultimos 30 dias`}
+        title="Histórico de Relatórios"
+        subtitle={`${totalEnviados} relatórios enviados · últimos 30 dias`}
       />
       <div className="p-8">
         {actionFeedback ? (
@@ -266,11 +266,11 @@ export default function HistoryPage() {
 
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           {loading ? (
-            <LoadingSkeleton label="Carregando historico..." />
+            <LoadingSkeleton label="Carregando histórico..." />
           ) : filtered.length === 0 ? (
             <EmptyState
               title="Nenhum registro encontrado"
-              description="Tente ajustar os filtros para encontrar outros relatorios."
+              description="Tente ajustar os filtros para encontrar outros relatórios."
               className="m-6 border-none px-4 py-20"
             />
           ) : (
@@ -284,7 +284,7 @@ export default function HistoryPage() {
                     Cliente
                   </th>
                   <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Periodo de Ref.
+                    Per?odo de ref.
                   </th>
                   <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Status
@@ -293,7 +293,7 @@ export default function HistoryPage() {
                     Tentativas
                   </th>
                   <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Acoes
+                    Ações
                   </th>
                 </tr>
               </thead>

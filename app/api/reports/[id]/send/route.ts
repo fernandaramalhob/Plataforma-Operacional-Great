@@ -13,7 +13,7 @@ export async function POST(
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -42,14 +42,14 @@ export async function POST(
 
     if (!report) {
       return NextResponse.json(
-        { error: "Relatorio nao encontrado" },
+        { error: "Relatório não encontrado" },
         { status: 404 }
       )
     }
 
     if (!canAccessClient(user, report.client.managerId)) {
       return NextResponse.json(
-        { error: "Acesso negado a este relatorio" },
+        { error: "Acesso negado a este relatório" },
         { status: 403 }
       )
     }
@@ -58,24 +58,27 @@ export async function POST(
 
     if (!payload) {
       return NextResponse.json(
-        { error: "Relatorio ainda esta em processamento" },
+        { error: "Relatório ainda esta em processamento" },
         { status: 409 }
       )
     }
 
-    if (!report.client.whatsappGroupId) {
+    const body = (await request.json().catch(() => ({}))) as ReportSendRequest
+    const targetGroupId = body.groupId?.trim() || report.client.whatsappGroupId
+
+    if (!targetGroupId) {
       return NextResponse.json(
         { error: "Cliente sem grupo de WhatsApp configurado" },
         { status: 400 }
       )
     }
 
-    const body = (await request.json().catch(() => ({}))) as ReportSendRequest
     const delivery = await sendPersistedReportNow(report.id, {
       mode: body.mode,
       message: body.message,
       pdfBase64: body.pdfBase64,
       pdfFileName: body.pdfFileName,
+      groupId: body.groupId,
     })
 
     return NextResponse.json(

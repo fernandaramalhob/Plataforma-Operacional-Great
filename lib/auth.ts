@@ -1,5 +1,5 @@
 import CredentialsProvider from "next-auth/providers/credentials"
-import { NextAuthOptions } from "next-auth"
+import type { NextAuthOptions } from "next-auth"
 import {
   ensureAdminUser,
 } from "@/lib/admin-user"

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { hashPassword } from "@/lib/password"
 import { prisma } from "@/lib/prisma"
+import { logError } from "@/lib/safe-logger"
 import {
   getProfileValidationMessage,
   profileUpdateSchema,
@@ -35,7 +36,7 @@ export async function GET() {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -53,14 +54,14 @@ export async function GET() {
 
     if (!user) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Usuario nao encontrado" },
+        { error: "Usuário não encontrado" },
         { status: 404 }
       )
     }
 
     return NextResponse.json<ProfileResponse>(toProfileResponse(user))
   } catch (error) {
-    console.error(error)
+    logError("profile.get", error)
     return NextResponse.json<ApiErrorResponse>(
       { error: "Erro interno" },
       { status: 500 }
@@ -73,7 +74,7 @@ export async function PUT(request: Request) {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -96,7 +97,7 @@ export async function PUT(request: Request) {
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nenhum campo enviado para atualizacao" },
+        { error: "Nenhum campo enviado para atualização" },
         { status: 400 }
       )
     }
@@ -118,7 +119,7 @@ export async function PUT(request: Request) {
       user: toProfileResponse(user),
     })
   } catch (error) {
-    console.error(error)
+    logError("profile.put", error)
     return NextResponse.json<ApiErrorResponse>(
       { error: "Erro interno" },
       { status: 500 }

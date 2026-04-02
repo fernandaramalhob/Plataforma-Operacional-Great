@@ -4,6 +4,28 @@ import { GeistSans } from "geist/font/sans"
 import Providers from "@/components/providers"
 import "./globals.css"
 
+const themeInitScript = `
+  (() => {
+    const storageKey = "greatgo-theme";
+    const defaultTheme = "light";
+
+    try {
+      const storedTheme = window.localStorage.getItem(storageKey);
+      const theme = storedTheme === "dark" || storedTheme === "light" ? storedTheme : defaultTheme;
+      const root = document.documentElement;
+
+      root.classList.remove("light", "dark");
+      root.classList.add(theme);
+      root.dataset.theme = theme;
+      root.style.colorScheme = theme;
+    } catch {
+      document.documentElement.classList.add(defaultTheme);
+      document.documentElement.dataset.theme = defaultTheme;
+      document.documentElement.style.colorScheme = defaultTheme;
+    }
+  })();
+`
+
 export const metadata: Metadata = {
   title: {
     default: "GreatGo",
@@ -24,8 +46,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${GeistSans.variable} ${GeistMono.variable} font-sans antialiased`}>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Providers>
           {children}
         </Providers>

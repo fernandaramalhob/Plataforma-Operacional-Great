@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getCurrentUser, isAdmin } from "@/lib/authorization"
 import { hashPassword } from "@/lib/password"
 import { prisma } from "@/lib/prisma"
+import { logError } from "@/lib/safe-logger"
 import {
   getAuthValidationMessage,
   registerUserSchema,
@@ -16,14 +17,14 @@ export async function POST(request: Request) {
 
   if (!currentUser) {
     return NextResponse.json<ApiErrorResponse>(
-      { error: "Nao autorizado" },
+      { error: "Não autorizado" },
       { status: 401 }
     )
   }
 
   if (!isAdmin(currentUser)) {
     return NextResponse.json<ApiErrorResponse>(
-      { error: "Apenas administradores podem cadastrar usuarios." },
+      { error: "Apenas administradores podem cadastrar gestores." },
       { status: 403 }
     )
   }
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
     parsedPayload = registerUserSchema.safeParse(await request.json())
   } catch {
     return NextResponse.json<ApiErrorResponse>(
-      { error: "Payload invalido" },
+      { error: "Payload inválido" },
       { status: 400 }
     )
   }
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { name, email, password, role } = parsedPayload.data
+    const { name, email, password } = parsedPayload.data
     const existingUser = await prisma.user.findUnique({
       where: { email },
       select: { id: true },
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
 
     if (existingUser) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Ja existe um usuario com esse e-mail" },
+        { error: "Ja existe um usuário com esse e-mail" },
         { status: 409 }
       )
     }
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
         name,
         email,
         passwordHash: hashPassword(password),
-        role,
+        role: "MANAGER",
       },
       select: {
         id: true,
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
       user,
     })
   } catch (error) {
-    console.error(error)
+    logError("auth.register-manager.post", error)
     return NextResponse.json<ApiErrorResponse>(
       { error: "Erro interno" },
       { status: 500 }

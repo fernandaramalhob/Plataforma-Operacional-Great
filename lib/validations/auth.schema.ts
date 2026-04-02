@@ -18,13 +18,13 @@ export const loginSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .email("E-mail invalido")
+    .email("E-mail inválido")
     .max(EMAIL_MAX_LENGTH),
   password: z
     .string()
     .trim()
-    .min(PASSWORD_MIN_LENGTH, "Senha deve ter no minimo 6 caracteres")
-    .max(PASSWORD_MAX_LENGTH, "Senha deve ter no maximo 72 caracteres"),
+    .min(PASSWORD_MIN_LENGTH, "Senha deve ter no mínimo 6 caracteres")
+    .max(PASSWORD_MAX_LENGTH, "Senha deve ter no máximo 72 caracteres"),
 })
 
 export const registerUserSchema = z
@@ -34,26 +34,25 @@ export const registerUserSchema = z
       z
         .string()
         .min(1, "Preencha todos os campos")
-        .max(NAME_MAX_LENGTH, `Nome deve ter no maximo ${NAME_MAX_LENGTH} caracteres`)
+        .max(NAME_MAX_LENGTH, `Nome deve ter no máximo ${NAME_MAX_LENGTH} caracteres`)
     ),
     email: z.preprocess(
       normalizeEmail,
       z
         .string()
-        .email("E-mail invalido")
-        .max(EMAIL_MAX_LENGTH, `E-mail deve ter no maximo ${EMAIL_MAX_LENGTH} caracteres`)
+        .email("E-mail inválido")
+        .max(EMAIL_MAX_LENGTH, `E-mail deve ter no máximo ${EMAIL_MAX_LENGTH} caracteres`)
     ),
     password: z.preprocess(
       trimString,
       z
         .string()
-        .min(PASSWORD_MIN_LENGTH, "A senha deve ter no minimo 6 caracteres")
-        .max(PASSWORD_MAX_LENGTH, "A senha deve ter no maximo 72 caracteres")
+        .min(PASSWORD_MIN_LENGTH, "A senha deve ter no mínimo 6 caracteres")
+        .max(PASSWORD_MAX_LENGTH, "A senha deve ter no máximo 72 caracteres")
     ),
-    role: z.enum(["ADMIN", "MANAGER"]).default("MANAGER"),
   })
   .strict()
 
 export function getAuthValidationMessage(error: z.ZodError) {
-  return error.issues[0]?.message ?? "Dados de autenticacao invalidos"
+  return error.issues[0]?.message ?? "Dados de autenticação inválidos"
 }

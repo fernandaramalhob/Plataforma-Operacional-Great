@@ -91,20 +91,20 @@ export default function ClientDetailPage() {
             objective,
           }),
         },
-        "Nao foi possivel enviar o relatorio manualmente"
+        "Não foi possível enviar o relatório manualmente"
       )
 
       setLastSentReportId(response.reportId)
       setSendFeedback(
         response.queued
           ? "Envio manual enfileirado com sucesso."
-          : "Relatorio enviado com sucesso para o grupo do cliente."
+          : "Relatório enviado com sucesso para o grupo do cliente."
       )
     } catch (sendReportError) {
       setSendError(
         sendReportError instanceof Error
           ? sendReportError.message
-          : "Nao foi possivel enviar o relatorio manualmente"
+          : "Não foi possível enviar o relatório manualmente"
       )
     } finally {
       setIsSendingReport(false)
@@ -147,7 +147,7 @@ export default function ClientDetailPage() {
             Voltar para Clientes
           </Link>
           <div className="rounded-2xl border border-gray-100 bg-white p-6 text-sm text-red-500 shadow-sm">
-            {error || "Cliente nao encontrado."}
+            {error || "Cliente não encontrado."}
           </div>
         </div>
       </>
@@ -196,13 +196,13 @@ export default function ClientDetailPage() {
         <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-gray-900">Envio manual de relatorio</h3>
+              <h3 className="text-lg font-bold text-gray-900">Envio manual de relatório</h3>
               <p className="mt-1 text-sm text-gray-400">
-                Gere e envie um relatorio agora para o grupo configurado deste cliente.
+                Gere e envie um relatório agora para o grupo configurado deste cliente.
               </p>
             </div>
             <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-              Grupo: {client.whatsappGroupId ?? "Nao configurado"}
+              Grupo: {client.whatsappGroupId ?? "Não configurado"}
             </span>
           </div>
 
@@ -241,8 +241,8 @@ export default function ClientDetailPage() {
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
               >
                 <option value="ALL">Todos</option>
-                <option value="LINK_CLICKS">Trafego</option>
-                <option value="CONVERSIONS">Conversao</option>
+                <option value="LINK_CLICKS">Tráfego</option>
+                <option value="CONVERSIONS">Conversão</option>
                 <option value="MESSAGES">Mensagens</option>
               </select>
             </div>
@@ -264,7 +264,7 @@ export default function ClientDetailPage() {
                     href={`/dashboard/reports/${lastSentReportId}`}
                     className="font-semibold underline"
                   >
-                    Abrir relatorio salvo
+                    Abrir relatório salvo
                   </Link>
                 </>
               ) : null}
@@ -289,7 +289,7 @@ export default function ClientDetailPage() {
               ) : (
                 <>
                   <Send className="h-4 w-4" />
-                  Enviar relatorio agora
+                  Enviar relatório agora
                 </>
               )}
             </button>
@@ -299,7 +299,7 @@ export default function ClientDetailPage() {
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <h3 className="mb-1 text-lg font-bold text-gray-900">Campanhas META Ads</h3>
           <p className="mb-6 text-sm text-gray-400">
-            Dados da ultima semana via META Graph API
+            Dados da última semana via META Graph API
           </p>
 
           {loadingCampaigns ? (
@@ -374,7 +374,7 @@ export default function ClientDetailPage() {
                         <div className="mb-1 flex items-center gap-1.5">
                           <BarChart2 className="h-3.5 w-3.5 text-purple-500" />
                           <span className="text-xs font-medium text-purple-500">
-                            Impressoes
+                            Impressões
                           </span>
                         </div>
                         <p className="text-lg font-bold text-gray-900">

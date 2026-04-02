@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
     if (!client) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Cliente nao encontrado" },
+        { error: "Cliente não encontrado" },
         { status: 404 }
       )
     }
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
     if (!client) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Cliente nao encontrado" },
+        { error: "Cliente não encontrado" },
         { status: 404 }
       )
     }

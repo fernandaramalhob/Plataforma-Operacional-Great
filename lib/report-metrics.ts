@@ -23,7 +23,7 @@ export type ObjectiveMetricSummary = {
 }
 
 const TRAFFIC_CANDIDATES: MetricCandidate[] = [
-  { label: "Visualizacoes de pagina", matchers: ["landing_page_view"] },
+  { label: "Visualizações de página", matchers: ["landing_page_view"] },
   { label: "Cliques no link", matchers: ["link_click", "outbound_click"] },
 ]
 
@@ -203,7 +203,7 @@ function buildConversionMetric(insight: ReportInsight): ObjectiveMetricSummary {
   const spend = parseReportNumber(insight.spend)
   const resolved =
     resolveMetricCandidate(insight.actions, CONVERSION_CANDIDATES) ?? {
-      label: "Conversoes",
+      label: "Conversões",
       value: 0,
       matcher: "conversion",
       singularLabel: "resultado",
@@ -222,7 +222,7 @@ function buildConversionMetric(insight: ReportInsight): ObjectiveMetricSummary {
       valueAmount > 0 && spend > 0
         ? "ROAS"
         : clicks > 0
-          ? "Taxa de conversao"
+          ? "Taxa de conversão"
           : null,
     efficiencyValue:
       valueAmount > 0 && spend > 0

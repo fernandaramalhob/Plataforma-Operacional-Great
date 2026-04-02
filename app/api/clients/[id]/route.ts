@@ -14,7 +14,7 @@ export async function GET(
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -24,7 +24,7 @@ export async function GET(
     })
 
     if (!client) {
-      return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     if (!canAccessClient(user, client.managerId)) {
@@ -45,7 +45,7 @@ export async function PUT(
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -60,7 +60,7 @@ export async function PUT(
     })
 
     if (!existingClient) {
-      return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     if (!canAccessClient(user, existingClient.managerId)) {
@@ -91,6 +91,48 @@ export async function PUT(
     return NextResponse.json(client)
   } catch (error) {
     logError("client.update", error)
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+    }
+
+    const { id } = await params
+    const existingClient = await prisma.client.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        managerId: true,
+        name: true,
+      },
+    })
+
+    if (!existingClient) {
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
+    }
+
+    if (!canAccessClient(user, existingClient.managerId)) {
+      return NextResponse.json({ error: "Acesso negado a este cliente" }, { status: 403 })
+    }
+
+    await prisma.client.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({
+      ok: true,
+      message: `Cliente ${existingClient.name} excluído com sucesso.`,
+    })
+  } catch (error) {
+    logError("client.delete", error)
     return NextResponse.json({ error: "Erro interno" }, { status: 500 })
   }
 }

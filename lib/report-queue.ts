@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto"
+import { randomUUID } from "node:crypto"
 import { Queue, type JobsOptions } from "bullmq"
 import { getRedisConnection } from "@/lib/redis"
 
@@ -136,7 +136,7 @@ export async function enqueueDeadLetterJob(data: DeadLetterJobData) {
 }
 
 export async function upsertWeeklyReportJobScheduler() {
-  const pattern = process.env.REPORT_WEEKLY_CRON?.trim() || "0 9 * * 1"
+  const pattern = process.env.REPORT_WEEKLY_CRON?.trim() || "0 9 * * 4"
   const timezone = process.env.REPORT_WEEKLY_TZ?.trim() || "America/Sao_Paulo"
 
   return getReportWeeklyQueue().upsertJobScheduler(

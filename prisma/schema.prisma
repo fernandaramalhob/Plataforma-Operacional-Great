@@ -19,6 +19,7 @@ model User {
   metaTokenExpiresAt DateTime?
   createdAt          DateTime  @default(now())
   clients            Client[]
+  reportSchedules    ReportSchedule[] @relation("ReportScheduleCreator")
 }
 
 model Client {
@@ -37,9 +38,38 @@ model Client {
   manager         User?            @relation(fields: [managerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   campaigns       ClientCampaign[]
   reports         Report[]
+  reportSchedule  ReportSchedule?
 
   @@index([managerId, status])
   @@index([adAccountId])
+}
+
+model ReportSchedule {
+  id              String                  @id @default(uuid())
+  clientId        String                  @unique
+  client          Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdByUserId String
+  createdByUser   User                    @relation("ReportScheduleCreator", fields: [createdByUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  frequency       ReportScheduleFrequency
+  weekday         Int?
+  scheduledDate   DateTime?
+  hour            Int
+  minute          Int
+  timeZone        String                  @default("America/Sao_Paulo")
+  filtersSince    String
+  filtersUntil    String
+  objective       String                  @default("ALL")
+  sendMode        String                  @default("PDF_AND_MESSAGE")
+  message         String?
+  groupId         String?
+  active          Boolean                 @default(true)
+  nextRunAt       DateTime
+  lastRunAt       DateTime?
+  lastError       String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@index([active, nextRunAt])
 }
 
 model ClientCampaign {
@@ -104,4 +134,9 @@ enum SendLogStatus {
   PENDING
   OK
   FAILED
+}
+
+enum ReportScheduleFrequency {
+  ONCE
+  WEEKLY
 }

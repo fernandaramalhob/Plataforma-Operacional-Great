@@ -57,7 +57,7 @@ async function getAuthenticatedContext() {
       email,
       user: null,
       dbError:
-        "Falha temporaria ao consultar o banco de dados. O token salvo pode continuar la; tente novamente em instantes.",
+        "Falha temporária ao consultar o banco de dados. O token salvo pode continuar la; tente novamente em instantes.",
     } satisfies AuthenticatedContext
   }
 }
@@ -68,7 +68,7 @@ export async function GET() {
 
     if (!context) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
 
     if (!context) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
     if (dbError) {
       return NextResponse.json<ApiErrorResponse>(
         {
-          error: "Banco de dados indisponivel",
+          error: "Banco de dados indisponível",
           detail: dbError,
         },
         { status: 503 }
@@ -183,7 +183,7 @@ export async function POST(request: Request) {
 
     if (!parsedBody.success) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Token META obrigatorio" },
+        { error: "Token META obrigatório" },
         { status: 400 }
       )
     }
@@ -194,7 +194,7 @@ export async function POST(request: Request) {
     if (!validation.ok) {
       return NextResponse.json<ApiErrorResponse>(
         {
-          error: "Token META invalido",
+          error: "Token META inválido",
           detail: validation.detail,
           tokenStatus: validation.status,
         },

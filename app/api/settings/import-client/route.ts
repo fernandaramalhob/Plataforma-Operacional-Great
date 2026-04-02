@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Usuario nao encontrado" },
+        { error: "Usuário não encontrado" },
         { status: 404 }
       )
     }
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     if (existing) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Esta conta ja foi importada como cliente" },
+        { error: "Esta conta já foi importada como cliente" },
         { status: 409 }
       )
     }

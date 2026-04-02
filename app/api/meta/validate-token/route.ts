@@ -15,7 +15,7 @@ export async function GET() {
 
     if (!user) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -25,7 +25,7 @@ export async function GET() {
         {
           ok: false,
           tokenStatus: "missing",
-          detail: "Token META nao configurado",
+          detail: "Token META não configurado",
           expiresAt: null,
         },
         { status: 200 }
@@ -56,11 +56,20 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const user = await getCurrentUser()
+
+    if (!user) {
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Não autorizado" },
+        { status: 401 }
+      )
+    }
+
     const parsedBody = metaTokenSchema.safeParse(await request.json())
 
     if (!parsedBody.success) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Token META obrigatorio" },
+        { error: "Token META obrigatório" },
         { status: 400 }
       )
     }

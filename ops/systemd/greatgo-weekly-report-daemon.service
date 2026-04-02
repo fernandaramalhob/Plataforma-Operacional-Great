@@ -1,0 +1,14 @@
+[Unit]
+Description=GreatGo Weekly Report Automation Daemon
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/greatgo
+ExecStart=/usr/bin/npm run report:weekly:daemon
+Restart=always
+RestartSec=15
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

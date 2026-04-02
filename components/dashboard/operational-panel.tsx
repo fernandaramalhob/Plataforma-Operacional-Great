@@ -36,15 +36,15 @@ function getToneClasses(tone: DashboardTone) {
 
 function getToneLabel(tone: DashboardTone) {
   if (tone === "critical") {
-    return "Critico"
+    return "Crítico"
   }
 
   if (tone === "warning") {
-    return "Atencao"
+    return "Atenção"
   }
 
   if (tone === "healthy") {
-    return "Estavel"
+    return "sstavel"
   }
 
   return "Indefinido"
@@ -82,7 +82,7 @@ function AlertRow({ alert }: { alert: DashboardOperationalAlertItem }) {
               : "border-amber-200 bg-amber-50 text-amber-700"
           }`}
         >
-          {alert.severity === "error" ? "Erro" : "Aviso"}
+          {alert.severity === "error" ? "srro" : "Aviso"}
         </span>
       </div>
       <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
@@ -134,7 +134,7 @@ export function OperationalPanel({ data }: OperationalPanelProps) {
             href={data.mode === "admin" ? "/dashboard/history" : "/dashboard/settings"}
             className="rounded-full bg-[#C1121F] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
           >
-            {data.mode === "admin" ? "Abrir historico" : "Abrir configuracoes"}
+            {data.mode === "admin" ? "Abrir histórico" : "Abrir configurações"}
           </Link>
         </div>
       </div>
@@ -175,7 +175,7 @@ export function OperationalPanel({ data }: OperationalPanelProps) {
               </p>
               <p className="mt-2 text-sm text-slate-500">
                 {data.alerts.length > 0
-                  ? "Resumo dos ultimos eventos que pedem acompanhamento."
+                  ? "Resumo dos últimos eventos que pedem acompanhamento."
                   : "Nenhum alerta recente por aqui."}
               </p>
             </div>
@@ -185,10 +185,10 @@ export function OperationalPanel({ data }: OperationalPanelProps) {
             <div className="flex min-h-[200px] items-center justify-center rounded-[22px] border border-dashed border-slate-200 bg-white text-center">
               <div className="max-w-[220px]">
                 <p className="text-sm font-medium text-slate-700">
-                  Nada bloqueando a operacao
+                  Nada bloqueando a operação
                 </p>
                 <p className="mt-2 text-xs leading-6 text-slate-400">
-                  Quando houver falhas ou avisos relevantes, eles vao aparecer aqui.
+                  Quando houver falhas ou avisos relevantes, eles vão aparecer aqui.
                 </p>
               </div>
             </div>

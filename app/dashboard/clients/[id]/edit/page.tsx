@@ -164,8 +164,8 @@ export default function EditClientPage() {
         )}
 
         <ClientForm
-          title="Informacoes do Cliente"
-          description="Edite os dados do cliente"
+          title="Informações do Cliente"
+          description="Edite os dados do cliente."
           values={form}
           onChange={handleChange}
           onValueChange={handleFieldValueChange}
@@ -219,7 +219,7 @@ export default function EditClientPage() {
                 Salvando...
               </>
             ) : (
-              "Salvar Alteracoes"
+              "Salvar Alterações"
             )}
           </button>
         </div>

@@ -49,12 +49,12 @@ export function getMetaTokenReadErrorDetail(error: unknown) {
     message.includes("unsupported state or unable to authenticate data") ||
     message.includes("invalid authentication tag") ||
     message.includes("descriptografar") ||
-    message.includes("criptografado invalido")
+    message.includes("criptografado inválido")
   ) {
-    return "O token META salvo nao pode ser lido neste ambiente. Confirme se META_TOKEN_ENCRYPTION_KEY ou NEXTAUTH_SECRET sao os mesmos do PC de origem, ou salve um novo token."
+    return "O token META salvo não pode ser lido neste ambiente. Confirme se META_TOKEN_ENCRYPTION_KEY ou NEXTAUTH_SECRET são os mesmos do PC de origem, ou salve um novo token."
   }
 
-  return "Nao foi possivel ler o token META salvo. Salve um novo token ou revise a configuracao deste ambiente."
+  return "Não foi possível ler o token META salvo. Salve um novo token ou revise a configuração deste ambiente."
 }
 
 function inferMetaTokenStatus(message: string): MetaTokenStatus {
@@ -114,7 +114,7 @@ export async function inspectMetaTokenValue(
 
         if (debugData.is_valid === false) {
           const message =
-            debugData.error?.message ?? "Token META invalido ou expirado"
+            debugData.error?.message ?? "Token META inválido ou expirado"
 
           return {
             ok: false,
@@ -145,11 +145,11 @@ export async function inspectMetaTokenValue(
     const detail = expiresAt
       ? buildExpiryDetail(
           expiresAt,
-          status === "expiring_soon" ? "Token META expira" : "Token META valido ate"
+          status === "expiring_soon" ? "Token META expira" : "Token META válido até"
         )
       : appAccessToken
         ? "Token META ativo"
-        : "Token META ativo. Configure META_APP_ID e META_APP_SECRET para rastrear a expiracao."
+        : "Token META ativo. Configure META_APP_ID e META_APP_SECRET para rastrear a expiração."
 
     return {
       ok: true,
@@ -227,7 +227,7 @@ export async function getStoredMetaTokenHealth(params: {
     return {
       ok: true,
       status: "active",
-      detail: buildExpiryDetail(storedExpiresAt, "Token META valido ate"),
+      detail: buildExpiryDetail(storedExpiresAt, "Token META válido até"),
       expiresAt: storedExpiresAt,
       token,
       encryptedToken,
@@ -314,17 +314,18 @@ export async function resolveMetaTokenFromOwners(
   owners: MetaTokenOwner[],
   options?: { forceRemote?: boolean }
 ) {
-  const selectedOwner = owners.find(
-    (owner) => typeof owner.metaAccessToken === "string" && owner.metaAccessToken.trim()
+  const ownersWithTokens = owners.filter(
+    (owner) =>
+      typeof owner.metaAccessToken === "string" && owner.metaAccessToken.trim()
   )
 
-  if (!selectedOwner?.metaAccessToken) {
+  if (!ownersWithTokens.length) {
     return {
       ownerId: null,
       health: {
         ok: false,
         status: "missing" as MetaTokenStatus,
-        detail: "Token META nao configurado",
+        detail: "Token META não configurado",
         expiresAt: null,
         token: null,
         encryptedToken: null,
@@ -333,25 +334,54 @@ export async function resolveMetaTokenFromOwners(
     }
   }
 
-  const health = await getStoredMetaTokenHealth({
-    storedToken: selectedOwner.metaAccessToken,
-    storedExpiresAt: selectedOwner.metaTokenExpiresAt,
-    forceRemote: options?.forceRemote,
-  })
+  let lastCheckedOwner: MetaTokenOwner | null = null
+  let lastHealth: MetaTokenHealth | null = null
 
-  await persistMetaTokenOwnerState({
-    ownerId: selectedOwner.id,
-    encryptedToken: health.encryptedToken,
-    currentExpiresAt: selectedOwner.metaTokenExpiresAt,
-    nextExpiresAt: health.ok ? health.expiresAt : health.status === "expired" ? health.expiresAt : selectedOwner.metaTokenExpiresAt,
-  })
-  await emitMetaTokenAlert({
-    ownerId: selectedOwner.id,
-    health,
-  })
+  for (let index = 0; index < ownersWithTokens.length; index += 1) {
+    const owner = ownersWithTokens[index]
+    const forceRemote = options?.forceRemote || index > 0
+    const health = await getStoredMetaTokenHealth({
+      storedToken: owner.metaAccessToken ?? "",
+      storedExpiresAt: owner.metaTokenExpiresAt,
+      forceRemote,
+    })
+
+    await persistMetaTokenOwnerState({
+      ownerId: owner.id,
+      encryptedToken: health.encryptedToken,
+      currentExpiresAt: owner.metaTokenExpiresAt,
+      nextExpiresAt:
+        health.ok || health.status === "expired"
+          ? health.expiresAt
+          : owner.metaTokenExpiresAt,
+    })
+    await emitMetaTokenAlert({
+      ownerId: owner.id,
+      health,
+    })
+
+    if (health.ok && health.token) {
+      return {
+        ownerId: owner.id,
+        health,
+      }
+    }
+
+    lastCheckedOwner = owner
+    lastHealth = health
+  }
 
   return {
-    ownerId: selectedOwner.id,
-    health,
+    ownerId: lastCheckedOwner?.id ?? null,
+    health:
+      lastHealth ?? {
+        ok: false,
+        status: "unknown",
+        detail: "Não foi possível validar nenhum token META disponível",
+        expiresAt: null,
+        token: null,
+        encryptedToken: null,
+        metaUser: null,
+      },
   }
 }

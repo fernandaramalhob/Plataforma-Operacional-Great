@@ -21,7 +21,7 @@ export async function POST(
     const user = await getCurrentUser()
 
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -45,7 +45,7 @@ export async function POST(
     })
 
     if (!client) {
-      return NextResponse.json({ error: "Cliente nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     if (!canAccessClient(user, client.managerId)) {

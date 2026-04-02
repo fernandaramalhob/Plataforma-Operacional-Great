@@ -14,7 +14,7 @@ export async function GET(
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -39,11 +39,11 @@ export async function GET(
     })
 
     if (!report) {
-      return NextResponse.json({ error: "Relatorio nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Relatório não encontrado" }, { status: 404 })
     }
 
     if (!canAccessClient(user, report.client.managerId)) {
-      return NextResponse.json({ error: "Acesso negado a este relatorio" }, { status: 403 })
+      return NextResponse.json({ error: "Acesso negado a este relatório" }, { status: 403 })
     }
 
     const payload = parseStoredReportPayload(report.payloadJson)

@@ -12,7 +12,7 @@ export function ClientSetupIndicators({ data }: ClientSetupIndicatorsProps) {
       <div className="mb-6 flex items-end justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
-            Configuracao operacional
+            Configuração operacional
           </p>
           <h2 className="mt-2 text-[30px] leading-none tracking-[-0.04em] text-slate-950">
             Clientes prontos para envio
@@ -22,7 +22,7 @@ export function ClientSetupIndicators({ data }: ClientSetupIndicatorsProps) {
           href="/dashboard/settings"
           className="text-sm font-medium text-[#C1121F] transition hover:opacity-70"
         >
-          Abrir configuracoes
+          Abrir configurações
         </Link>
       </div>
 
@@ -77,7 +77,7 @@ export function ClientSetupIndicators({ data }: ClientSetupIndicatorsProps) {
         <div className="mb-3 flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-amber-500" />
           <p className="text-sm font-medium text-slate-700">
-            Clientes com pendencias
+            Clientes com pendências
           </p>
         </div>
 
@@ -85,10 +85,10 @@ export function ClientSetupIndicators({ data }: ClientSetupIndicatorsProps) {
           <div className="flex min-h-[210px] items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50/70 text-center">
             <div className="max-w-[240px]">
               <p className="text-sm font-medium text-slate-700">
-                Nenhuma pendencia encontrada
+                Nenhuma pendência encontrada
               </p>
               <p className="mt-2 text-xs leading-6 text-slate-400">
-                Todos os clientes ativos exibidos aqui ja possuem token e grupo configurados.
+                Todos os clientes ativos exibidos aqui já possuem token e grupo configurados.
               </p>
             </div>
           </div>

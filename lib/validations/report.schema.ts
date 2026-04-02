@@ -24,7 +24,7 @@ const reportDateSchema = z.preprocess(
 
 const reportClientIdSchema = z.preprocess(
   trimString,
-  z.string().uuid("clientId invalido")
+  z.string().uuid("clientId inválido")
 )
 
 function buildReportSchema() {
@@ -57,5 +57,5 @@ export const reportRequestSchema = buildReportSchema()
 export const reportQuerySchema = buildReportSchema()
 
 export function getReportValidationMessage(error: z.ZodError) {
-  return error.issues[0]?.message ?? "Parametros do relatorio invalidos"
+  return error.issues[0]?.message ?? "Parametros do relatório inválidos"
 }

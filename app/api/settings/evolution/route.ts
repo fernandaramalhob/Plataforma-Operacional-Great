@@ -9,7 +9,7 @@ export async function GET() {
     const user = await getCurrentUser()
 
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const config = getEvolutionConfig()
@@ -34,8 +34,8 @@ export async function GET() {
         instance: config.instance,
         detail:
           groups.length > 0
-            ? `${groups.length} grupo(s) encontrado(s) na instancia ativa.`
-            : "Instancia conectada, mas nenhum grupo foi encontrado.",
+            ? `${groups.length} grupo(s) encontrado(s) na instância ativa.`
+            : "Instância conectada, mas nenhum grupo foi encontrado.",
         groups,
       })
     } catch (error) {

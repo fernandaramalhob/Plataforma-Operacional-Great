@@ -14,7 +14,7 @@ export default async function DashboardPage() {
     <>
       <Header
         title="Dashboard"
-        subtitle="Visao geral da operacao"
+        subtitle="Visão geral da operação"
       />
       <div className="mx-auto max-w-[1480px] px-8 pb-10 pt-6">
         <div className="space-y-6">

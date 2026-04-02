@@ -182,15 +182,15 @@ function buildEmptyDashboardData(): DashboardData {
       },
       {
         key: "reportsGenerated",
-        label: "Relatorios gerados",
+        label: "Relatórios gerados",
         value: "0",
-        sub: "ultimos 7 dias",
+        sub: "últimos 7 dias",
       },
       {
         key: "failedReports",
         label: "Falhas no envio",
         value: "0",
-        sub: "ultimos 30 dias",
+        sub: "últimos 30 dias",
         valueColor: "text-red-500",
         subColor: "text-red-400",
       },
@@ -200,7 +200,7 @@ function buildEmptyDashboardData(): DashboardData {
     operational: {
       mode: "manager",
       title: "Status operacional",
-      description: "Entre para visualizar a saude da operacao.",
+      description: "Entre para visualizar a saúde da operação.",
       tone: "neutral",
       checkedAt: null,
       metrics: [],
@@ -219,8 +219,8 @@ function buildEmptyDashboardData(): DashboardData {
 
 function startOfWeek(date: Date) {
   const normalized = new Date(date)
-  const dayOfWeek = normalized.getDay()
-  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  const daypfWeek = normalized.getDay()
+  const diffToMonday = daypfWeek === 0 ? -6 : 1 - daypfWeek
 
   normalized.setDate(normalized.getDate() + diffToMonday)
   normalized.setHours(0, 0, 0, 0)
@@ -413,21 +413,21 @@ function buildChartData(reports: Array<{ generatedAt: Date }>): DashboardChartDa
 
   return {
     days: {
-      label: "Ultimos 7 dias",
+      label: "Últimos 7 dias",
       data: days.map((day) => ({
         week: day.week,
         reports: reportsByDay.get(day.key) ?? 0,
       })),
     },
     weeks: {
-      label: "Ultimas 8 semanas",
+      label: "Últimas 8 semanas",
       data: weeks.map((week) => ({
         week: week.week,
         reports: reportsByWeek.get(week.key) ?? 0,
       })),
     },
     months: {
-      label: "Ultimos 6 meses",
+      label: "Últimos 6 meses",
       data: months.map((month) => ({
         week: month.week,
         reports: reportsByMonth.get(month.key) ?? 0,
@@ -504,7 +504,7 @@ function buildConfigIndicators(
 
     if (!hasMetaToken) {
       withoutMetaToken += 1
-      issues.push("Sem token META do responsavel")
+      issues.push("Sem token META do responsável")
     }
 
     if (!hasWhatsappGroup) {
@@ -560,7 +560,7 @@ function buildClientSendStatus(clients: ClientWithCampaigns[]) {
         name: client.name,
         company: client.company,
         status,
-        time: activityDate ? formatRelativeTime(activityDate) : "Sem historico",
+        time: activityDate ? formatRelativeTime(activityDate) : "Sem histórico",
         referenceWeek: report ? formatReferenceWeek(report.referenceWeek) : null,
         attempts,
         errorMessage,
@@ -624,7 +624,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
         id: alert.id,
         source:
           "integration" in alert
-            ? `Integracao ${alert.integration}`
+            ? `Integração ${alert.integration}`
             : `Fila ${alert.queueName ?? alert.source}`,
         message: alert.message,
         severity: alert.severity,
@@ -635,18 +635,18 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
       mode: "admin",
       title:
         tone === "critical"
-          ? "Operacao requer atencao imediata"
+          ? "Operação requer atenção imediata"
           : tone === "warning"
-            ? "Operacao com pontos de atencao"
-            : "Operacao estavel",
+            ? "Operação com pontos de atenção"
+            : "Operação estável",
       description: health.ok
-        ? "Filas, agendamento e integracoes estao respondendo dentro do esperado."
+        ? "Filas, agendamento e integrações estão respondendo dentro do esperado."
         : "Existem alertas recentes ou filas pendentes exigindo acompanhamento.",
       tone,
       checkedAt: health.checkedAt,
       metrics: [
         {
-          label: "Fila de geracao",
+          label: "Fila de geração",
           value: `${health.queues.generation.waiting ?? 0} aguardando / ${failedGeneration} falhas`,
           tone: failedGeneration > 0 ? "critical" : "healthy",
         },
@@ -656,13 +656,13 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
           tone: failedSend > 0 ? "critical" : "healthy",
         },
         {
-          label: "Dead letter",
+          label: "Fila de falhas",
           value: `${deadLetters} pendente(s)`,
           tone: deadLetters > 0 ? "critical" : "healthy",
         },
         {
           label: "Alertas ativos",
-          value: `${errorAlerts} criticos / ${warningAlerts} avisos`,
+          value: `${errorAlerts} críticos / ${warningAlerts} avisos`,
           tone: normalizeToneFromCounts({
             errors: errorAlerts,
             warnings: warningAlerts,
@@ -674,7 +674,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
   } catch (error) {
     return {
       mode: "admin",
-      title: "Nao foi possivel verificar a saude operacional",
+      title: "Não foi possível verificar a saúde operacional",
       description:
         error instanceof Error
           ? error.message
@@ -684,7 +684,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
       metrics: [
         {
           label: "Painel operacional",
-          value: "Indisponivel",
+          value: "Indisponível",
           tone: "warning",
         },
       ],
@@ -692,7 +692,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
         {
           id: "operational-health-unavailable",
           source: "Sistema",
-          message: "O health check dos jobs nao respondeu nesta consulta.",
+          message: "O health check dos jobs não respondeu nesta consulta.",
           severity: "warning",
           createdAt: new Date().toISOString(),
         },
@@ -725,7 +725,7 @@ function buildManagerOperationalPanel(params: {
     alerts.unshift({
       id: "failed-reports-30d",
       source: "Envios",
-      message: `${failedReportsLast30Days} relatorio(s) falharam nos ultimos 30 dias.`,
+      message: `${failedReportsLast30Days} relatório(s) falharam nos últimos 30 dias.`,
       severity: "error",
       createdAt: null,
     })
@@ -737,11 +737,11 @@ function buildManagerOperationalPanel(params: {
       tone === "critical"
         ? "Sua carteira precisa de acompanhamento"
         : tone === "warning"
-          ? "Sua carteira tem pendencias operacionais"
-          : "Sua carteira esta pronta para operar",
+          ? "Sua carteira tem pendências operacionais"
+          : "Sua carteira está pronta para operar",
     description:
       configIndicators.readyClients > 0
-        ? `${configIndicators.readyClients} cliente(s) estao prontos para gerar e enviar relatorios.`
+        ? `${configIndicators.readyClients} cliente(s) estão prontos para gerar e enviar relatórios.`
         : "Ajuste token META e grupos de WhatsApp para liberar os envios.",
     tone,
     checkedAt: new Date().toISOString(),
@@ -975,15 +975,15 @@ export async function getDashboardData(): Promise<DashboardData> {
       },
       {
         key: "reportsGenerated",
-        label: "Relatorios gerados",
+        label: "Relatórios gerados",
         value: reportsLast7Days.toString(),
-        sub: "ultimos 7 dias",
+        sub: "últimos 7 dias",
       },
       {
         key: "failedReports",
         label: "Falhas no envio",
         value: failedReportsLast30Days.toString(),
-        sub: "ultimos 30 dias",
+        sub: "últimos 30 dias",
         valueColor: "text-red-500",
         subColor: "text-red-400",
       },

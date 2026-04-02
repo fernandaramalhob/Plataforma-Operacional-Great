@@ -54,7 +54,7 @@ export function SendReportComposer({
       <div className="mb-5">
         <h3 className="text-lg font-bold text-gray-900">Personalizar envio</h3>
         <p className="text-sm text-gray-500">
-          Escolha como o relatorio sera enviado e revise o preview antes de disparar.
+          Escolha como o relatório sera enviado e revise o preview antes de disparar.
         </p>
       </div>
 
@@ -109,7 +109,7 @@ export function SendReportComposer({
                 <p className="text-xs text-slate-500">
                   {templateName?.trim()
                     ? `Template: ${templateName.trim()}`
-                    : "Envio manual do relatorio"}
+                    : "Envio manual do relatório"}
                 </p>
               </div>
             </div>
@@ -124,10 +124,10 @@ export function SendReportComposer({
                 <div className="rounded-2xl border border-[#cfe6bf] bg-white px-4 py-3">
                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                     <FileText className="h-4 w-4 text-[#C1121F]" />
-                    Relatorio completo em PDF
+                    Relatório completo em PDF
                   </div>
                   <p className="mt-1 text-xs text-gray-500">
-                    O grupo recebera o documento anexado com a versao final do relatorio.
+                    O grupo recebera o documento anexado com a versao final do relatório.
                   </p>
                 </div>
               </div>
@@ -145,14 +145,14 @@ export function SendReportComposer({
             ) : null}
             {!showsPdf && !showsMessage ? (
               <div className="rounded-2xl bg-white px-4 py-3 text-sm text-gray-500 shadow-sm">
-                Nenhum conteudo selecionado para envio.
+                Nenhum conteúdo selecionado para envio.
               </div>
             ) : null}
           </div>
         </div>
         <div className="mt-4 flex items-center gap-2 text-xs text-gray-400">
           <Send className="h-3.5 w-3.5" />
-          O envio segue exatamente esta composicao.
+          O envio segue exatamente esta composição.
         </div>
       </div>
     </div>

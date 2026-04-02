@@ -1,10 +1,9 @@
-import { createHash, randomUUID } from "crypto"
-import { getReportQueuePrefix } from "@/lib/report-queue"
-import { getRedisConnection } from "@/lib/redis"
+import { createHash, randomUUID } from "node:crypto"
 import { logError, sanitizeForLog } from "@/lib/safe-logger"
 
-const INTEGRATION_ALERTS_KEY = `${getReportQueuePrefix()}:integration:alerts`
-const INTEGRATION_ALERTS_DEDUPE_KEY = `${getReportQueuePrefix()}:integration:alerts:dedupe`
+const REPORT_QUEUE_PREFIX = process.env.REPORT_QUEUE_PREFIX?.trim() || "greatgo"
+const INTEGRATION_ALERTS_KEY = `${REPORT_QUEUE_PREFIX}:integration:alerts`
+const INTEGRATION_ALERTS_DEDUPE_KEY = `${REPORT_QUEUE_PREFIX}:integration:alerts:dedupe`
 const DEFAULT_ALERTS_RETENTION = 50
 const DEFAULT_ALERT_DEDUPE_TTL_SECONDS = 60 * 60
 
@@ -72,6 +71,7 @@ function buildAlertFingerprint(params: RecordIntegrationAlertParams) {
 }
 
 async function shouldRecordAlert(params: RecordIntegrationAlertParams) {
+  const { getRedisConnection } = await import("@/lib/redis")
   const fingerprint = buildAlertFingerprint(params)
   const redis = getRedisConnection("client")
   const result = await redis.set(
@@ -115,6 +115,7 @@ export function logIntegrationEvent(params: {
 }
 
 export async function recordIntegrationAlert(params: RecordIntegrationAlertParams) {
+  const { getRedisConnection } = await import("@/lib/redis")
   const shouldPersist = await shouldRecordAlert(params)
 
   if (!shouldPersist) {
@@ -160,6 +161,7 @@ export async function recordIntegrationAlertSafely(
 }
 
 export async function listRecentIntegrationAlerts(limit = 20) {
+  const { getRedisConnection } = await import("@/lib/redis")
   const redis = getRedisConnection("client")
   const items = await redis.lrange(INTEGRATION_ALERTS_KEY, 0, Math.max(0, limit - 1))
 

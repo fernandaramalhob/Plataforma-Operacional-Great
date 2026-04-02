@@ -1,4 +1,4 @@
-import { Prisma, User } from "@prisma/client"
+import type { Prisma, User } from "@prisma/client"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
@@ -51,6 +51,13 @@ export function canAccessClient(
   managerId: string | null
 ) {
   return isAdmin(user) || managerId === user.id
+}
+
+export function canManageUserProfile(
+  user: Pick<AuthenticatedUser, "role">,
+  target: Pick<User, "role">
+) {
+  return isAdmin(user) && target.role === "MANAGER"
 }
 
 export function scopeClientWhere(

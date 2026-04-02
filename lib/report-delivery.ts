@@ -1,3 +1,4 @@
+import { buildExactReportPdfBuffer } from "@/lib/report-pdf-preview-server"
 import { buildReportPdfBuffer } from "@/lib/report-pdf-server"
 import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
 import {
@@ -17,6 +18,7 @@ type SendPersistedReportOptions = {
   message?: string | null
   pdfBase64?: string | null
   pdfFileName?: string | null
+  groupId?: string | null
 }
 
 function resolveReportMessage(params: {
@@ -63,16 +65,18 @@ export async function sendPersistedReportNow(
   })
 
   if (!report) {
-    throw new Error("Relatorio nao encontrado para envio")
+    throw new Error("Relatório não encontrado para envio")
   }
 
   const payload = parseStoredReportPayload(report.payloadJson)
 
   if (!payload) {
-    throw new Error("Relatorio ainda nao foi gerado")
+    throw new Error("Relatório ainda não foi gerado")
   }
 
-  if (!report.client.whatsappGroupId) {
+  const targetGroupId = options?.groupId?.trim() || report.client.whatsappGroupId
+
+  if (!targetGroupId) {
     throw new Error("Cliente sem grupo de WhatsApp configurado")
   }
 
@@ -97,10 +101,19 @@ export async function sendPersistedReportNow(
     if (mode === "PDF_AND_MESSAGE" || mode === "PDF_ONLY") {
       const pdfBuffer = options?.pdfBase64
         ? Buffer.from(options.pdfBase64, "base64")
-        : buildReportPdfBuffer({
+        : await buildExactReportPdfBuffer({
             reportId: report.id,
-            payload,
+          }).catch((pdfError) => {
+            logError("report-delivery.preview-pdf-fallback", pdfError, {
+              reportId: report.id,
+            })
+
+            return buildReportPdfBuffer({
+              reportId: report.id,
+              payload,
+            })
           })
+
       const fileName =
         options?.pdfFileName?.trim() ||
         `${buildReportPdfFileName({
@@ -110,7 +123,7 @@ export async function sendPersistedReportNow(
         })}.pdf`
 
       await sendWhatsAppDocument({
-        number: report.client.whatsappGroupId,
+        number: targetGroupId,
         fileName,
         contentBase64: pdfBuffer.toString("base64"),
       })
@@ -118,7 +131,7 @@ export async function sendPersistedReportNow(
 
     if (mode === "PDF_AND_MESSAGE" || mode === "MESSAGE_ONLY") {
       await sendWhatsAppText({
-        number: report.client.whatsappGroupId,
+        number: targetGroupId,
         text: message,
       })
     }
@@ -147,7 +160,7 @@ export async function sendPersistedReportNow(
     }
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Erro ao enviar relatorio"
+      error instanceof Error ? error.message : "Erro ao enviar relatório"
 
     logError("report-delivery.send-now", error, {
       reportId: report.id,

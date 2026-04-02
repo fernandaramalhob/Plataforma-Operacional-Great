@@ -2,15 +2,28 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
-const API_PROTECTED_PREFIXES = [
-  "/api/clients",
-  "/api/reports",
-  "/api/settings",
-  "/api/history",
-]
+const PUBLIC_API_PATHS = new Set([
+  "/api/auth",
+  "/api/auth/csrf",
+  "/api/auth/error",
+  "/api/auth/providers",
+  "/api/auth/session",
+  "/api/auth/signin",
+  "/api/auth/signout",
+  "/api/auth/verify-request",
+])
+
+const PUBLIC_API_PREFIXES = ["/api/auth/callback/"]
+
+function isPublicApiPath(pathname: string) {
+  return (
+    PUBLIC_API_PATHS.has(pathname)
+    || PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  )
+}
 
 function isProtectedApiPath(pathname: string) {
-  return API_PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  return pathname.startsWith("/api") && !isPublicApiPath(pathname)
 }
 
 export async function middleware(request: NextRequest) {
@@ -46,9 +59,6 @@ export const config = {
   matcher: [
     "/login",
     "/dashboard/:path*",
-    "/api/clients/:path*",
-    "/api/reports/:path*",
-    "/api/settings/:path*",
-    "/api/history/:path*",
+    "/api/:path*",
   ],
 }

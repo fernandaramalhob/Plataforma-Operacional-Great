@@ -5,7 +5,6 @@ import {
   getMetaInsights,
 } from "@/lib/meta-api"
 import { buildReportJobErrorPayload } from "@/lib/report-domain"
-import { enqueueReportGenerationJob } from "@/lib/report-queue"
 import { resolveMetaTokenFromOwners, type MetaTokenOwner } from "@/lib/meta-token-status"
 import { prisma } from "@/lib/prisma"
 import {
@@ -64,7 +63,7 @@ async function resolveMetaToken(user: ReportUser, client: ClientWithManager) {
   const { health } = await resolveMetaTokenFromOwners(owners)
 
   if (!health.ok || !health.token) {
-    throw new Error(health.detail ?? "Token META nao configurado")
+    throw new Error(health.detail ?? "Token META não configurado")
   }
 
   return health.token
@@ -164,7 +163,7 @@ export async function generateLiveReportPayload(params: {
       .slice(0, 5)
       .map((ad) => ({
         id: ad.ad_id ?? crypto.randomUUID(),
-        name: ad.ad_name ?? "Anuncio sem nome",
+        name: ad.ad_name ?? "Anúncio sem nome",
         impressions: ad.impressions,
         reach: ad.reach,
         clicks: ad.clicks,
@@ -172,7 +171,7 @@ export async function generateLiveReportPayload(params: {
         actions: ad.actions as ReportAction[] | undefined,
       })),
     genderBreakdown: genderBreakdown.map((row) => ({
-      dimension: row.gender ?? "nao informado",
+      dimension: row.gender ?? "não informado",
       spend: row.spend,
       impressions: row.impressions,
       reach: row.reach,
@@ -216,6 +215,8 @@ export async function queueReportGeneration(params: {
   requestedByUserId: string
   enqueueSendOnComplete?: boolean
 }) {
+  const { enqueueReportGenerationJob } = await import("@/lib/report-queue")
+
   const report = await prisma.report.create({
     data: {
       clientId: params.clientId,
@@ -237,7 +238,7 @@ export async function queueReportGeneration(params: {
     })
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Erro ao enfileirar relatorio"
+      error instanceof Error ? error.message : "Erro ao enfileirar relatório"
 
     await prisma.report.update({
       where: { id: report.id },

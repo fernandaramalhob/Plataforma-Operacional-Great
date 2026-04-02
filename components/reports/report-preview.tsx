@@ -37,7 +37,7 @@ import type {
   ReportSectionVisibility,
 } from "@/types/report.types"
 
-const PDF_CAMPAIGNS_PER_PAGE = 9
+const MAX_PDF_CAMPAIGN_ROWS = 8
 
 type ReportPreviewProps = {
   client: ReportClient
@@ -88,16 +88,6 @@ function formatPeriod(date: string) {
   return new Date(`${date}T00:00:00`).toLocaleDateString("pt-BR")
 }
 
-function chunkItems<T>(items: T[], size: number) {
-  const chunks: T[][] = []
-
-  for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size))
-  }
-
-  return chunks
-}
-
 function ReportHeader({
   client,
   startDate,
@@ -133,7 +123,7 @@ function ReportHeader({
             {client.name}
           </p>
           <p className="mt-1 text-sm text-slate-500">
-            {customTitle?.trim() || "FACEBOOK - Visao Geral"}
+            {customTitle?.trim() || "FACEBOOK - Visão Geral"}
           </p>
         </div>
         <div
@@ -143,10 +133,10 @@ function ReportHeader({
           )}
         >
           <p className="text-sm font-semibold text-slate-900">
-            {client.company ?? "Marca nao informada"}
+            {client.company ?? "Marca não informada"}
           </p>
           <p className="mt-2 inline-flex rounded-full bg-[#F5F7FA] px-3 py-1 text-xs font-semibold text-slate-500">
-            Periodo: {formatPeriod(startDate)} - {formatPeriod(endDate)}
+            Período: {formatPeriod(startDate)} - {formatPeriod(endDate)}
           </p>
         </div>
       </div>
@@ -222,10 +212,10 @@ function AdvancedMetricsSection({
     <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6 print:break-inside-avoid">
       <div className="mb-5">
         <h2 className="text-lg font-bold text-gray-900">
-          Visao geral e metricas avancadas
+          Visão geral e métricas avançadas
         </h2>
         <p className="text-sm text-gray-500">
-          Consolidado da conta no periodo selecionado.
+          Consolidado da conta no período selecionado.
         </p>
       </div>
 
@@ -270,7 +260,7 @@ function ChartSection({
   return (
     <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6 print:break-inside-avoid">
       <div className="mb-5">
-        <h2 className="text-lg font-bold text-gray-900">Evolucao por periodo</h2>
+        <h2 className="text-lg font-bold text-gray-900">Evolucao por período</h2>
         <p className="text-sm text-gray-500">
           Comportamento diario de investimento, cliques e{" "}
           {objectiveLabel.toLowerCase()}.
@@ -338,9 +328,9 @@ function InsightsSection({
   return (
     <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6 print:break-inside-avoid">
       <div className="mb-5">
-        <h2 className="text-lg font-bold text-gray-900">Insights automaticos</h2>
+        <h2 className="text-lg font-bold text-gray-900">Insights automáticos</h2>
         <p className="text-sm text-gray-500">
-          Destaques gerados com base nos dados carregados para este relatorio.
+          Destaques gerados com base nos dados carregados para este relatório.
         </p>
       </div>
 
@@ -408,13 +398,13 @@ function ScreenCampaignSection({
       <div className="border-b border-gray-100 px-6 py-5">
         <h2 className="text-lg font-bold text-gray-900">Performance por campanha</h2>
         <p className="text-sm text-gray-500">
-          Campanhas consideradas no relatorio e seus principais numeros.
+          Campanhas consideradas no relatório e seus principais numeros.
         </p>
       </div>
 
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center text-sm text-gray-400">
-          Nenhuma campanha selecionada para exibir nesta versao do relatorio.
+          Nenhuma campanha selecionada para exibir nesta versao do relatório.
         </div>
       ) : (
         <>
@@ -437,7 +427,7 @@ function ScreenCampaignSection({
                   {[
                     { label: objectiveLabel, value: row.metricValue },
                     { label: "Cliques", value: row.clicks },
-                    { label: "Impressoes", value: row.impressions },
+                    { label: "Impressões", value: row.impressions },
                     { label: "Gasto", value: row.spend },
                   ].map((item) => (
                     <div
@@ -465,7 +455,7 @@ function ScreenCampaignSection({
                   "Status",
                   objectiveLabel,
                   "Cliques",
-                  "Impressoes",
+                  "Impressões",
                   "Gasto",
                 ].map((header) => (
                   <th
@@ -523,7 +513,7 @@ function ManualNotesSection({ closingNotes }: { closingNotes?: string }) {
   return (
     <section className="rounded-3xl border border-[#DCE6F3] bg-[#F8FBFF] p-5 shadow-sm sm:p-6 print:break-inside-avoid">
       <div className="mb-4">
-        <h2 className="text-lg font-bold text-slate-900">Observacoes finais</h2>
+        <h2 className="text-lg font-bold text-slate-900">Observações finais</h2>
         <p className="text-sm text-slate-500">
           Contexto adicional para o cliente sobre o envio.
         </p>
@@ -547,7 +537,7 @@ function translateGenderLabel(value: string) {
   }
 
   if (normalized === "unknown") {
-    return "Nao informado"
+    return "Não informado"
   }
 
   return value
@@ -572,7 +562,7 @@ function BreakdownSection({
       <table className="w-full">
         <thead>
           <tr className="border-b border-gray-100 bg-gray-50/80">
-            {["Segmento", "Cliques", "Alcance", "Impressoes", "Conversas iniciadas"].map(
+            {["Segmento", "Cliques", "Alcance", "Impressões", "Conversas iniciadas"].map(
               (header) => (
                 <th
                   key={header}
@@ -595,7 +585,7 @@ function BreakdownSection({
             return (
               <tr key={`${title}-${row.dimension}`} className="border-b border-gray-50">
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                  {title === "Genero" ? translateGenderLabel(row.dimension) : row.dimension}
+                  {title === "Gênero" ? translateGenderLabel(row.dimension) : row.dimension}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
                   {formatInteger(parseReportNumber(row.clicks))}
@@ -630,18 +620,18 @@ function TopAdsSection({
   return (
     <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm print:break-inside-avoid">
       <div className="border-b border-gray-100 px-6 py-5">
-        <h2 className="text-lg font-bold text-gray-900">Principais anuncios</h2>
+        <h2 className="text-lg font-bold text-gray-900">Principais anúncios</h2>
         <p className="text-sm text-gray-500">
-          Anuncios com maior volume de impressoes no periodo selecionado.
+          Anúncios com maior volume de impressões no período selecionado.
         </p>
       </div>
       <table className="w-full">
         <thead>
           <tr className="border-b border-gray-100 bg-gray-50/80">
             {[
-              "Anuncio",
+              "Anúncio",
               "Alcance",
-              "Impressoes",
+              "Impressões",
               "Cliques",
               "Conversas iniciadas",
             ].map((header) => (
@@ -704,90 +694,109 @@ function PdfPageShell({
     >
       <div className="flex-1">{children}</div>
       <div className="border-t border-slate-200/80 bg-white px-10 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-        Pagina {pageNumber} de {totalPages}
+        Página {pageNumber} de {totalPages}
       </div>
     </section>
   )
 }
 
-function PdfCampaignPage({
+function PdfCampaignSection({
   rows,
   objectiveLabel,
-  clientName,
+  hiddenRowsCount,
 }: {
   rows: CampaignRow[]
   objectiveLabel: string
-  clientName: string
+  hiddenRowsCount: number
 }) {
   return (
-    <div className="flex h-full flex-col bg-[#f6f7fb] px-10 py-8">
-      <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
-        <div className="border-b border-gray-100 px-6 py-5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">
-                Performance por campanha
-              </h2>
-              <p className="text-sm text-gray-500">
-                Campanhas selecionadas para {clientName}.
-              </p>
-            </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Tabela paginada
-            </span>
-          </div>
-        </div>
+    <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+      <div className="border-b border-gray-100 px-5 py-4">
+        <h2 className="text-base font-bold text-gray-900">
+          Performance por campanha
+        </h2>
+        <p className="mt-1 text-xs leading-5 text-gray-500">
+          {hiddenRowsCount > 0
+            ? `Exibindo ${rows.length} de ${rows.length + hiddenRowsCount} campanhas para manter o PDF em duas páginas.`
+            : "Campanhas consideradas no relatório e seus principais numeros."}
+        </p>
+      </div>
 
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-100 bg-gray-50/80">
-              {[
-                "Campanha",
-                "Status",
-                objectiveLabel,
-                "Cliques",
-                "Impressoes",
-                "Gasto",
-              ].map((header) => (
-                <th
-                  key={header}
-                  className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400"
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-b border-gray-50">
-                <td className="px-6 py-4">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{row.name}</p>
-                    <p className="mt-1 text-xs text-gray-400">{row.objective}</p>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${row.statusAccent}`}
+      {rows.length === 0 ? (
+        <div className="px-6 py-10 text-center text-sm text-gray-400">
+          Nenhuma campanha selecionada para exibir nesta versao do relatório.
+        </div>
+      ) : (
+        <>
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className="w-[34%]" />
+              <col className="w-[13%]" />
+              <col className="w-[13%]" />
+              <col className="w-[12%]" />
+              <col className="w-[14%]" />
+              <col className="w-[14%]" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50/80">
+                {[
+                  "Campanha",
+                  "Status",
+                  objectiveLabel,
+                  "Cliques",
+                  "Impressões",
+                  "Gasto",
+                ].map((header) => (
+                  <th
+                    key={header}
+                    className="px-3 py-2.5 text-left text-[9px] font-semibold uppercase tracking-[0.14em] text-gray-400"
                   >
-                    {row.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-600">
-                  {row.metricValue}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-600">{row.clicks}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{row.impressions}</td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                  {row.spend}
-                </td>
+                    {header}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-    </div>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id} className="border-b border-gray-50 align-top">
+                  <td className="px-3 py-2.5">
+                    <div>
+                      <p className="text-[12px] font-semibold leading-4 text-gray-900 break-words">
+                        {row.name}
+                      </p>
+                      <p className="mt-1 text-[10px] leading-4 text-gray-400 break-words">
+                        {row.objective}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${row.statusAccent}`}
+                    >
+                      {row.status}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-[12px] leading-4 text-gray-600">
+                    {row.metricValue}
+                  </td>
+                  <td className="px-3 py-2.5 text-[12px] leading-4 text-gray-600">{row.clicks}</td>
+                  <td className="px-3 py-2.5 text-[12px] leading-4 text-gray-600">{row.impressions}</td>
+                  <td className="px-3 py-2.5 text-[12px] font-medium leading-4 text-gray-900">
+                    {row.spend}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {hiddenRowsCount > 0 ? (
+            <div className="border-t border-gray-100 bg-slate-50 px-5 py-3 text-xs font-medium text-slate-500">
+              +{hiddenRowsCount} campanha(s) omitida(s) nesta versao resumida do PDF.
+            </div>
+          ) : null}
+        </>
+      )}
+    </section>
   )
 }
 
@@ -868,7 +877,7 @@ export function ReportPreview({
       accent: "bg-blue-50 text-blue-600",
     },
     {
-      label: "Impressoes",
+      label: "Impressões",
       value: formatInteger(impressions),
       icon: Eye,
       accent: "bg-purple-50 text-purple-600",
@@ -894,7 +903,7 @@ export function ReportPreview({
   ].filter((card) => {
     const metricMap: Record<string, keyof ReportMetricVisibility> = {
       Investimento: "spend",
-      Impressoes: "impressions",
+      Impressões: "impressions",
       Alcance: "reach",
       Cliques: "clicks",
       "Taxa de cliques": "ctr",
@@ -911,7 +920,7 @@ export function ReportPreview({
       accent: "",
     },
     {
-      label: "Custo por mil impressoes",
+      label: "Custo por mil impressões",
       value: formatCurrency(cpm),
       icon: BarChart2,
       accent: "",
@@ -943,7 +952,7 @@ export function ReportPreview({
   ].filter((card) => {
     const metricMap: Record<string, keyof ReportMetricVisibility> = {
       "Custo por clique": "cpc",
-      "Custo por mil impressoes": "cpm",
+      "Custo por mil impressões": "cpm",
       "Conversas iniciadas": "conversationsStarted",
       "Custo por conversa": "costPerConversation",
       [messageMetric.efficiencyLabel ?? "Taxa de conversa"]: "conversationRate",
@@ -964,7 +973,7 @@ export function ReportPreview({
     {
       title: "Conta analisada",
       value:
-        client.adAccountId ?? reportData.client?.adAccountId ?? "Nao informada",
+        client.adAccountId ?? reportData.client?.adAccountId ?? "Não informada",
       accent: "bg-blue-50 text-blue-700 border-blue-100",
     },
     {
@@ -986,8 +995,8 @@ export function ReportPreview({
 
   const campaignSummary = [
     {
-      label: "Periodo",
-      value: `${formatPeriod(startDate)} ate ${formatPeriod(endDate)}`,
+      label: "Período",
+      value: `${formatPeriod(startDate)} até ${formatPeriod(endDate)}`,
     },
     {
       label: "Objetivo monitorado",
@@ -1000,7 +1009,7 @@ export function ReportPreview({
     {
       label: "Conta analisada",
       value:
-        client.adAccountId ?? reportData.client?.adAccountId ?? "Nao informada",
+        client.adAccountId ?? reportData.client?.adAccountId ?? "Não informada",
     },
   ]
 
@@ -1061,7 +1070,7 @@ export function ReportPreview({
           ) : null}
           {visibleSections.gender ? (
             <BreakdownSection
-              title="Genero"
+              title="Gênero"
               rows={reportData.genderBreakdown ?? []}
             />
           ) : null}
@@ -1079,19 +1088,15 @@ export function ReportPreview({
     )
   }
 
-  const campaignChunks = chunkItems(campaignRows, PDF_CAMPAIGNS_PER_PAGE)
+  const pdfCampaignRows = campaignRows.slice(0, MAX_PDF_CAMPAIGN_ROWS)
+  const hiddenPdfCampaignRows = Math.max(campaignRows.length - pdfCampaignRows.length, 0)
   const hasSecondaryPage =
     (visibleSections.chart && chartData.length > 0) ||
     (visibleSections.topAds && Boolean(reportData.topAds?.length)) ||
     (visibleSections.gender && Boolean(reportData.genderBreakdown?.length)) ||
-    (visibleSections.insights && insightsEnabled) ||
     (visibleSections.summary && campaignSummary.length > 0) ||
-    (visibleSections.notes && Boolean(closingNotes?.trim())) ||
-    (visibleSections.campaignTable && campaignRows.length === 0)
-  const totalPages =
-    1 +
-    (hasSecondaryPage ? 1 : 0) +
-    (visibleSections.campaignTable ? Math.max(campaignChunks.length, 0) : 0)
+    (visibleSections.notes && Boolean(closingNotes?.trim()))
+  const totalPages = 1 + (hasSecondaryPage ? 1 : 0)
 
   let pageNumber = 1
 
@@ -1108,10 +1113,17 @@ export function ReportPreview({
             isPdf
           />
 
-          <div className="flex-1 space-y-5 px-10 py-8">
+          <div className="flex-1 space-y-4 px-10 py-8">
             {visibleSections.overview ? <MetricsGrid cards={performanceCards} isPdf /> : null}
             {visibleSections.advancedMetrics ? (
               <AdvancedMetricsSection cards={advancedMetrics} isPdf />
+            ) : null}
+            {visibleSections.campaignTable ? (
+              <PdfCampaignSection
+                rows={pdfCampaignRows}
+                objectiveLabel={objectiveMetric.label}
+                hiddenRowsCount={hiddenPdfCampaignRows}
+              />
             ) : null}
           </div>
         </div>
@@ -1128,9 +1140,6 @@ export function ReportPreview({
                   isPdf
                 />
               ) : null}
-              {visibleSections.insights && insightsEnabled ? (
-                <InsightsSection insights={automaticInsights} isPdf />
-              ) : null}
               {visibleSections.summary ? (
                 <SummarySection summary={campaignSummary} isPdf />
               ) : null}
@@ -1139,38 +1148,17 @@ export function ReportPreview({
               ) : null}
               {visibleSections.gender ? (
                 <BreakdownSection
-                  title="Genero"
+                  title="Gênero"
                   rows={reportData.genderBreakdown ?? []}
                 />
               ) : null}
               {visibleSections.notes ? (
                 <ManualNotesSection closingNotes={closingNotes} />
               ) : null}
-              {visibleSections.campaignTable && campaignRows.length === 0 ? (
-                <section className="rounded-3xl border border-gray-100 bg-white px-6 py-12 text-center text-sm text-gray-400 shadow-sm">
-                  Nenhuma campanha selecionada para exibir nesta versao do relatorio.
-                </section>
-              ) : null}
             </div>
           </div>
         </PdfPageShell>
       ) : null}
-
-      {visibleSections.campaignTable
-        ? campaignChunks.map((chunk) => (
-        <PdfPageShell
-          key={`campaign-page-${chunk[0]?.id ?? "empty"}`}
-          pageNumber={pageNumber++}
-          totalPages={totalPages}
-        >
-          <PdfCampaignPage
-            rows={chunk}
-            objectiveLabel={objectiveMetric.label}
-            clientName={client.name}
-          />
-        </PdfPageShell>
-          ))
-        : null}
     </div>
   )
 }

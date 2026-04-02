@@ -27,7 +27,7 @@ function buildReportPdfTitle(input: {
   startDate: string
   endDate: string
 }) {
-  return `Relatorio META Ads | ${input.clientName} | ${formatDateForTitle(
+  return `Relatório META Ads | ${input.clientName} | ${formatDateForTitle(
     input.startDate
   )} a ${formatDateForTitle(input.endDate)}`
 }
@@ -75,7 +75,7 @@ function addCanvasToPdf(params: {
     renderedWidth,
     renderedHeight,
     undefined,
-    "FAST"
+    "MEDIUM"
   )
 }
 
@@ -91,7 +91,7 @@ function createPageCanvas(
   const context = pageCanvas.getContext("2d")
 
   if (!context) {
-    throw new Error("Nao foi possivel preparar a pagina do PDF")
+    throw new Error("Não foi possível preparar a página do PDF")
   }
 
   context.fillStyle = "#ffffff"
@@ -117,7 +117,7 @@ async function buildPdfDocument(input: ExportReportPdfInput) {
     import("jspdf"),
   ])
 
-  const renderScale = Math.max(window.devicePixelRatio || 1, 2)
+  const renderScale = Math.max(window.devicePixelRatio || 1, 3)
   const pdf = new jsPDF({
     orientation: "p",
     unit: "mm",
@@ -137,13 +137,13 @@ async function buildPdfDocument(input: ExportReportPdfInput) {
 
   pdf.setDocumentProperties({
     title: buildReportPdfTitle(input),
-    subject: "Relatorio de performance META Ads",
+    subject: "Relatório de performance META Ads",
     author: "GreatGo",
     creator: "GreatGo",
     keywords: [
       "greatgo",
       "meta ads",
-      "relatorio",
+      "relatório",
       input.clientName,
       input.objective,
       input.reportId,
@@ -238,7 +238,7 @@ export async function buildReportPdfFilePayload(input: ExportReportPdfInput) {
       const [, payload = ""] = result.split(",", 2)
       resolve(payload)
     }
-    reader.onerror = () => reject(new Error("Nao foi possivel codificar o PDF"))
+    reader.onerror = () => reject(new Error("Não foi possível codificar o PDF"))
     reader.readAsDataURL(blob)
   })
 

@@ -3,6 +3,8 @@ import type {
   ReportSendRequest,
   QueuedReportResponse,
   ReportRequest,
+  ReportSchedulePayload,
+  ReportScheduleResponse,
   ReportSendResponse,
   SavedReportResponse,
 } from "@/types/report.types"
@@ -28,13 +30,13 @@ export async function requestQueuedReport(payload: ReportRequest) {
       },
       body: JSON.stringify(payload),
     },
-    "Erro ao buscar relatorio"
+    "Erro ao buscar relatório"
   )
 }
 
 export async function loadSavedReport(
   reportId: string,
-  fallbackMessage = "Nao foi possivel carregar o relatorio"
+  fallbackMessage = "Não foi possível carregar o relatório"
 ) {
   return fetchJsonOrThrow<SavedReportResponse>(
     `/api/reports/${reportId}`,
@@ -53,7 +55,7 @@ export async function pollSavedReportUntilReady({
   onUpdate,
   maxAttempts = 24,
   intervalMs = 2_500,
-  fallbackMessage = "Nao foi possivel carregar o relatorio",
+  fallbackMessage = "Não foi possível carregar o relatório",
 }: PollSavedReportOptions): Promise<SavedReportResponse | null> {
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const report = await loadSavedReport(reportId, fallbackMessage)
@@ -72,7 +74,7 @@ export async function pollSavedReportUntilReady({
   }
 
   throw new Error(
-    "A fila ainda esta processando este relatorio. Tente novamente em instantes."
+    "A fila ainda esta processando este relatório. Tente novamente em instantes."
   )
 }
 
@@ -89,6 +91,43 @@ export async function sendReportToWhatsApp(
       },
       body: JSON.stringify(payload ?? {}),
     },
-    "Nao foi possivel enviar o relatorio"
+    "Não foi possível enviar o relatório"
+  )
+}
+
+export async function loadClientReportSchedule(clientId: string) {
+  return fetchJsonOrThrow<{ schedule: ReportScheduleResponse | null }>(
+    `/api/clients/${clientId}/report-schedule`,
+    {
+      cache: "no-store",
+    },
+    "NÃ£o foi possÃ­vel carregar o agendamento"
+  )
+}
+
+export async function saveClientReportSchedule(
+  clientId: string,
+  payload: ReportSchedulePayload
+) {
+  return fetchJsonOrThrow<{ ok: true; schedule: ReportScheduleResponse }>(
+    `/api/clients/${clientId}/report-schedule`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+    "NÃ£o foi possÃ­vel salvar o agendamento"
+  )
+}
+
+export async function disableClientSavedReportSchedule(clientId: string) {
+  return fetchJsonOrThrow<{ ok?: true; schedule: ReportScheduleResponse | null }>(
+    `/api/clients/${clientId}/report-schedule`,
+    {
+      method: "DELETE",
+    },
+    "NÃ£o foi possÃ­vel desativar o agendamento"
   )
 }

@@ -1,16 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ChangeEvent } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { AlertCircle, ChevronLeft, Loader2, RefreshCw } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { ClientForm } from "@/components/clients/client-form"
-import { useRouter } from "next/navigation"
-import {
-  AlertCircle,
-  ChevronLeft,
-  Loader2,
-  RefreshCw,
-} from "lucide-react"
-import Link from "next/link"
 import {
   clientPayloadSchema,
   getClientValidationMessage,
@@ -41,20 +36,23 @@ export default function NewClientPage() {
   })
 
   function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) {
     setError("")
-    setForm((current) => ({ ...current, [e.target.name]: e.target.value }))
+    setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
   }
 
-  function handleFieldValueChange(name: "email" | "phone" | "notes" | "whatsappGroupId", value: string) {
+  function handleFieldValueChange(
+    name: "email" | "phone" | "notes" | "whatsappGroupId",
+    value: string
+  ) {
     setError("")
     setForm((current) => ({ ...current, [name]: value }))
   }
 
-  function handleSelectChange(e: React.ChangeEvent<HTMLSelectElement>) {
+  function handleSelectChange(event: ChangeEvent<HTMLSelectElement>) {
     setError("")
-    setForm((current) => ({ ...current, [e.target.name]: e.target.value }))
+    setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
   }
 
   async function loadMetaOptions() {
@@ -65,7 +63,7 @@ export default function NewClientPage() {
       const data = await fetchJsonOrThrow<ClientMetaOptionsResponse>(
         "/api/clients/meta-options",
         { cache: "no-store" },
-        "Nao foi possivel carregar as opcoes META"
+        "Não foi possível carregar as opções da META"
       )
       setProfileOptions(data.profiles)
       setBrandOptions(data.brands)
@@ -75,7 +73,7 @@ export default function NewClientPage() {
       setMetaError(
         loadError instanceof Error
           ? loadError.message
-          : "Nao foi possivel carregar as opcoes META"
+          : "Não foi possível carregar as opções da META"
       )
     } finally {
       setIsLoadingMeta(false)
@@ -98,7 +96,7 @@ export default function NewClientPage() {
     }
 
     if (!selectedBrand) {
-      setError("Selecione a marca ou BM do cliente.")
+      setError("Selecione a marca ou a BM do cliente.")
       return
     }
 
@@ -129,7 +127,7 @@ export default function NewClientPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(parsedPayload.data),
         },
-        "Erro ao salvar cliente"
+        "Erro ao salvar o cliente"
       )
 
       router.push("/dashboard/clients")
@@ -137,7 +135,7 @@ export default function NewClientPage() {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Erro ao salvar cliente. Tente novamente."
+          : "Erro ao salvar o cliente. Tente novamente."
       )
     } finally {
       setIsSaving(false)
@@ -146,14 +144,14 @@ export default function NewClientPage() {
 
   return (
     <>
-      <Header title="Novo Cliente" subtitle="Clientes / Novo Cliente" />
+      <Header title="Novo cliente" subtitle="Clientes / Novo cliente" />
       <div className="p-8">
         <Link
           href="/dashboard/clients"
           className="mb-6 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
         >
           <ChevronLeft className="h-4 w-4" />
-          Clientes / Novo Cliente
+          Clientes / Novo cliente
         </Link>
 
         {error && (
@@ -164,8 +162,8 @@ export default function NewClientPage() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <ClientForm
-            title="Informacoes do cliente"
-            description="Selecione o perfil e a marca vinculada na sua integracao META."
+            title="Informações do cliente"
+            description="Selecione o perfil e a marca vinculados à sua integração com a META."
             values={form}
             onChange={handleChange}
             onValueChange={handleFieldValueChange}
@@ -197,8 +195,8 @@ export default function NewClientPage() {
                   </datalist>
                   <p className="mt-2 text-xs text-gray-400">
                     {profileOptions.length > 0
-                      ? `${profileOptions.length} perfil(is) carregado(s) da META para facilitar a selecao.`
-                      : "Se o perfil nao aparecer na lista, voce ainda pode digitar o nome manualmente."}
+                      ? `${profileOptions.length} perfil(is) carregado(s) da META para facilitar a seleção.`
+                      : "Se o perfil não aparecer na lista, você ainda pode digitar o nome manualmente."}
                   </p>
                 </div>
 
@@ -218,7 +216,7 @@ export default function NewClientPage() {
                         ? "Carregando marcas..."
                         : brandOptions.length > 0
                           ? "Selecione uma marca / BM"
-                          : "Nenhuma marca disponivel"}
+                          : "Nenhuma marca disponível"}
                     </option>
                     {brandOptions.map((option) => (
                       <option key={option.id} value={option.id}>
@@ -232,7 +230,7 @@ export default function NewClientPage() {
                         {selectedBrand.name}
                       </p>
                       <p className="mt-1 text-xs text-gray-500">
-                        Conta META vinculada: {selectedBrand.adAccountName} (
+                        Conta da META vinculada: {selectedBrand.adAccountName} (
                         {selectedBrand.adAccountId})
                       </p>
                     </div>
@@ -246,7 +244,7 @@ export default function NewClientPage() {
             <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
               <div className="mb-6 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900">
-                  Opcoes da integracao META
+                  Opções da integração com a META
                 </h2>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600">
                   <span className="text-sm font-bold text-white">f</span>
@@ -265,7 +263,7 @@ export default function NewClientPage() {
                     <div className="space-y-2">
                       <p className="text-sm font-medium">{metaError}</p>
                       <p className="text-xs text-red-500">
-                        Revise o token em Configuracoes e tente carregar novamente.
+                        Revise o token em Configurações e tente carregar novamente.
                       </p>
                       <div className="flex items-center gap-3">
                         <button
@@ -280,7 +278,7 @@ export default function NewClientPage() {
                           href="/dashboard/settings"
                           className="text-xs font-semibold text-[#C1121F] hover:underline"
                         >
-                          Abrir configuracoes
+                          Abrir configurações
                         </Link>
                       </div>
                     </div>
@@ -290,11 +288,11 @@ export default function NewClientPage() {
                 <div className="space-y-4">
                   <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-4">
                     <p className="text-sm font-semibold text-gray-900">
-                      {profileOptions.length} perfil(is) disponiveis
+                      {profileOptions.length} perfil(is) disponíveis
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
-                      A lista do campo perfil foi preenchida a partir da
-                      integracao META da sua sessao atual.
+                      A lista do campo de perfil foi preenchida com base na
+                      integração META da sua sessão atual.
                     </p>
                   </div>
                   <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-4">
@@ -302,8 +300,8 @@ export default function NewClientPage() {
                       {brandOptions.length} marca(s) / conta(s) encontradas
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
-                      Ao salvar, a conta META escolhida fica vinculada ao
-                      cliente para uso nos relatorios.
+                      Ao salvar, a conta da META escolhida fica vinculada ao
+                      cliente para uso nos relatórios.
                     </p>
                   </div>
                 </div>
@@ -334,7 +332,7 @@ export default function NewClientPage() {
                   Salvando...
                 </>
               ) : (
-                "Salvar Cliente"
+                "Salvar cliente"
               )}
             </button>
           </div>

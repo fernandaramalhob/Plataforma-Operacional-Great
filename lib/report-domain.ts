@@ -35,7 +35,7 @@ export function buildStoredReportPayload(
     ...payload,
     client: payload.client ?? {
       id: "",
-      name: "Cliente nao informado",
+      name: "Cliente não informado",
       company: null,
       adAccountId: null,
     },
@@ -159,7 +159,7 @@ export function mapReportToHistoryRow(report: {
   )[0]
   const attempts = latestLog?.attemptNumber ?? 0
   const referenceWeek = payload
-    ? `${payload.filters.since} ate ${payload.filters.until}`
+    ? `${payload.filters.since} até ${payload.filters.until}`
     : formatDate(report.referenceWeek)
 
   return {

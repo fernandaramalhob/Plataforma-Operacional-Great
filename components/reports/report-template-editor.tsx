@@ -35,18 +35,18 @@ const SECTION_LABELS: Array<{
 }> = [
   {
     key: "overview",
-    title: "Visao geral",
-    description: "Mantem os cards principais com os numeros consolidados.",
+    title: "Visão geral",
+    description: "Mantém os cards principais com os números consolidados.",
   },
   {
     key: "advancedMetrics",
-    title: "Metricas detalhadas",
+    title: "Métricas detalhadas",
     description: "Exibe custos, conversas iniciadas e taxa de conversa.",
   },
   {
     key: "chart",
-    title: "Grafico",
-    description: "Mostra a evolucao diaria ao longo do periodo.",
+    title: "Gráfico",
+    description: "Mostra a evolucao diaria ao longo do período.",
   },
   {
     key: "campaignTable",
@@ -55,18 +55,18 @@ const SECTION_LABELS: Array<{
   },
   {
     key: "topAds",
-    title: "Principais anuncios",
-    description: "Mostra os anuncios com melhor volume no periodo.",
+    title: "Principais anúncios",
+    description: "Mostra os anúncios com melhor volume no período.",
   },
   {
     key: "gender",
-    title: "Genero",
-    description: "Inclui a quebra de resultados por genero.",
+    title: "Gênero",
+    description: "Inclui a quebra de resultados por gênero.",
   },
   {
     key: "insights",
     title: "Insights",
-    description: "Apresenta destaques automaticos gerados pela plataforma.",
+    description: "Apresenta destaques automáticos gerados pela plataforma.",
   },
   {
     key: "summary",
@@ -75,7 +75,7 @@ const SECTION_LABELS: Array<{
   },
   {
     key: "notes",
-    title: "Observacoes manuais",
+    title: "Observações manuais",
     description: "Adiciona um bloco livre para contexto operacional.",
   },
 ]
@@ -85,12 +85,12 @@ const METRIC_LABELS: Array<{
   title: string
 }> = [
   { key: "spend", title: "Investimento" },
-  { key: "impressions", title: "Impressoes" },
+  { key: "impressions", title: "Impressões" },
   { key: "reach", title: "Alcance" },
   { key: "clicks", title: "Cliques" },
   { key: "ctr", title: "Taxa de cliques" },
   { key: "cpc", title: "Custo por clique" },
-  { key: "cpm", title: "Custo por mil impressoes" },
+  { key: "cpm", title: "Custo por mil impressões" },
   { key: "conversationsStarted", title: "Conversas iniciadas" },
   { key: "costPerConversation", title: "Custo por conversa" },
   { key: "conversationRate", title: "Taxa de conversa" },
@@ -119,7 +119,7 @@ export function ReportTemplateEditor({
     <section className="rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-bold text-slate-900">Montagem do relatorio</h3>
+          <h3 className="text-lg font-bold text-slate-900">Montagem do relatório</h3>
           <p className="mt-1 text-sm text-slate-500">
             Escolha com clareza o que entra no PDF e no envio.
           </p>
@@ -132,7 +132,7 @@ export function ReportTemplateEditor({
       <div className="mt-5 space-y-4">
         <div className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-            Identidade do relatorio
+            Identidade do relatório
           </p>
           <div className="mt-4 space-y-4">
           <div>
@@ -150,13 +150,13 @@ export function ReportTemplateEditor({
 
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
-              Titulo exibido no relatorio
+              Titulo exibido no relatório
             </label>
             <input
               value={customTitle}
               onChange={(event) => onCustomTitleChange(event.target.value)}
               disabled={disabled}
-              placeholder="Ex.: FACEBOOK - Visao Geral"
+              placeholder="Ex.: FACEBOOK - Visão Geral"
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition focus:border-[#C1121F]/25 focus:outline-none focus:ring-4 focus:ring-[#C1121F]/10 disabled:opacity-60"
             />
           </div>
@@ -165,7 +165,7 @@ export function ReportTemplateEditor({
 
         <div className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-            Textos do relatorio
+            Textos do relatório
           </p>
           <div className="mt-4 space-y-4">
           <div>
@@ -178,7 +178,7 @@ export function ReportTemplateEditor({
               onChange={(event) => onExecutiveSummaryChange(event.target.value)}
               disabled={disabled}
               rows={5}
-              placeholder="Escreva a leitura principal que deve aparecer no relatorio."
+              placeholder="Escreva a leitura principal que deve aparecer no relatório."
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition focus:border-[#C1121F]/25 focus:outline-none focus:ring-4 focus:ring-[#C1121F]/10 disabled:opacity-60"
             />
           </div>
@@ -186,14 +186,14 @@ export function ReportTemplateEditor({
           <div>
             <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700">
               <FileEdit className="h-4 w-4 text-[#C1121F]" />
-              Observacoes finais
+              Observações finais
             </label>
             <textarea
               value={closingNotes}
               onChange={(event) => onClosingNotesChange(event.target.value)}
               disabled={disabled}
               rows={4}
-              placeholder="Adicione orientacoes, proximos passos ou recados para o cliente."
+              placeholder="Adicione orientações, proximos passos ou recados para o cliente."
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition focus:border-[#C1121F]/25 focus:outline-none focus:ring-4 focus:ring-[#C1121F]/10 disabled:opacity-60"
             />
           </div>
@@ -202,7 +202,7 @@ export function ReportTemplateEditor({
 
         <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-            Secoes do relatorio
+            Secoes do relatório
           </p>
           <div className="mt-4 grid gap-2">
             {SECTION_LABELS.map((section) => (
@@ -232,7 +232,7 @@ export function ReportTemplateEditor({
 
         <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-            Metricas do relatorio
+            Métricas do relatório
           </p>
           <div className="mt-4 grid gap-2">
             {METRIC_LABELS.map((metric) => (

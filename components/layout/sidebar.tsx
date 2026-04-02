@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import Image from "next/image"
 import Link from "next/link"
@@ -32,7 +32,12 @@ type SidebarProps = {
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const roleLabel = session?.user?.role === "ADMIN" ? "Administrador" : "Não autenticado"
+  const roleLabel =
+    session?.user?.role === "ADMIN"
+      ? "Administrador"
+      : session?.user?.role === "MANAGER"
+        ? "Gestor"
+        : "Não autenticado"
   const initials =
     session?.user?.name
       ?.split(" ")
@@ -155,7 +160,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </div>
             {!collapsed && (
               <div className="flex flex-col">
-                <span className="leading-tight text-sm font-semibold text-gray-900">
+                <span className="text-sm font-semibold leading-tight text-gray-900">
                   {session?.user?.name ?? "Não autenticado"}
                 </span>
                 <span className="text-xs text-gray-400">{roleLabel}</span>
@@ -176,5 +181,3 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     </aside>
   )
 }
-
-
