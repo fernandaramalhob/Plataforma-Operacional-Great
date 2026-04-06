@@ -1,13 +1,11 @@
-import { NextResponse } from "next/server"
+import { after, NextResponse } from "next/server"
 import { canAccessClient, getCurrentUser } from "@/lib/authorization"
 import { prisma } from "@/lib/prisma"
-import { ensureReportWorkersStarted } from "@/lib/report-jobs"
+import { processQueuedReportSafely } from "@/lib/report-processing"
 import {
   generateLiveReportPayload,
-  persistGeneratedReport,
   queueReportGeneration,
 } from "@/lib/report-service"
-import { isRedisConfigured } from "@/lib/redis"
 import { logError } from "@/lib/safe-logger"
 import {
   getReportValidationMessage,
@@ -16,6 +14,8 @@ import {
 } from "@/lib/validations/report.schema"
 import type { ApiErrorResponse } from "@/types/api.types"
 import type { QueuedReportResponse } from "@/types/report.types"
+
+export const maxDuration = 300
 
 export async function GET(request: Request) {
   try {
@@ -121,40 +121,6 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!isRedisConfigured()) {
-      const payload = await generateLiveReportPayload({
-        user,
-        client,
-        filters: {
-          since,
-          until,
-          objective,
-        },
-      })
-      const persistedReport = await persistGeneratedReport({
-        clientId,
-        payload,
-        filters: {
-          since,
-          until,
-          objective,
-        },
-      })
-
-      return NextResponse.json<QueuedReportResponse>(
-        {
-          reportId: persistedReport.reportId,
-          status: "PENDING",
-          generatedAt: persistedReport.generatedAt,
-          referenceWeek: persistedReport.referenceWeek,
-          queued: true,
-        },
-        { status: 202 }
-      )
-    }
-
-    await ensureReportWorkersStarted()
-
     const report = await queueReportGeneration({
       clientId,
       filters: {
@@ -164,6 +130,8 @@ export async function POST(request: Request) {
       },
       requestedByUserId: user.id,
     })
+
+    after(() => processQueuedReportSafely(report.id))
 
     return NextResponse.json<QueuedReportResponse>(
       {

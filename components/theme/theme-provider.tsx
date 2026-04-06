@@ -4,7 +4,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useState,
   type ReactNode,
 } from "react"
@@ -38,37 +37,37 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME)
-  const [isReady, setIsReady] = useState(false)
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window === "undefined") {
+      return DEFAULT_THEME
+    }
+
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+    return isTheme(storedTheme) ? storedTheme : DEFAULT_THEME
+  })
+  const isReady = true
 
   useEffect(() => {
-    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
-    const initialTheme = isTheme(storedTheme) ? storedTheme : DEFAULT_THEME
-
-    setThemeState(initialTheme)
-    applyTheme(initialTheme)
-    setIsReady(true)
-  }, [])
+    applyTheme(theme)
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
 
   function setTheme(nextTheme: Theme) {
     setThemeState(nextTheme)
-    applyTheme(nextTheme)
-    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
   }
 
   function toggleTheme() {
-    setTheme(theme === "dark" ? "light" : "dark")
+    setThemeState((currentTheme) => (
+      currentTheme === "dark" ? "light" : "dark"
+    ))
   }
 
-  const value = useMemo(
-    () => ({
-      theme,
-      isReady,
-      setTheme,
-      toggleTheme,
-    }),
-    [isReady, theme]
-  )
+  const value = {
+    theme,
+    isReady,
+    setTheme,
+    toggleTheme,
+  }
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }

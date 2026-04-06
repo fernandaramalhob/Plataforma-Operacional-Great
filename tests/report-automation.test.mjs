@@ -18,7 +18,7 @@ test("resolveReportAutomationWindow returns the last completed week", () => {
   })
   assert.equal(
     buildAutomationReferenceWeekLabel(window),
-    "2026-03-23 ate 2026-03-29"
+    "2026-03-23 até 2026-03-29"
   )
 })
 

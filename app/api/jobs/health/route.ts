@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser, isAdmin } from "@/lib/authorization"
-import { ensureReportWorkersStarted } from "@/lib/report-jobs"
 import { getReportQueuesHealth } from "@/lib/report-monitoring"
 import { logError } from "@/lib/safe-logger"
 
@@ -19,7 +18,6 @@ export async function GET() {
       )
     }
 
-    await ensureReportWorkersStarted()
     const health = await getReportQueuesHealth()
 
     return NextResponse.json(health, {

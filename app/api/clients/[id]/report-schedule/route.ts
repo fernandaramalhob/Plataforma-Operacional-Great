@@ -1,12 +1,10 @@
-import { NextResponse } from "next/server"
+import { after, NextResponse } from "next/server"
 import { canAccessClient, getCurrentUser } from "@/lib/authorization"
 import { prisma } from "@/lib/prisma"
-import {
-  ensureReportScheduleLoopStarted,
-  triggerReportScheduleCycle,
-} from "@/lib/report-schedule-runner"
+import { processPendingReportBatch } from "@/lib/report-processing"
 import {
   disableClientReportSchedule,
+  processDueReportSchedules,
   serializeReportSchedule,
   upsertClientReportSchedule,
 } from "@/lib/report-schedule"
@@ -21,8 +19,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureReportScheduleLoopStarted()
-
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "NÃ£o autorizado" }, { status: 401 })
@@ -62,8 +58,6 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureReportScheduleLoopStarted()
-
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "NÃ£o autorizado" }, { status: 401 })
@@ -102,7 +96,18 @@ export async function PUT(
       payload: parsedPayload.data,
     })
 
-    triggerReportScheduleCycle()
+    after(async () => {
+      await processDueReportSchedules({ limit: 5 }).catch((error) => {
+        logError("client.report-schedule.put.process-due", error, {
+          clientId: id,
+        })
+      })
+      await processPendingReportBatch(2).catch((error) => {
+        logError("client.report-schedule.put.process-pending", error, {
+          clientId: id,
+        })
+      })
+    })
 
     return NextResponse.json({
       ok: true,
@@ -122,8 +127,6 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureReportScheduleLoopStarted()
-
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "NÃ£o autorizado" }, { status: 401 })

@@ -19,7 +19,7 @@ test("buildStoredReportPayload fills a fallback client when missing", () => {
     new Date("2026-03-25T10:00:00.000Z")
   )
 
-  assert.equal(payload.client.name, "Cliente nao informado")
+  assert.equal(payload.client.name, "Cliente não informado")
   assert.equal(payload.filters.objective, "ALL")
 })
 
@@ -90,5 +90,5 @@ test("mapReportToHistoryRow prioritizes the latest send log error", () => {
   })
 
   assert.equal(row.errorMessage, "Falha final")
-  assert.equal(row.referenceWeek, "2026-03-01 ate 2026-03-25")
+  assert.equal(row.referenceWeek, "2026-03-01 até 2026-03-25")
 })

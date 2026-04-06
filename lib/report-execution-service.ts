@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { type Client, Prisma, type User } from "@prisma/client"
+import { type Client, type User } from "@prisma/client"
 import {
   buildMetaTimeRange,
   getMetaCampaigns,

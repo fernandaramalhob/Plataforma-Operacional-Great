@@ -1,19 +1,15 @@
 import { randomUUID } from "node:crypto"
-import type { Job } from "bullmq"
+import { prisma } from "@/lib/prisma"
 import {
-  enqueueDeadLetterJob,
-  getReportDeadLetterQueue,
-  getReportGenerationQueue,
-  getReportQueuePrefix,
-  getReportSendQueue,
-  getReportWeeklyQueue,
-  REPORT_WEEKLY_SCHEDULER_ID,
-} from "@/lib/report-queue"
+  parsePendingReportJobPayload,
+  parseReportJobErrorPayload,
+} from "@/lib/report-domain"
 import { listRecentIntegrationAlerts } from "@/lib/integration-monitoring"
-import { getRedisConnection } from "@/lib/redis"
+import { getRedisConnection, isRedisConfigured } from "@/lib/redis"
 import { logError, sanitizeForLog } from "@/lib/safe-logger"
 
-const REPORT_ALERTS_KEY = `${getReportQueuePrefix()}:report:alerts`
+const REPORT_QUEUE_PREFIX = process.env.REPORT_QUEUE_PREFIX?.trim() || "greatgo"
+const REPORT_ALERTS_KEY = `${REPORT_QUEUE_PREFIX}:report:alerts`
 const ALERTS_RETENTION = 50
 
 export type ReportOperationalAlert = {
@@ -28,9 +24,14 @@ export type ReportOperationalAlert = {
   details: unknown
 }
 
-type ReportQueueCounts = Awaited<
-  ReturnType<ReturnType<typeof getReportGenerationQueue>["getJobCounts"]>
->
+type ReportQueueCounts = {
+  waiting: number
+  active: number
+  completed: number
+  failed: number
+  delayed: number
+  paused: number
+}
 
 function getAlertsRetention() {
   const value = Number.parseInt(process.env.REPORT_ALERTS_RETENTION ?? "", 10)
@@ -58,9 +59,11 @@ export async function recordReportAlert(
     details: sanitizeForLog(params.details),
   })
 
-  const redis = getRedisConnection("client")
-  await redis.lpush(REPORT_ALERTS_KEY, JSON.stringify(alert))
-  await redis.ltrim(REPORT_ALERTS_KEY, 0, getAlertsRetention() - 1)
+  if (isRedisConfigured()) {
+    const redis = getRedisConnection("client")
+    await redis.lpush(REPORT_ALERTS_KEY, JSON.stringify(alert))
+    await redis.ltrim(REPORT_ALERTS_KEY, 0, getAlertsRetention() - 1)
+  }
 
   logError(`report-alert.${params.source}`, new Error(params.message), {
     queueName: params.queueName,
@@ -73,6 +76,10 @@ export async function recordReportAlert(
 }
 
 export async function listRecentReportAlerts(limit = 20) {
+  if (!isRedisConfigured()) {
+    return []
+  }
+
   const redis = getRedisConnection("client")
   const items = await redis.lrange(REPORT_ALERTS_KEY, 0, Math.max(0, limit - 1))
 
@@ -85,99 +92,116 @@ export async function listRecentReportAlerts(limit = 20) {
   })
 }
 
-export async function handleTerminalJobFailure(
-  queueName: string,
-  job: Job | undefined,
-  error: unknown
-) {
-  const attemptsConfigured = job?.opts.attempts ?? 1
-  const attemptsMade = job?.attemptsMade ?? 0
-  const isTerminalFailure = attemptsMade >= attemptsConfigured
-  const message =
-    error instanceof Error ? error.message : "Falha inesperada no job"
-
-  await recordReportAlert({
-    severity: isTerminalFailure ? "error" : "warning",
-    source: "worker-failed",
-    queueName,
-    message: isTerminalFailure
-      ? "Job esgotou as tentativas e foi encaminhado para a dead letter queue."
-      : "Job falhou, mas ainda possui novas tentativas configuradas.",
-    jobId: job?.id ? String(job.id) : null,
-    jobName: job?.name ?? null,
-    details: {
-      attemptsMade,
-      attemptsConfigured,
-      errorMessage: message,
-      payload: job?.data,
+async function listPendingGenerationReports() {
+  const candidates = await prisma.report.findMany({
+    where: {
+      status: "PENDING",
+    },
+    select: {
+      id: true,
+      payloadJson: true,
+    },
+    take: 200,
+    orderBy: {
+      generatedAt: "asc",
     },
   })
 
-  if (!job || !isTerminalFailure) {
-    return
-  }
-
-  await enqueueDeadLetterJob({
-    queueName,
-    jobId: String(job.id),
-    jobName: job.name,
-    errorMessage: message,
-    failedAt: new Date().toISOString(),
-    attemptsMade,
-    attemptsConfigured,
-    payload: sanitizeForLog(job.data),
-  })
-}
-
-async function getCounts(queue: {
-  getJobCounts: (
-    ...types: Array<
-      "waiting" | "active" | "completed" | "failed" | "delayed" | "paused"
-    >
-  ) => Promise<ReportQueueCounts>
-}) {
-  return queue.getJobCounts(
-    "waiting",
-    "active",
-    "completed",
-    "failed",
-    "delayed",
-    "paused"
+  return candidates.filter((candidate) =>
+    Boolean(parsePendingReportJobPayload(candidate.payloadJson))
   )
 }
 
+async function countFailedGenerationReports() {
+  const recentReports = await prisma.report.findMany({
+    where: {
+      status: "FAILED",
+    },
+    select: {
+      payloadJson: true,
+    },
+    take: 200,
+    orderBy: {
+      generatedAt: "desc",
+    },
+  })
+
+  return recentReports.filter((report) => {
+    const jobError = parseReportJobErrorPayload(report.payloadJson)
+    return jobError?.stage === "GENERATION"
+  }).length
+}
+
+async function countFailedSendReports() {
+  return prisma.sendLog.count({
+    where: {
+      status: "FAILED",
+    },
+  })
+}
+
+async function countDueSchedules() {
+  return prisma.reportSchedule.count({
+    where: {
+      active: true,
+      nextRunAt: {
+        lte: new Date(),
+      },
+    },
+  })
+}
+
+function buildQueueCounts(params?: Partial<ReportQueueCounts>): ReportQueueCounts {
+  return {
+    waiting: params?.waiting ?? 0,
+    active: params?.active ?? 0,
+    completed: params?.completed ?? 0,
+    failed: params?.failed ?? 0,
+    delayed: params?.delayed ?? 0,
+    paused: params?.paused ?? 0,
+  }
+}
+
 export async function getReportQueuesHealth() {
-  const [generation, send, weekly, deadLetter, scheduler, alerts, integrationAlerts] =
+  const [pendingGeneration, failedGeneration, failedSend, dueSchedules, alerts, integrationAlerts] =
     await Promise.all([
-      getCounts(getReportGenerationQueue()),
-      getCounts(getReportSendQueue()),
-      getCounts(getReportWeeklyQueue()),
-      getCounts(getReportDeadLetterQueue()),
-      getReportWeeklyQueue().getJobScheduler(REPORT_WEEKLY_SCHEDULER_ID),
+      listPendingGenerationReports(),
+      countFailedGenerationReports(),
+      countFailedSendReports(),
+      countDueSchedules(),
       listRecentReportAlerts(10),
       listRecentIntegrationAlerts(10),
     ])
 
+  const schedulerConfigured = Boolean(process.env.CRON_SECRET?.trim())
+
   return {
     ok:
-      Boolean(scheduler) &&
-      (deadLetter.waiting ?? 0) === 0 &&
-      (deadLetter.delayed ?? 0) === 0 &&
+      schedulerConfigured &&
+      failedGeneration === 0 &&
+      failedSend === 0 &&
       alerts.every((alert) => alert.severity !== "error") &&
       integrationAlerts.every((alert) => alert.severity !== "error"),
     checkedAt: new Date().toISOString(),
-    scheduler: scheduler
+    scheduler: schedulerConfigured
       ? {
-          id: scheduler.key,
-          next: scheduler.next,
-          pattern: scheduler.pattern ?? null,
+          id: "vercel-cron-report-jobs",
+          next: null,
+          pattern: "* * * * *",
         }
       : null,
     queues: {
-      generation,
-      send,
-      weekly,
-      deadLetter,
+      generation: buildQueueCounts({
+        waiting: pendingGeneration.length,
+        failed: failedGeneration,
+      }),
+      send: buildQueueCounts({
+        failed: failedSend,
+      }),
+      weekly: buildQueueCounts({
+        waiting: dueSchedules,
+      }),
+      deadLetter: buildQueueCounts(),
     },
     alerts,
     integrationAlerts,

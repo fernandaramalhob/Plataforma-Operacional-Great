@@ -3,6 +3,7 @@ import type {
   ReportSchedule,
 } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { queueReportGeneration } from "@/lib/report-service"
 import { logError } from "@/lib/safe-logger"
 import type {
   ReportSchedulePayload,
@@ -255,48 +256,28 @@ type DueSchedule = Prisma.ReportScheduleGetPayload<{
 }>
 
 async function executeReportSchedule(schedule: DueSchedule) {
-  const reportDeliveryModuleUrl = new URL("./report-delivery.ts", import.meta.url).href
-  const reportExecutionServiceModuleUrl = new URL(
-    "./report-execution-service.ts",
-    import.meta.url
-  ).href
-
-  const [{ sendPersistedReportNow }, { generateLiveReportPayload, persistGeneratedReport }] =
-    await Promise.all([
-      import(reportDeliveryModuleUrl),
-      import(reportExecutionServiceModuleUrl),
-    ])
-
-  const payload = await generateLiveReportPayload({
-    user: schedule.createdByUser,
-    client: schedule.client,
-    filters: {
-      since: schedule.filtersSince,
-      until: schedule.filtersUntil,
-      objective: schedule.objective,
-    },
-  })
-
-  const report = await persistGeneratedReport({
+  await queueReportGeneration({
     clientId: schedule.clientId,
-    payload,
+    requestedByUserId: schedule.createdByUser.id,
+    source: "schedule",
     filters: {
       since: schedule.filtersSince,
       until: schedule.filtersUntil,
       objective: schedule.objective,
     },
-  })
-
-  await sendPersistedReportNow(report.reportId, {
-    mode: schedule.sendMode as ReportSendMode,
-    message: schedule.message,
-    groupId: schedule.groupId,
+    enqueueSendOnComplete: true,
+    sendOptions: {
+      mode: schedule.sendMode as ReportSendMode,
+      message: schedule.message,
+      groupId: schedule.groupId || schedule.client.whatsappGroupId,
+    },
   })
 }
 
 export async function processDueReportSchedules(params?: {
   retryMinutes?: number
   dryRun?: boolean
+  limit?: number
 }) {
   const retryMinutes = params?.retryMinutes ?? 15
   const dryRun = params?.dryRun ?? false
@@ -310,6 +291,11 @@ export async function processDueReportSchedules(params?: {
     orderBy: {
       nextRunAt: "asc",
     },
+    ...(params?.limit
+      ? {
+          take: params.limit,
+        }
+      : {}),
     include: {
       client: {
         include: {

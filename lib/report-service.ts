@@ -1,18 +1,19 @@
-import { Prisma, type Client, type User } from "@prisma/client"
+import type { Client, User } from "@prisma/client"
 import {
   buildMetaTimeRange,
   getMetaCampaigns,
   getMetaInsights,
 } from "@/lib/meta-api"
-import { buildReportJobErrorPayload } from "@/lib/report-domain"
 import { resolveMetaTokenFromOwners, type MetaTokenOwner } from "@/lib/meta-token-status"
 import { prisma } from "@/lib/prisma"
 import {
+  buildPendingReportJobPayload,
   buildReferenceWeekDate,
   buildStoredReportPayload,
   serializeStoredReportPayload,
 } from "@/lib/report-domain"
 import type {
+  PendingReportSendOptions,
   ReportAction,
   ReportClient,
   ReportGenerationResponse,
@@ -63,7 +64,7 @@ async function resolveMetaToken(user: ReportUser, client: ClientWithManager) {
   const { health } = await resolveMetaTokenFromOwners(owners)
 
   if (!health.ok || !health.token) {
-    throw new Error(health.detail ?? "Token META não configurado")
+    throw new Error(health.detail ?? "Token META nao configurado")
   }
 
   return health.token
@@ -163,7 +164,7 @@ export async function generateLiveReportPayload(params: {
       .slice(0, 5)
       .map((ad) => ({
         id: ad.ad_id ?? crypto.randomUUID(),
-        name: ad.ad_name ?? "Anúncio sem nome",
+        name: ad.ad_name ?? "Anuncio sem nome",
         impressions: ad.impressions,
         reach: ad.reach,
         clicks: ad.clicks,
@@ -171,7 +172,7 @@ export async function generateLiveReportPayload(params: {
         actions: ad.actions as ReportAction[] | undefined,
       })),
     genderBreakdown: genderBreakdown.map((row) => ({
-      dimension: row.gender ?? "não informado",
+      dimension: row.gender ?? "nao informado",
       spend: row.spend,
       impressions: row.impressions,
       reach: row.reach,
@@ -214,44 +215,24 @@ export async function queueReportGeneration(params: {
   filters: ReportFiltersInput
   requestedByUserId: string
   enqueueSendOnComplete?: boolean
+  sendOptions?: PendingReportSendOptions | null
+  source?: "manual" | "schedule" | "weekly"
 }) {
-  const { enqueueReportGenerationJob } = await import("@/lib/report-queue")
-
-  const report = await prisma.report.create({
+  return prisma.report.create({
     data: {
       clientId: params.clientId,
       referenceWeek: buildReferenceWeekDate(params.filters.since),
       status: "PENDING",
-      payloadJson: Prisma.DbNull,
+      payloadJson: buildPendingReportJobPayload({
+        queuedAt: new Date().toISOString(),
+        requestedByUserId: params.requestedByUserId,
+        source: params.source ?? "manual",
+        filters: params.filters,
+        enqueueSendOnComplete: params.enqueueSendOnComplete ?? false,
+        sendOptions: params.sendOptions ?? null,
+      }),
     },
   })
-
-  try {
-    await enqueueReportGenerationJob({
-      reportId: report.id,
-      clientId: params.clientId,
-      since: params.filters.since,
-      until: params.filters.until,
-      objective: params.filters.objective,
-      requestedByUserId: params.requestedByUserId,
-      enqueueSendOnComplete: params.enqueueSendOnComplete ?? false,
-    })
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Erro ao enfileirar relatório"
-
-    await prisma.report.update({
-      where: { id: report.id },
-      data: {
-        status: "FAILED",
-        payloadJson: buildReportJobErrorPayload(message, "GENERATION"),
-      },
-    })
-
-    throw error
-  }
-
-  return report
 }
 
 export function buildLastCompletedWeekRange(referenceDate = new Date()) {

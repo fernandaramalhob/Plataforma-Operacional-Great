@@ -25,7 +25,7 @@ function optionalTrimmedString(maxLength: number, label: string) {
     z
       .string()
       .max(maxLength, {
-        message: `${label} deve ter no máximo ${maxLength} caracteres`,
+        message: `${label} deve ter no maximo ${maxLength} caracteres`,
       })
       .optional()
   )
@@ -39,7 +39,7 @@ export const clientPayloadSchema = z
         .string()
         .min(3, { message: "Nome do cliente deve ter pelo menos 3 caracteres" })
         .max(CLIENT_NAME_MAX_LENGTH, {
-          message: `Nome do cliente deve ter no máximo ${CLIENT_NAME_MAX_LENGTH} caracteres`,
+          message: `Nome do cliente deve ter no maximo ${CLIENT_NAME_MAX_LENGTH} caracteres`,
         })
     ),
     company: optionalTrimmedString(CLIENT_COMPANY_MAX_LENGTH, "Empresa"),
@@ -50,14 +50,14 @@ export const clientPayloadSchema = z
       },
       z
         .string()
-        .email({ message: "E-mail inválido" })
+        .email({ message: "E-mail invalido" })
         .max(CLIENT_EMAIL_MAX_LENGTH, {
-          message: `E-mail deve ter no máximo ${CLIENT_EMAIL_MAX_LENGTH} caracteres`,
+          message: `E-mail deve ter no maximo ${CLIENT_EMAIL_MAX_LENGTH} caracteres`,
         })
         .optional()
     ),
     phone: optionalTrimmedString(CLIENT_PHONE_MAX_LENGTH, "Telefone"),
-    notes: optionalTrimmedString(CLIENT_NOTES_MAX_LENGTH, "Observações"),
+    notes: optionalTrimmedString(CLIENT_NOTES_MAX_LENGTH, "Observacoes"),
     whatsappGroupId: optionalTrimmedString(
       CLIENT_WHATSAPP_GROUP_MAX_LENGTH,
       "Grupo do WhatsApp"
@@ -75,7 +75,7 @@ export const clientPayloadSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["phone"],
-          message: "Telefone deve conter apenas números e símbolos comuns",
+          message: "Telefone deve conter apenas numeros e simbolos comuns",
         })
       }
 
@@ -84,7 +84,7 @@ export const clientPayloadSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["phone"],
-          message: "Telefone deve ter entre 10 e 15 dígitos",
+          message: "Telefone deve ter entre 10 e 15 digitos",
         })
       }
     }
@@ -94,7 +94,7 @@ export const clientPayloadSchema = z
         code: z.ZodIssueCode.custom,
         path: ["whatsappGroupId"],
         message:
-          "ID do grupo WhatsApp deve seguir um formato válido, como 120363407411420148@g.us",
+          "ID do grupo WhatsApp deve seguir um formato valido, como 120363407411420148@g.us",
       })
     }
 
@@ -102,7 +102,7 @@ export const clientPayloadSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["adAccountId"],
-        message: "Conta META deve conter apenas números",
+        message: "Conta META deve conter apenas numeros",
       })
     }
 
@@ -118,5 +118,5 @@ export const clientPayloadSchema = z
 export type ClientPayload = z.infer<typeof clientPayloadSchema>
 
 export function getClientValidationMessage(error: z.ZodError) {
-  return error.issues[0]?.message ?? "Dados do cliente inválidos"
+  return error.issues[0]?.message ?? "Dados do cliente invalidos"
 }

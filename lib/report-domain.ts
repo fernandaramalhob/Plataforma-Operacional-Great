@@ -5,6 +5,7 @@ import type {
   ReportFilters,
   ReportJobError,
   ReportJobStage,
+  PendingReportJob,
   ReportPayload,
   StoredReportPayload,
 } from "@/types/report.types"
@@ -90,6 +91,79 @@ export function buildReportJobErrorPayload(
       failedAt: new Date().toISOString(),
     },
   } as Prisma.InputJsonValue
+}
+
+export function buildPendingReportJobPayload(job: PendingReportJob) {
+  return {
+    pendingJob: job,
+  } as Prisma.InputJsonValue
+}
+
+export function parsePendingReportJobPayload(
+  payloadJson: Prisma.JsonValue | null
+): PendingReportJob | null {
+  if (!isRecord(payloadJson) || !isRecord(payloadJson.pendingJob)) {
+    return null
+  }
+
+  const { pendingJob } = payloadJson
+  const filters = isRecord(pendingJob.filters) ? pendingJob.filters : null
+  const sendOptions =
+    pendingJob.sendOptions == null
+      ? null
+      : isRecord(pendingJob.sendOptions)
+        ? pendingJob.sendOptions
+        : undefined
+
+  if (
+    !filters ||
+    sendOptions === undefined ||
+    typeof pendingJob.queuedAt !== "string" ||
+    typeof pendingJob.requestedByUserId !== "string" ||
+    typeof pendingJob.source !== "string" ||
+    typeof filters.since !== "string" ||
+    typeof filters.until !== "string" ||
+    typeof filters.objective !== "string" ||
+    typeof pendingJob.enqueueSendOnComplete !== "boolean" ||
+    !["manual", "schedule", "weekly"].includes(pendingJob.source)
+  ) {
+    return null
+  }
+
+  if (
+    sendOptions &&
+    (("mode" in sendOptions && sendOptions.mode != null && typeof sendOptions.mode !== "string") ||
+      ("message" in sendOptions &&
+        sendOptions.message != null &&
+        typeof sendOptions.message !== "string") ||
+      ("groupId" in sendOptions &&
+        sendOptions.groupId != null &&
+        typeof sendOptions.groupId !== "string"))
+  ) {
+    return null
+  }
+
+  return {
+    queuedAt: pendingJob.queuedAt,
+    requestedByUserId: pendingJob.requestedByUserId,
+    source: pendingJob.source,
+    filters: {
+      since: filters.since,
+      until: filters.until,
+      objective: filters.objective,
+    },
+    enqueueSendOnComplete: pendingJob.enqueueSendOnComplete,
+    sendOptions: sendOptions
+      ? {
+          mode:
+            typeof sendOptions.mode === "string" ? sendOptions.mode : undefined,
+          message:
+            typeof sendOptions.message === "string" ? sendOptions.message : null,
+          groupId:
+            typeof sendOptions.groupId === "string" ? sendOptions.groupId : null,
+        }
+      : null,
+  }
 }
 
 export function parseReportJobErrorPayload(

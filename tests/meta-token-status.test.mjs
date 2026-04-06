@@ -13,5 +13,5 @@ test("getMetaTokenReadErrorDetail explica incompatibilidade de chave de criptogr
 test("getMetaTokenReadErrorDetail retorna fallback para erros genericos", () => {
   const detail = getMetaTokenReadErrorDetail(new Error("Falha inesperada"))
 
-  assert.match(detail, /Nao foi possivel ler o token META salvo/)
+  assert.match(detail, /Não foi possível ler o token META salvo/)
 })

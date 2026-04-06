@@ -118,28 +118,30 @@ Bootstrap inicial de autenticacao:
 
 # Filas e Redis
 
-O processamento pesado de relatorios agora roda em fila usando Redis + BullMQ.
+O processamento de relatorios agora usa uma fila persistida no banco, com locks e alertas operacionais em Redis.
 
-- `POST /api/reports` enfileira a geracao do relatorio
-- `POST /api/reports/:id/send` enfileira o envio por WhatsApp
-- o status permanece em `PENDING` enquanto o worker processa o job
+- `POST /api/reports` cria um relatorio `PENDING` e dispara o processamento em background
+- `GET /api/reports/:id` acompanha o progresso ate o payload ficar disponivel
+- `POST /api/reports/:id/send` envia manualmente um relatorio ja gerado
+- o Vercel Cron chama `/api/cron/report-jobs` para processar pendencias, schedules e o disparo semanal
 - falhas de geracao ficam salvas no proprio registro do relatorio
 
 Variaveis de ambiente:
 
 - `REDIS_URL`: conexao principal com o Redis
-- `REPORT_QUEUE_PREFIX`: prefixo das chaves BullMQ
-- `REPORT_GENERATION_CONCURRENCY`: concorrencia da fila de geracao
-- `REPORT_SEND_CONCURRENCY`: concorrencia da fila de envio
+- `REPORT_QUEUE_PREFIX`: prefixo das chaves de fila e monitoramento no Redis
+- `REPORT_PROCESS_BATCH_SIZE`: quantidade de relatorios processados por ciclo do cron
+- `REPORT_PROCESS_LOCK_TTL_SECONDS`: TTL do lock distribuido durante o processamento
 - `REPORT_WEEKLY_CRON`: agenda semanal do disparo automatico
 - `REPORT_WEEKLY_TZ`: timezone usada pelo agendamento semanal
 - `REPORT_WEEKLY_BATCH_SIZE`: quantidade de clientes ativos processados por lote
 - `REPORT_WEEKLY_OBJECTIVE`: objetivo padrao usado no job semanal
 - `REPORT_ALERTS_RETENTION`: quantidade de alertas operacionais mantidos no Redis
+- `CRON_SECRET`: segredo usado pelo Vercel Cron em `/api/cron/report-jobs`
 
 Operacao:
 
-- jobs que esgotam tentativas vao para a dead letter queue `report-dead-letter`
 - alertas operacionais recentes ficam persistidos no Redis
-- `GET /api/jobs/health` retorna scheduler, filas, dead letter e alertas recentes para administradores
-- para rodar a automacao semanal sem depender do Windows, use `npm run report:weekly:daemon` em um host Linux/container sempre ligado
+- `GET /api/jobs/health` retorna scheduler, fila persistida e alertas recentes para administradores
+- em deploy Vercel, o arquivo `vercel.json` registra o cron `* * * * *` para processar a fila
+- os scripts `npm run report:weekly` e `npm run report:weekly:daemon` continuam disponiveis apenas para operacao manual/externa

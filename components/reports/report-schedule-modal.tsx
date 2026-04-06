@@ -49,7 +49,10 @@ function getInitialTime() {
   }
 }
 
-function buildInitialForm(props: ReportScheduleModalProps) {
+function buildInitialForm(props: Pick<
+  ReportScheduleModalProps,
+  "defaultSendMode" | "defaultMessage" | "defaultGroupId"
+>) {
   const initialTime = getInitialTime()
 
   return {
@@ -65,6 +68,7 @@ function buildInitialForm(props: ReportScheduleModalProps) {
 }
 
 export function ReportScheduleModal(props: ReportScheduleModalProps) {
+  const { defaultGroupId, defaultMessage, defaultSendMode, open } = props
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [disabling, setDisabling] = useState(false)
@@ -73,16 +77,22 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
   const [form, setForm] = useState(() => buildInitialForm(props))
 
   useEffect(() => {
-    if (!props.open) {
+    if (!open) {
       return
     }
 
-    setForm(buildInitialForm(props))
+    setForm(
+      buildInitialForm({
+        defaultGroupId,
+        defaultMessage,
+        defaultSendMode,
+      })
+    )
   }, [
-    props.open,
-    props.defaultGroupId,
-    props.defaultMessage,
-    props.defaultSendMode,
+    defaultGroupId,
+    defaultMessage,
+    defaultSendMode,
+    open,
   ])
 
   useEffect(() => {

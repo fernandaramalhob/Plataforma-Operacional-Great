@@ -1,10 +1,12 @@
-import { NextResponse } from "next/server"
+import { after, NextResponse } from "next/server"
 import { canAccessClient, getCurrentUser } from "@/lib/authorization"
 import {
+  parsePendingReportJobPayload,
   parseReportJobErrorPayload,
   parseStoredReportPayload,
 } from "@/lib/report-domain"
 import { prisma } from "@/lib/prisma"
+import { processQueuedReportSafely } from "@/lib/report-processing"
 import { logError } from "@/lib/safe-logger"
 
 export async function GET(
@@ -48,9 +50,14 @@ export async function GET(
 
     const payload = parseStoredReportPayload(report.payloadJson)
     const jobError = parseReportJobErrorPayload(report.payloadJson)
+    const pendingJob = parsePendingReportJobPayload(report.payloadJson)
     const errorMessage = report.sendLogs[0]?.errorMessage ?? jobError?.message ?? null
 
     if (!payload) {
+      if (report.status === "PENDING" && pendingJob) {
+        after(() => processQueuedReportSafely(report.id))
+      }
+
       return NextResponse.json(
         {
           id: report.id,

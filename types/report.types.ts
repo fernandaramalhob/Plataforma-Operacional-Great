@@ -60,6 +60,27 @@ export type ReportJobError = {
   failedAt: string
 }
 
+export type PendingReportSendOptions = {
+  mode?: ReportSendMode
+  message?: string | null
+  groupId?: string | null
+}
+
+export type PendingReportSource = "manual" | "schedule" | "weekly"
+
+export type PendingReportJob = {
+  queuedAt: string
+  requestedByUserId: string
+  source: PendingReportSource
+  filters: {
+    since: string
+    until: string
+    objective: string
+  }
+  enqueueSendOnComplete: boolean
+  sendOptions: PendingReportSendOptions | null
+}
+
 export type ReportAction = {
   action_type?: string
   value?: string

@@ -10,6 +10,11 @@ import { logError } from "@/lib/safe-logger"
 const execFileAsync = promisify(execFile)
 const TOKEN_TTL_MS = 5 * 60 * 1000
 const BROWSER_CANDIDATES = [
+  process.env.CHROME_EXECUTABLE_PATH,
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/google-chrome",
+  "/usr/bin/chromium-browser",
+  "/usr/bin/chromium",
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
   "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
@@ -42,7 +47,9 @@ function getAutomationBaseUrl() {
 }
 
 function resolveBrowserPath() {
-  return BROWSER_CANDIDATES.find((candidate) => existsSync(candidate))
+  return BROWSER_CANDIDATES.find(
+    (candidate): candidate is string => Boolean(candidate && existsSync(candidate))
+  )
 }
 
 function signReportPayload(reportId: string, expiresAt: number) {

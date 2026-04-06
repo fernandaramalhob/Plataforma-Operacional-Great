@@ -13,7 +13,7 @@ const PUBLIC_API_PATHS = new Set([
   "/api/auth/verify-request",
 ])
 
-const PUBLIC_API_PREFIXES = ["/api/auth/callback/"]
+const PUBLIC_API_PREFIXES = ["/api/auth/callback/", "/api/cron/"]
 
 function isPublicApiPath(pathname: string) {
   return (
@@ -26,7 +26,7 @@ function isProtectedApiPath(pathname: string) {
   return pathname.startsWith("/api") && !isPublicApiPath(pathname)
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   const token = await getToken({
     req: request,
