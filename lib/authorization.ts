@@ -2,6 +2,7 @@ import type { Prisma, User } from "@prisma/client"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logError, logInfo, logWarn } from "@/lib/safe-logger"
 
 type Role = "ADMIN" | "MANAGER"
 
@@ -15,25 +16,40 @@ function normalizeEmail(email: string) {
 }
 
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
-  const session = await getServerSession(authOptions)
+  try {
+    const session = await getServerSession(authOptions)
 
-  if (!session?.user?.email) {
-    return null
+    if (!session?.user?.email) {
+      logWarn("auth.current-user.no-session")
+      return null
+    }
+
+    const user = await prisma.user.findUnique({
+      where: {
+        email: normalizeEmail(session.user.email),
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        passwordHash: true,
+        metaAccessToken: true,
+        metaTokenExpiresAt: true,
+      },
+    })
+
+    logInfo("auth.current-user.loaded", {
+      email: session.user.email,
+      found: Boolean(user),
+      userId: user?.id ?? null,
+      role: user?.role ?? null,
+    })
+
+    return user
+  } catch (error) {
+    logError("auth.current-user.failed", error)
+    throw error
   }
-
-  return prisma.user.findUnique({
-    where: {
-      email: normalizeEmail(session.user.email),
-    },
-    select: {
-      id: true,
-      email: true,
-      role: true,
-      passwordHash: true,
-      metaAccessToken: true,
-      metaTokenExpiresAt: true,
-    },
-  })
 }
 
 export function isAdmin(userOrRole: Pick<AuthenticatedUser, "role"> | Role) {

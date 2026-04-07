@@ -1,20 +1,65 @@
 "use client"
 
 import Image from "next/image"
-import { useState } from "react"
-import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useMemo, useState } from "react"
+import { getSession, signIn } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
+import { withTimeout } from "@/lib/async"
 import { loginSchema } from "@/lib/validations/auth.schema"
 
 type LoginForm = z.infer<typeof loginSchema>
 
+const DEFAULT_REDIRECT_PATH = "/dashboard"
+
+function normalizeCallbackUrl(rawCallbackUrl: string | null) {
+  if (!rawCallbackUrl) {
+    return DEFAULT_REDIRECT_PATH
+  }
+
+  if (rawCallbackUrl.startsWith("/")) {
+    return rawCallbackUrl
+  }
+
+  try {
+    const parsed = new URL(rawCallbackUrl)
+
+    if (typeof window !== "undefined" && parsed.origin === window.location.origin) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`
+    }
+  } catch {
+    console.warn("[auth/login] callbackUrl inválida", { rawCallbackUrl })
+  }
+
+  return DEFAULT_REDIRECT_PATH
+}
+
+function getLoginErrorMessage(error: string | undefined) {
+  if (!error) {
+    return "Não foi possível concluir o login."
+  }
+
+  if (error === "CredentialsSignin") {
+    return "E-mail ou senha inválidos."
+  }
+
+  if (error === "AccessDenied") {
+    return "Seu acesso foi recusado. Verifique suas permissões."
+  }
+
+  return "Não foi possível entrar agora. Tente novamente em instantes."
+}
+
 export default function LoginPage() {
-  const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = useMemo(
+    () => normalizeCallbackUrl(searchParams.get("callbackUrl")),
+    [searchParams]
+  )
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -28,22 +73,86 @@ export default function LoginPage() {
   })
 
   async function onSubmit(data: LoginForm) {
+    let shouldResetLoading = true
+
+    console.info("[auth/login] submit.clicked", {
+      callbackUrl,
+    })
+
     setIsLoading(true)
     setError("")
 
-    const result = await signIn("credentials", {
-      email: data.email,
-      password: data.password,
-      redirect: false,
-    })
+    try {
+      console.info("[auth/login] submit.started")
 
-    if (result?.error) {
-      setError("E-mail ou senha inválidos")
-      setIsLoading(false)
-      return
+      const result = await withTimeout(
+        signIn("credentials", {
+          email: data.email,
+          password: data.password,
+          redirect: false,
+          callbackUrl,
+        }),
+        15_000,
+        "A autenticação demorou mais do que o esperado. Tente novamente."
+      )
+
+      console.info("[auth/login] sign-in.response", {
+        ok: result?.ok ?? false,
+        status: result?.status ?? null,
+        error: result?.error ?? null,
+        url: result?.url ?? null,
+      })
+
+      if (!result) {
+        throw new Error("Não houve resposta da autenticação.")
+      }
+
+      if (result.error) {
+        setError(getLoginErrorMessage(result.error))
+        return
+      }
+
+      const session = await withTimeout(
+        getSession(),
+        5_000,
+        "O login foi aceito, mas a sessão não ficou disponível a tempo."
+      )
+
+      console.info("[auth/login] session.checked", {
+        hasUser: Boolean(session?.user?.email),
+        userId: session?.user?.id ?? null,
+        role: session?.user?.role ?? null,
+      })
+
+      if (!session?.user?.email) {
+        throw new Error(
+          "A autenticação foi concluída, mas a sessão não ficou disponível. Verifique NEXTAUTH_URL e NEXTAUTH_SECRET na Vercel."
+        )
+      }
+
+      const destination = normalizeCallbackUrl(result.url ?? callbackUrl)
+      console.info("[auth/login] redirect.started", {
+        destination,
+      })
+
+      shouldResetLoading = false
+      window.location.assign(destination)
+    } catch (submitError) {
+      const message =
+        submitError instanceof Error
+          ? submitError.message
+          : "Ocorreu um erro inesperado ao entrar."
+
+      console.error("[auth/login] submit.failed", {
+        message,
+      })
+      setError(message)
+    } finally {
+      if (shouldResetLoading) {
+        console.info("[auth/login] submit.finished-without-redirect")
+        setIsLoading(false)
+      }
     }
-
-    router.push("/dashboard")
   }
 
   return (

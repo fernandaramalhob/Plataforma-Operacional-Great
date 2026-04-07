@@ -26,6 +26,43 @@ function isTheme(value: string | null): value is Theme {
   return value === "light" || value === "dark"
 }
 
+function resolveThemeFromDom(): Theme | null {
+  if (typeof document === "undefined") {
+    return null
+  }
+
+  const root = document.documentElement
+  const dataTheme = root.dataset.theme ?? null
+
+  if (isTheme(dataTheme)) {
+    return dataTheme
+  }
+
+  if (root.classList.contains("dark")) {
+    return "dark" satisfies Theme
+  }
+
+  if (root.classList.contains("light")) {
+    return "light" satisfies Theme
+  }
+
+  return null
+}
+
+function getInitialTheme(): Theme {
+  if (typeof window === "undefined") {
+    return DEFAULT_THEME
+  }
+
+  const domTheme = resolveThemeFromDom()
+  if (domTheme) {
+    return domTheme
+  }
+
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  return isTheme(storedTheme) ? storedTheme : DEFAULT_THEME
+}
+
 function applyTheme(theme: Theme) {
   const root = document.documentElement
 
@@ -37,14 +74,7 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") {
-      return DEFAULT_THEME
-    }
-
-    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
-    return isTheme(storedTheme) ? storedTheme : DEFAULT_THEME
-  })
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme)
   const isReady = true
 
   useEffect(() => {

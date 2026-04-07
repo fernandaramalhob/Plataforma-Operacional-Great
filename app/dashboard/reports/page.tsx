@@ -50,12 +50,12 @@ import type {
 } from "@/types/report.types"
 
 const colors = [
-  "bg-blue-500",
-  "bg-purple-500",
-  "bg-green-500",
-  "bg-orange-500",
-  "bg-pink-500",
-  "bg-teal-500",
+  "bg-red-500",
+  "bg-red-600",
+  "bg-rose-500",
+  "bg-rose-600",
+  "bg-pink-600",
+  "bg-[#C1121F]",
 ]
 
 const DEFAULT_TEMPLATE_NAME = "Template padr?o"

@@ -49,12 +49,22 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-gray-100 bg-white transition-[width] duration-200",
+        "fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-[color:var(--color-app-border)] bg-[var(--color-app-surface)] transition-[width] duration-200",
         collapsed ? "w-[88px]" : "w-[280px]"
       )}
     >
-      <div className={cn("border-b border-gray-100 py-5", collapsed ? "px-4" : "px-6")}>
-        <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between gap-3")}>
+      <div
+        className={cn(
+          "border-b border-[color:var(--color-app-border)] py-5",
+          collapsed ? "px-4" : "px-6"
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center",
+            collapsed ? "justify-center" : "justify-between gap-3"
+          )}
+        >
           <Link
             href="/dashboard"
             aria-label="Ir para o dashboard"
@@ -89,7 +99,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <button
               type="button"
               onClick={onToggle}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-[color:var(--color-app-text-soft)] transition hover:bg-[var(--color-app-surface-muted)] hover:text-[color:var(--color-app-text)]"
               title="Recolher menu"
               aria-label="Recolher menu"
             >
@@ -102,7 +112,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <button
             type="button"
             onClick={onToggle}
-            className="mx-auto mt-3 flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 transition hover:bg-gray-50 hover:text-gray-500"
+            className="mx-auto mt-3 flex h-8 w-8 items-center justify-center rounded-lg text-[color:var(--color-app-text-faint)] transition hover:bg-[var(--color-app-surface-muted)] hover:text-[color:var(--color-app-text-soft)]"
             title="Expandir menu"
             aria-label="Expandir menu"
           >
@@ -113,7 +123,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       <nav className={cn("flex-1 py-6", collapsed ? "px-2" : "px-3")}>
         {!collapsed && (
-          <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-widest text-gray-400">
+          <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-widest text-[color:var(--color-app-text-faint)]">
             Menu
           </p>
         )}
@@ -134,14 +144,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       ? "items-center justify-center px-0 py-3"
                       : "items-center gap-3 px-3 py-2.5",
                     isActive
-                      ? "bg-[#FEF2F2] text-[#C1121F]"
-                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+                      : "text-[color:var(--color-app-text-soft)] hover:bg-[var(--color-app-surface-muted)] hover:text-[color:var(--color-app-text)]"
                   )}
                 >
                   <Icon
                     className={cn(
                       "h-5 w-5 shrink-0",
-                      isActive ? "text-[#C1121F]" : "text-gray-400"
+                      isActive
+                        ? "text-[var(--color-primary)]"
+                        : "text-[color:var(--color-app-text-faint)]"
                     )}
                   />
                   {!collapsed && label}
@@ -152,25 +164,37 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </ul>
       </nav>
 
-      <div className={cn("border-t border-gray-100", collapsed ? "px-2 py-4" : "px-4 py-4")}>
-        <div className={cn("flex items-center", collapsed ? "flex-col gap-3" : "justify-between")}>
+      <div
+        className={cn(
+          "border-t border-[color:var(--color-app-border)]",
+          collapsed ? "px-2 py-4" : "px-4 py-4"
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center",
+            collapsed ? "flex-col gap-3" : "justify-between"
+          )}
+        >
           <div className={cn("flex items-center", collapsed ? "flex-col gap-2" : "gap-3")}>
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#C1121F]">
               <span className="text-sm font-semibold text-white">{initials}</span>
             </div>
             {!collapsed && (
               <div className="flex flex-col">
-                <span className="text-sm font-semibold leading-tight text-gray-900">
+                <span className="text-sm font-semibold leading-tight text-[color:var(--color-app-text)]">
                   {session?.user?.name ?? "Não autenticado"}
                 </span>
-                <span className="text-xs text-gray-400">{roleLabel}</span>
+                <span className="text-xs text-[color:var(--color-app-text-faint)]">
+                  {roleLabel}
+                </span>
               </div>
             )}
           </div>
 
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-50 hover:text-gray-600"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[color:var(--color-app-text-soft)] transition hover:bg-[var(--color-app-surface-muted)] hover:text-[color:var(--color-app-text)]"
             title="Sair"
             aria-label="Sair"
           >

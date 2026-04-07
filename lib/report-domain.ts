@@ -6,7 +6,9 @@ import type {
   ReportJobError,
   ReportJobStage,
   PendingReportJob,
+  PendingReportSource,
   ReportPayload,
+  ReportSendMode,
   StoredReportPayload,
 } from "@/types/report.types"
 
@@ -14,6 +16,18 @@ type SendLogLike = Pick<SendLog, "attemptNumber" | "sentAt" | "errorMessage">
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function isPendingReportSource(value: unknown): value is PendingReportSource {
+  return value === "manual" || value === "schedule" || value === "weekly"
+}
+
+function isReportSendMode(value: unknown): value is ReportSendMode {
+  return (
+    value === "PDF_AND_MESSAGE" ||
+    value === "PDF_ONLY" ||
+    value === "MESSAGE_ONLY"
+  )
 }
 
 function formatDate(date: Date) {
@@ -120,19 +134,20 @@ export function parsePendingReportJobPayload(
     sendOptions === undefined ||
     typeof pendingJob.queuedAt !== "string" ||
     typeof pendingJob.requestedByUserId !== "string" ||
-    typeof pendingJob.source !== "string" ||
+    !isPendingReportSource(pendingJob.source) ||
     typeof filters.since !== "string" ||
     typeof filters.until !== "string" ||
     typeof filters.objective !== "string" ||
-    typeof pendingJob.enqueueSendOnComplete !== "boolean" ||
-    !["manual", "schedule", "weekly"].includes(pendingJob.source)
+    typeof pendingJob.enqueueSendOnComplete !== "boolean"
   ) {
     return null
   }
 
   if (
     sendOptions &&
-    (("mode" in sendOptions && sendOptions.mode != null && typeof sendOptions.mode !== "string") ||
+    (("mode" in sendOptions &&
+      sendOptions.mode != null &&
+      !isReportSendMode(sendOptions.mode)) ||
       ("message" in sendOptions &&
         sendOptions.message != null &&
         typeof sendOptions.message !== "string") ||
@@ -156,7 +171,7 @@ export function parsePendingReportJobPayload(
     sendOptions: sendOptions
       ? {
           mode:
-            typeof sendOptions.mode === "string" ? sendOptions.mode : undefined,
+            isReportSendMode(sendOptions.mode) ? sendOptions.mode : undefined,
           message:
             typeof sendOptions.message === "string" ? sendOptions.message : null,
           groupId:

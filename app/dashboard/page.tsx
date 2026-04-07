@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache"
 import { Header } from "@/components/layout/header"
 import { ClientSendStatus } from "@/components/dashboard/client-send-status"
 import { ClientSetupIndicators } from "@/components/dashboard/client-setup-indicators"
@@ -7,7 +8,8 @@ import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { getDashboardData } from "@/lib/dashboard"
 
 export default async function DashboardPage() {
-  const dashboardData = await getDashboardData()
+  noStore()
+  const dashboardData = await getDashboardData({ includeOperational: false })
 
   return (
     <>

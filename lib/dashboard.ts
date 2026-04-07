@@ -1,4 +1,4 @@
-import { Prisma, ReportStatus, SendLogStatus } from "@prisma/client"
+﻿import { Prisma, ReportStatus, SendLogStatus } from "@prisma/client"
 import { getCurrentUser, isAdmin, scopeClientWhere } from "@/lib/authorization"
 import { prisma } from "@/lib/prisma"
 import { parseStoredReportPayload } from "@/lib/report-domain"
@@ -13,10 +13,9 @@ const CONFIG_ISSUES_LIMIT = 6
 const OPERATIONAL_ALERTS_LIMIT = 4
 
 export type DashboardStatKey =
-  | "activeClients"
-  | "connectedCampaigns"
-  | "reportsGenerated"
+  | "sentReports"
   | "failedReports"
+  | "pendingReports"
 
 export type DashboardStat = {
   key: DashboardStatKey
@@ -125,6 +124,10 @@ export type DashboardData = {
   configIndicators: DashboardConfigIndicators
 }
 
+type GetDashboardDataOptions = {
+  includeOperational?: boolean
+}
+
 type ClientWithCampaigns = {
   id: string
   name: string
@@ -169,30 +172,28 @@ function buildEmptyDashboardData(): DashboardData {
   return {
     stats: [
       {
-        key: "activeClients",
-        label: "Clientes ativos",
+        key: "sentReports",
+        label: "Enviados",
         value: "0",
-        sub: "0 com Meta conectada",
-      },
-      {
-        key: "connectedCampaigns",
-        label: "Campanhas conectadas",
-        value: "0",
-        sub: "0 ativas",
-      },
-      {
-        key: "reportsGenerated",
-        label: "Relatórios gerados",
-        value: "0",
-        sub: "últimos 7 dias",
+        sub: "últimos 30 dias",
+        valueColor: "text-emerald-700",
+        subColor: "text-emerald-600",
       },
       {
         key: "failedReports",
-        label: "Falhas no envio",
+        label: "Falhas",
         value: "0",
         sub: "últimos 30 dias",
         valueColor: "text-red-500",
         subColor: "text-red-400",
+      },
+      {
+        key: "pendingReports",
+        label: "Pendentes",
+        value: "0",
+        sub: "últimos 30 dias",
+        valueColor: "text-gray-700",
+        subColor: "text-gray-500",
       },
     ],
     chart: buildChartData([]),
@@ -200,7 +201,7 @@ function buildEmptyDashboardData(): DashboardData {
     operational: {
       mode: "manager",
       title: "Status operacional",
-      description: "Entre para visualizar a saúde da operação.",
+      description: "Entre para visualizar a saÃºde da operaÃ§Ã£o.",
       tone: "neutral",
       checkedAt: null,
       metrics: [],
@@ -413,63 +414,26 @@ function buildChartData(reports: Array<{ generatedAt: Date }>): DashboardChartDa
 
   return {
     days: {
-      label: "Últimos 7 dias",
+      label: "Ãšltimos 7 dias",
       data: days.map((day) => ({
         week: day.week,
         reports: reportsByDay.get(day.key) ?? 0,
       })),
     },
     weeks: {
-      label: "Últimas 8 semanas",
+      label: "Ãšltimas 8 semanas",
       data: weeks.map((week) => ({
         week: week.week,
         reports: reportsByWeek.get(week.key) ?? 0,
       })),
     },
     months: {
-      label: "Últimos 6 meses",
+      label: "Ãšltimos 6 meses",
       data: months.map((month) => ({
         week: month.week,
         reports: reportsByMonth.get(month.key) ?? 0,
       })),
     },
-  }
-}
-
-function collectConnectedCampaigns(
-  clients: ClientWithCampaigns[],
-  reports: RecentReport[]
-) {
-  const campaigns = new Map<string, { isActive: boolean }>()
-
-  clients.forEach((client) => {
-    client.campaigns.forEach((campaign) => {
-      const key = campaign.campaignIdMeta || `${client.id}:${campaign.campaignName}`
-      campaigns.set(key, { isActive: campaign.isActive })
-    })
-  })
-
-  reports.forEach((report) => {
-    const payload = parseStoredReportPayload(report.payloadJson)
-
-    payload?.campaigns.forEach((campaign) => {
-      const id = campaign.id?.trim()
-      const name = campaign.name?.trim()
-      const key = id || (name ? `${report.client.id}:${name}` : "")
-
-      if (!key) {
-        return
-      }
-
-      campaigns.set(key, {
-        isActive: campaign.status === "ACTIVE",
-      })
-    })
-  })
-
-  return {
-    total: campaigns.size,
-    active: [...campaigns.values()].filter((campaign) => campaign.isActive).length,
   }
 }
 
@@ -504,7 +468,7 @@ function buildConfigIndicators(
 
     if (!hasMetaToken) {
       withoutMetaToken += 1
-      issues.push("Sem token META do responsável")
+      issues.push("Sem token META do responsÃ¡vel")
     }
 
     if (!hasWhatsappGroup) {
@@ -560,7 +524,7 @@ function buildClientSendStatus(clients: ClientWithCampaigns[]) {
         name: client.name,
         company: client.company,
         status,
-        time: activityDate ? formatRelativeTime(activityDate) : "Sem histórico",
+        time: activityDate ? formatRelativeTime(activityDate) : "Sem histÃ³rico",
         referenceWeek: report ? formatReferenceWeek(report.referenceWeek) : null,
         attempts,
         errorMessage,
@@ -624,7 +588,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
         id: alert.id,
         source:
           "integration" in alert
-            ? `Integração ${alert.integration}`
+            ? `IntegraÃ§Ã£o ${alert.integration}`
             : `Fila ${alert.queueName ?? alert.source}`,
         message: alert.message,
         severity: alert.severity,
@@ -635,18 +599,18 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
       mode: "admin",
       title:
         tone === "critical"
-          ? "Operação requer atenção imediata"
+          ? "OperaÃ§Ã£o requer atenÃ§Ã£o imediata"
           : tone === "warning"
-            ? "Operação com pontos de atenção"
-            : "Operação estável",
+            ? "OperaÃ§Ã£o com pontos de atenÃ§Ã£o"
+            : "OperaÃ§Ã£o estÃ¡vel",
       description: health.ok
-        ? "Filas, agendamento e integrações estão respondendo dentro do esperado."
+        ? "Filas, agendamento e integraÃ§Ãµes estÃ£o respondendo dentro do esperado."
         : "Existem alertas recentes ou filas pendentes exigindo acompanhamento.",
       tone,
       checkedAt: health.checkedAt,
       metrics: [
         {
-          label: "Fila de geração",
+          label: "Fila de geraÃ§Ã£o",
           value: `${health.queues.generation.waiting ?? 0} aguardando / ${failedGeneration} falhas`,
           tone: failedGeneration > 0 ? "critical" : "healthy",
         },
@@ -662,7 +626,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
         },
         {
           label: "Alertas ativos",
-          value: `${errorAlerts} críticos / ${warningAlerts} avisos`,
+          value: `${errorAlerts} crÃ­ticos / ${warningAlerts} avisos`,
           tone: normalizeToneFromCounts({
             errors: errorAlerts,
             warnings: warningAlerts,
@@ -674,7 +638,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
   } catch (error) {
     return {
       mode: "admin",
-      title: "Não foi possível verificar a saúde operacional",
+      title: "NÃ£o foi possÃ­vel verificar a saÃºde operacional",
       description:
         error instanceof Error
           ? error.message
@@ -684,7 +648,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
       metrics: [
         {
           label: "Painel operacional",
-          value: "Indisponível",
+          value: "IndisponÃ­vel",
           tone: "warning",
         },
       ],
@@ -692,7 +656,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
         {
           id: "operational-health-unavailable",
           source: "Sistema",
-          message: "O health check dos jobs não respondeu nesta consulta.",
+          message: "O health check dos jobs nÃ£o respondeu nesta consulta.",
           severity: "warning",
           createdAt: new Date().toISOString(),
         },
@@ -715,7 +679,7 @@ function buildManagerOperationalPanel(params: {
     ...configIndicators.clients.slice(0, 2).map((client) => ({
       id: `${client.id}-config`,
       source: client.name,
-      message: client.issues.join(" · "),
+      message: client.issues.join(" Â· "),
       severity: "warning" as const,
       createdAt: null,
     })),
@@ -725,7 +689,7 @@ function buildManagerOperationalPanel(params: {
     alerts.unshift({
       id: "failed-reports-30d",
       source: "Envios",
-      message: `${failedReportsLast30Days} relatório(s) falharam nos últimos 30 dias.`,
+      message: `${failedReportsLast30Days} relatÃ³rio(s) falharam nos Ãºltimos 30 dias.`,
       severity: "error",
       createdAt: null,
     })
@@ -737,11 +701,11 @@ function buildManagerOperationalPanel(params: {
       tone === "critical"
         ? "Sua carteira precisa de acompanhamento"
         : tone === "warning"
-          ? "Sua carteira tem pendências operacionais"
-          : "Sua carteira está pronta para operar",
+          ? "Sua carteira tem pendÃªncias operacionais"
+          : "Sua carteira estÃ¡ pronta para operar",
     description:
       configIndicators.readyClients > 0
-        ? `${configIndicators.readyClients} cliente(s) estão prontos para gerar e enviar relatórios.`
+        ? `${configIndicators.readyClients} cliente(s) estÃ£o prontos para gerar e enviar relatÃ³rios.`
         : "Ajuste token META e grupos de WhatsApp para liberar os envios.",
     tone,
     checkedAt: new Date().toISOString(),
@@ -772,7 +736,68 @@ function buildManagerOperationalPanel(params: {
   }
 }
 
-export async function getDashboardData(): Promise<DashboardData> {
+function buildLightOperationalPanel(params: {
+  isAdminMode: boolean
+  configIndicators: DashboardConfigIndicators
+  failedReportsLast30Days: number
+}): DashboardOperationalPanel {
+  if (!params.isAdminMode) {
+    return buildManagerOperationalPanel({
+      configIndicators: params.configIndicators,
+      failedReportsLast30Days: params.failedReportsLast30Days,
+    })
+  }
+
+  const tone = normalizeToneFromCounts({
+    errors: params.failedReportsLast30Days,
+    warnings:
+      params.configIndicators.withoutMetaToken
+      + params.configIndicators.withoutWhatsappGroup,
+  })
+
+  return {
+    mode: "admin",
+    title:
+      tone === "critical"
+        ? "OperaÃ§Ã£o requer atenÃ§Ã£o"
+        : tone === "warning"
+          ? "OperaÃ§Ã£o com pontos de atenÃ§Ã£o"
+          : "OperaÃ§Ã£o estÃ¡vel",
+    description:
+      "Resumo leve carregado sem consultar filas externas. Ative o painel operacional completo apenas quando ele for exibido.",
+    tone,
+    checkedAt: new Date().toISOString(),
+    metrics: [
+      {
+        label: "Clientes prontos",
+        value: `${params.configIndicators.readyClients}/${params.configIndicators.totalClients}`,
+        tone: params.configIndicators.readyClients > 0 ? "healthy" : "warning",
+      },
+      {
+        label: "Sem token META",
+        value: params.configIndicators.withoutMetaToken.toString(),
+        tone:
+          params.configIndicators.withoutMetaToken > 0 ? "warning" : "healthy",
+      },
+      {
+        label: "Sem grupo WhatsApp",
+        value: params.configIndicators.withoutWhatsappGroup.toString(),
+        tone:
+          params.configIndicators.withoutWhatsappGroup > 0 ? "warning" : "healthy",
+      },
+      {
+        label: "Falhas 30 dias",
+        value: params.failedReportsLast30Days.toString(),
+        tone: params.failedReportsLast30Days > 0 ? "critical" : "healthy",
+      },
+    ],
+    alerts: [],
+  }
+}
+
+export async function getDashboardData(
+  options: GetDashboardDataOptions = {}
+): Promise<DashboardData> {
   const user = await getCurrentUser()
 
   if (!user) {
@@ -782,9 +807,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   const currentMonthStart = startOfMonth(new Date())
   const firstMonthStart = new Date(currentMonthStart)
   firstMonthStart.setMonth(currentMonthStart.getMonth() - (MONTHS_TO_SHOW - 1))
-
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
@@ -811,7 +833,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       })
     : Promise.resolve(user.metaAccessToken ? { id: user.id } : null)
 
-  const [clients, weeklyReports, recentReports, adminFallbackToken] = await Promise.all([
+  const [clients, weeklyReports, recentReports, reportStatusGroups, adminFallbackToken] = await Promise.all([
     prisma.client.findMany({
       where: scopeClientWhere(user),
       orderBy: { createdAt: "desc" },
@@ -935,57 +957,74 @@ export async function getDashboardData(): Promise<DashboardData> {
         },
       },
     }),
+    prisma.report.groupBy({
+      by: ["status"],
+      where: {
+        ...reportScopeWhere,
+        generatedAt: {
+          gte: thirtyDaysAgo,
+        },
+      },
+      _count: {
+        _all: true,
+      },
+    }),
     adminFallbackTokenPromise,
   ])
 
-  const activeClients = clients.filter((client) => client.status === "ACTIVE").length
-  const connectedClients = clients.filter((client) => Boolean(client.adAccountId)).length
-  const connectedCampaigns = collectConnectedCampaigns(clients, recentReports)
-  const reportsLast7Days = weeklyReports.filter(
-    (report) => report.generatedAt >= sevenDaysAgo
-  ).length
-  const failedReportsLast30Days = weeklyReports.filter(
-    (report) => report.status === "FAILED" && report.generatedAt >= thirtyDaysAgo
-  ).length
+  const reportStatusCounts = reportStatusGroups.reduce<Record<ReportStatus, number>>(
+    (accumulator, group) => {
+      accumulator[group.status] = group._count._all
+      return accumulator
+    },
+    {
+      PENDING: 0,
+      SENT: 0,
+      FAILED: 0,
+    }
+  )
+  const sentReportsLast30Days = reportStatusCounts.SENT
+  const pendingReportsLast30Days = reportStatusCounts.PENDING
+  const failedReportsLast30Days = reportStatusCounts.FAILED
   const fallbackMetaTokenAvailable = Boolean(adminFallbackToken)
   const configIndicators = buildConfigIndicators(
     clients,
     fallbackMetaTokenAvailable
   )
-  const operational = isAdmin(user)
-    ? await buildAdminOperationalPanel()
-    : buildManagerOperationalPanel({
-        configIndicators,
-        failedReportsLast30Days,
-      })
-
+  const shouldIncludeOperational = options.includeOperational === true
+  const operational =
+    shouldIncludeOperational && isAdmin(user)
+      ? await buildAdminOperationalPanel()
+      : buildLightOperationalPanel({
+          isAdminMode: isAdmin(user),
+          configIndicators,
+          failedReportsLast30Days,
+        })
   return {
     stats: [
       {
-        key: "activeClients",
-        label: "Clientes ativos",
-        value: activeClients.toString(),
-        sub: `${connectedClients} com Meta conectada`,
-      },
-      {
-        key: "connectedCampaigns",
-        label: "Campanhas conectadas",
-        value: connectedCampaigns.total.toString(),
-        sub: `${connectedCampaigns.active} ativas`,
-      },
-      {
-        key: "reportsGenerated",
-        label: "Relatórios gerados",
-        value: reportsLast7Days.toString(),
-        sub: "últimos 7 dias",
+        key: "sentReports",
+        label: "Enviados",
+        value: sentReportsLast30Days.toString(),
+        sub: "últimos 30 dias",
+        valueColor: "text-emerald-700",
+        subColor: "text-emerald-600",
       },
       {
         key: "failedReports",
-        label: "Falhas no envio",
+        label: "Falhas",
         value: failedReportsLast30Days.toString(),
         sub: "últimos 30 dias",
         valueColor: "text-red-500",
         subColor: "text-red-400",
+      },
+      {
+        key: "pendingReports",
+        label: "Pendentes",
+        value: pendingReportsLast30Days.toString(),
+        sub: "últimos 30 dias",
+        valueColor: "text-gray-700",
+        subColor: "text-gray-500",
       },
     ],
     chart: buildChartData(weeklyReports),

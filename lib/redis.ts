@@ -23,8 +23,12 @@ export function isRedisConfigured() {
 
 function createRedisConnection(kind: RedisConnectionKind) {
   const options: RedisOptions = {
+    lazyConnect: true,
     enableReadyCheck: false,
-    maxRetriesPerRequest: kind === "worker" ? null : undefined,
+    enableOfflineQueue: false,
+    connectTimeout: 3_000,
+    commandTimeout: 3_000,
+    maxRetriesPerRequest: kind === "worker" ? null : 1,
   }
 
   return new IORedis(getRedisUrl(), options)

@@ -59,3 +59,21 @@ export function logError(context: string, error: unknown, extra?: unknown) {
 
   console.error(`[${context}]`, sanitizeForLog(extra), sanitizeForLog(error))
 }
+
+export function logInfo(context: string, payload?: unknown) {
+  if (typeof payload === "undefined") {
+    console.info(`[${context}]`)
+    return
+  }
+
+  console.info(`[${context}]`, sanitizeForLog(payload))
+}
+
+export function logWarn(context: string, payload?: unknown) {
+  if (typeof payload === "undefined") {
+    console.warn(`[${context}]`)
+    return
+  }
+
+  console.warn(`[${context}]`, sanitizeForLog(payload))
+}

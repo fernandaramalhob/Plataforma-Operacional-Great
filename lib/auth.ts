@@ -2,9 +2,12 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import type { NextAuthOptions } from "next-auth"
 import {
   ensureAdminUser,
+  isAdminEmail,
 } from "@/lib/admin-user"
+import { withTimeout } from "@/lib/async"
 import { prisma } from "@/lib/prisma"
 import { verifyPassword } from "@/lib/password"
+import { logError, logInfo, logWarn } from "@/lib/safe-logger"
 
 type Role = "ADMIN" | "MANAGER"
 
@@ -20,8 +23,28 @@ function normalizeEmail(email: string) {
 }
 
 async function authorizeWithCredentials(email: string, password: string) {
-  await ensureAdminUser()
   const normalizedEmail = normalizeEmail(email)
+  const isBootstrapAdminLogin = isAdminEmail(normalizedEmail)
+
+  logInfo("auth.authorize.start", {
+    email: normalizedEmail,
+    isBootstrapAdminLogin,
+  })
+
+  if (isBootstrapAdminLogin) {
+    logInfo("auth.authorize.bootstrap-admin.start", {
+      email: normalizedEmail,
+    })
+    await withTimeout(
+      ensureAdminUser(),
+      8_000,
+      "Tempo esgotado ao preparar o usuário administrador."
+    )
+    logInfo("auth.authorize.bootstrap-admin.done", {
+      email: normalizedEmail,
+    })
+  }
+
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
     select: {
@@ -34,14 +57,27 @@ async function authorizeWithCredentials(email: string, password: string) {
   })
 
   if (!user) {
+    logWarn("auth.authorize.user-not-found", {
+      email: normalizedEmail,
+    })
     return null
   }
 
   const isValidPassword = verifyPassword(password, user.passwordHash)
 
   if (!isValidPassword) {
+    logWarn("auth.authorize.invalid-password", {
+      email: normalizedEmail,
+      userId: user.id,
+    })
     return null
   }
+
+  logInfo("auth.authorize.success", {
+    email: normalizedEmail,
+    userId: user.id,
+    role: user.role,
+  })
 
   return {
     id: user.id,
@@ -64,10 +100,22 @@ export const authOptions: NextAuthOptions = {
         const password = credentials?.password
 
         if (!email || !password) {
+          logWarn("auth.authorize.missing-credentials")
           return null
         }
 
-        return authorizeWithCredentials(email, password)
+        try {
+          return await withTimeout(
+            authorizeWithCredentials(email, password),
+            12_000,
+            "Tempo esgotado ao validar as credenciais."
+          )
+        } catch (error) {
+          logError("auth.authorize.failed", error, {
+            email,
+          })
+          throw error
+        }
       },
     }),
   ],
@@ -80,6 +128,11 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        logInfo("auth.jwt.user-attached", {
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+        })
         token.id = user.id
         token.role = user.role
         token.email = user.email
@@ -87,38 +140,14 @@ export const authOptions: NextAuthOptions = {
         return token
       }
 
-      const tokenEmail = typeof token.email === "string" ? normalizeEmail(token.email) : ""
-
-      if (!tokenEmail) {
+      if (typeof token.email !== "string" || !token.email.trim()) {
         delete token.id
         delete token.role
         delete token.email
         delete token.name
+        logWarn("auth.jwt.missing-email")
         return token
       }
-
-      const dbUser = await prisma.user.findUnique({
-        where: { email: tokenEmail },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          role: true,
-        },
-      })
-
-      if (!dbUser) {
-        delete token.id
-        delete token.role
-        delete token.email
-        delete token.name
-        return token
-      }
-
-      token.id = dbUser.id
-      token.email = dbUser.email
-      token.name = dbUser.name ?? dbUser.email
-      token.role = dbUser.role
 
       return token
     },
@@ -130,7 +159,49 @@ export const authOptions: NextAuthOptions = {
         session.user.name = typeof token.name === "string" ? token.name : ""
       }
 
+      logInfo("auth.session.ready", {
+        hasUser: Boolean(session.user?.email),
+        userId: session.user?.id,
+        role: session.user?.role,
+      })
+
       return session
+    },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) {
+        const destination = `${baseUrl}${url}`
+        logInfo("auth.redirect.relative", { destination })
+        return destination
+      }
+
+      try {
+        const targetUrl = new URL(url)
+        if (targetUrl.origin === baseUrl) {
+          logInfo("auth.redirect.same-origin", { destination: targetUrl.toString() })
+          return targetUrl.toString()
+        }
+      } catch {
+        logWarn("auth.redirect.invalid-url", { url, baseUrl })
+      }
+
+      logWarn("auth.redirect.fallback", { url, baseUrl })
+      return `${baseUrl}/dashboard`
+    },
+  },
+  events: {
+    async signIn(message) {
+      logInfo("auth.event.sign-in", {
+        isNewUser: message.isNewUser,
+        userId: message.user.id,
+        email: message.user.email,
+      })
+    },
+    async signOut(message) {
+      logInfo("auth.event.sign-out", {
+        session: typeof message.session === "object" ? "present" : "missing",
+        tokenEmail:
+          typeof message.token?.email === "string" ? message.token.email : null,
+      })
     },
   },
   secret: process.env.NEXTAUTH_SECRET,

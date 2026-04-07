@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
+import { isRedisConfigured } from "@/lib/redis"
 import { logError, sanitizeForLog } from "@/lib/safe-logger"
 
 const REPORT_QUEUE_PREFIX = process.env.REPORT_QUEUE_PREFIX?.trim() || "greatgo"
@@ -71,6 +72,10 @@ function buildAlertFingerprint(params: RecordIntegrationAlertParams) {
 }
 
 async function shouldRecordAlert(params: RecordIntegrationAlertParams) {
+  if (!isRedisConfigured()) {
+    return false
+  }
+
   const { getRedisConnection } = await import("@/lib/redis")
   const fingerprint = buildAlertFingerprint(params)
   const redis = getRedisConnection("client")
@@ -115,6 +120,10 @@ export function logIntegrationEvent(params: {
 }
 
 export async function recordIntegrationAlert(params: RecordIntegrationAlertParams) {
+  if (!isRedisConfigured()) {
+    return null
+  }
+
   const { getRedisConnection } = await import("@/lib/redis")
   const shouldPersist = await shouldRecordAlert(params)
 
@@ -161,6 +170,10 @@ export async function recordIntegrationAlertSafely(
 }
 
 export async function listRecentIntegrationAlerts(limit = 20) {
+  if (!isRedisConfigured()) {
+    return []
+  }
+
   const { getRedisConnection } = await import("@/lib/redis")
   const redis = getRedisConnection("client")
   const items = await redis.lrange(INTEGRATION_ALERTS_KEY, 0, Math.max(0, limit - 1))
