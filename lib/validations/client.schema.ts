@@ -98,14 +98,6 @@ export const clientPayloadSchema = z
       })
     }
 
-    if (data.adAccountId && !/^\d{5,32}$/.test(data.adAccountId)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["adAccountId"],
-        message: "Conta META deve conter apenas numeros",
-      })
-    }
-
     if (!!data.adAccountId !== !!data.adAccountName) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

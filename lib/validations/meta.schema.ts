@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 const ACCOUNT_NAME_MAX_LENGTH = 120
+const ACCOUNT_ID_MAX_LENGTH = 32
 
 function trimString(value: unknown) {
   return typeof value === "string" ? value.trim() : value
@@ -10,7 +11,7 @@ export const metaTokenSchema = z
   .object({
     token: z.preprocess(
       trimString,
-      z.string().min(1, "Token META obrigatório")
+      z.string().min(1, "Token META obrigatorio")
     ),
   })
   .strict()
@@ -21,21 +22,25 @@ export const importClientSchema = z
       trimString,
       z
         .string()
-        .regex(/^\d{5,32}$/, "Conta META deve conter apenas números")
+        .min(1, "Conta META obrigatoria")
+        .max(
+          ACCOUNT_ID_MAX_LENGTH,
+          `Conta META deve ter no maximo ${ACCOUNT_ID_MAX_LENGTH} caracteres`
+        )
     ),
     adAccountName: z.preprocess(
       trimString,
       z
         .string()
-        .min(1, "Nome da conta META obrigatório")
+        .min(1, "Nome da conta META obrigatorio")
         .max(
           ACCOUNT_NAME_MAX_LENGTH,
-          `Nome da conta META deve ter no máximo ${ACCOUNT_NAME_MAX_LENGTH} caracteres`
+          `Nome da conta META deve ter no maximo ${ACCOUNT_NAME_MAX_LENGTH} caracteres`
         )
     ),
   })
   .strict()
 
 export function getMetaValidationMessage(error: z.ZodError) {
-  return error.issues[0]?.message ?? "Dados da META inválidos"
+  return error.issues[0]?.message ?? "Dados da META invalidos"
 }
