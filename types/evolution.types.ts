@@ -3,6 +3,13 @@ export type EvolutionGroup = {
   subject: string
   size: number
   announce: boolean
+  instance: string
+}
+
+export type EvolutionInstance = {
+  name: string
+  status: string | null
+  isPrimary: boolean
 }
 
 export type EvolutionSettingsResponse = {
@@ -11,4 +18,5 @@ export type EvolutionSettingsResponse = {
   instance: string | null
   detail: string | null
   groups: EvolutionGroup[]
+  instances: EvolutionInstance[]
 }

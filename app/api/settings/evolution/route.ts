@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/authorization"
-import { getEvolutionConfig, listEvolutionGroups } from "@/lib/evolution-api"
+import { getEvolutionConfig, loadEvolutionCatalog } from "@/lib/evolution-api"
 import { logError } from "@/lib/safe-logger"
 import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
@@ -9,7 +9,7 @@ export async function GET() {
     const user = await getCurrentUser()
 
     if (!user) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const config = getEvolutionConfig()
@@ -22,21 +22,30 @@ export async function GET() {
         detail:
           "Configure EVOLUTION_API_URL, EVOLUTION_API_KEY e EVOLUTION_INSTANCE para habilitar o WhatsApp.",
         groups: [],
+        instances: [],
       })
     }
 
     try {
-      const groups = await listEvolutionGroups()
+      const catalog = await loadEvolutionCatalog()
+      const connectedInstances = catalog.instances.filter(
+        (instance) => instance.status === null || instance.status === "open"
+      )
+      const detail =
+        catalog.groups.length > 0
+          ? `${catalog.groups.length} grupo(s) encontrado(s) em ${connectedInstances.length || 1} instancia(s).`
+          : "Conexao com a Evolution ativa, mas nenhum grupo foi encontrado."
 
       return NextResponse.json<EvolutionSettingsResponse>({
         configured: true,
-        connected: true,
+        connected: catalog.connected,
         instance: config.instance,
         detail:
-          groups.length > 0
-            ? `${groups.length} grupo(s) encontrado(s) na instância ativa.`
-            : "Instância conectada, mas nenhum grupo foi encontrado.",
-        groups,
+          catalog.partialErrors.length > 0
+            ? `${detail} Algumas instancias nao puderam ser consultadas nesta atualizacao.`
+            : detail,
+        groups: catalog.groups,
+        instances: catalog.instances,
       })
     } catch (error) {
       return NextResponse.json<EvolutionSettingsResponse>({
@@ -45,6 +54,7 @@ export async function GET() {
         instance: config.instance,
         detail: error instanceof Error ? error.message : "Falha ao consultar a Evolution API.",
         groups: [],
+        instances: [],
       })
     }
   } catch (error) {

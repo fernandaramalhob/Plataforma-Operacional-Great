@@ -447,13 +447,22 @@ export default function SettingsPage() {
               <LoadingSkeleton label="Carregando instância Evolution..." className="py-6" />
             ) : evolutionData ? (
               <>
-                <div className="mb-6 grid gap-4 md:grid-cols-2">
+                <div className="mb-6 grid gap-4 md:grid-cols-3">
                   <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Instância</p>
                     <p className="mt-2 text-sm font-semibold text-gray-900">
                       {evolutionData.instance ?? "Não informada"}
                     </p>
                     {evolutionData.detail ? <p className="mt-1 text-xs text-gray-500">{evolutionData.detail}</p> : null}
+                  </div>
+                  <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Instancias</p>
+                    <p className="mt-2 text-sm font-semibold text-gray-900">
+                      {evolutionData.instances.length} conectada(s) ou detectada(s)
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {evolutionData.instances.map((instance) => instance.name).join(", ") || "Nenhuma instancia listada."}
+                    </p>
                   </div>
                   <div className="rounded-2xl border border-green-100 bg-green-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Status</p>
