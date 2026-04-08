@@ -8,6 +8,7 @@ import {
   type MetaTokenStatus,
 } from "@/lib/meta-token-status"
 import { prisma } from "@/lib/prisma"
+import { findUserForSession } from "@/lib/session-user"
 import { logError } from "@/lib/safe-logger"
 import { metaTokenSchema } from "@/lib/validations/meta.schema"
 import type { ApiErrorResponse } from "@/types/api.types"
@@ -19,7 +20,15 @@ import type {
 type AuthenticatedContext = {
   session: Awaited<ReturnType<typeof getServerSession>>
   email: string
-  user: Awaited<ReturnType<typeof prisma.user.findUnique>> | null
+  user: {
+    id: string
+    email: string
+    name: string | null
+    role: "ADMIN" | "MANAGER"
+    passwordHash: string
+    metaAccessToken: string | null
+    metaTokenExpiresAt: Date | null
+  } | null
   dbError: string | null
 }
 
@@ -41,8 +50,17 @@ async function getAuthenticatedContext() {
   const email = session.user.email.trim().toLowerCase()
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const user = await findUserForSession({
+      sessionUser: session.user,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        passwordHash: true,
+        metaAccessToken: true,
+        metaTokenExpiresAt: true,
+      },
     })
 
     return {
@@ -204,20 +222,30 @@ export async function POST(request: Request) {
 
     const encryptedToken = encryptMetaToken(sanitizedToken)
 
-    await prisma.user.upsert({
-      where: { email },
-      update: {
-        metaAccessToken: encryptedToken,
-        metaTokenExpiresAt: validation.expiresAt,
-      },
-      create: {
-        email,
-        passwordHash: user?.passwordHash ?? "",
-        role: user?.role ?? "MANAGER",
-        metaAccessToken: encryptedToken,
-        metaTokenExpiresAt: validation.expiresAt,
-      },
-    })
+    if (user?.id) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          metaAccessToken: encryptedToken,
+          metaTokenExpiresAt: validation.expiresAt,
+        },
+      })
+    } else {
+      await prisma.user.upsert({
+        where: { email },
+        update: {
+          metaAccessToken: encryptedToken,
+          metaTokenExpiresAt: validation.expiresAt,
+        },
+        create: {
+          email,
+          passwordHash: user?.passwordHash ?? "",
+          role: user?.role ?? "MANAGER",
+          metaAccessToken: encryptedToken,
+          metaTokenExpiresAt: validation.expiresAt,
+        },
+      })
+    }
 
     return NextResponse.json<MetaTokenSaveResponse>({
       success: true,

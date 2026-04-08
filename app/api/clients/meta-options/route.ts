@@ -9,7 +9,7 @@ import {
   type MetaBusiness,
 } from "@/lib/meta-api"
 import { resolveMetaTokenFromOwners } from "@/lib/meta-token-status"
-import { prisma } from "@/lib/prisma"
+import { findUserForSession } from "@/lib/session-user"
 import { logError } from "@/lib/safe-logger"
 import type { ApiErrorResponse } from "@/types/api.types"
 import type {
@@ -28,8 +28,8 @@ export async function GET() {
       )
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    const user = await findUserForSession({
+      sessionUser: session.user,
       select: {
         id: true,
         metaAccessToken: true,

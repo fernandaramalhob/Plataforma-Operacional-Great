@@ -13,6 +13,7 @@ await import("./report-domain.test.mjs")
 await import("./report-pdf-server.test.mjs")
 await import("./report-pdf-preview-server.test.mjs")
 await import("./report.schema.test.mjs")
+await import("./session-user.test.mjs")
 
 const { runRegisteredTests } = await import("./test-helpers.mjs")
 

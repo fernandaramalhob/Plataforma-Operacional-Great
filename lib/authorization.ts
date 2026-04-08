@@ -1,7 +1,6 @@
 import type { Prisma, User } from "@prisma/client"
-import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { getSessionUser } from "@/lib/session-user"
 import { logError, logInfo, logWarn } from "@/lib/safe-logger"
 
 type Role = "ADMIN" | "MANAGER"
@@ -11,32 +10,21 @@ export type AuthenticatedUser = Pick<
   "id" | "email" | "role" | "passwordHash" | "metaAccessToken" | "metaTokenExpiresAt"
 >
 
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase()
-}
-
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   try {
-    const session = await getServerSession(authOptions)
+    const { session, user } = await getSessionUser({
+      id: true,
+      email: true,
+      role: true,
+      passwordHash: true,
+      metaAccessToken: true,
+      metaTokenExpiresAt: true,
+    })
 
     if (!session?.user?.email) {
       logWarn("auth.current-user.no-session")
       return null
     }
-
-    const user = await prisma.user.findUnique({
-      where: {
-        email: normalizeEmail(session.user.email),
-      },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        passwordHash: true,
-        metaAccessToken: true,
-        metaTokenExpiresAt: true,
-      },
-    })
 
     logInfo("auth.current-user.loaded", {
       email: session.user.email,
