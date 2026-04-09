@@ -128,26 +128,26 @@ export async function saveMultipleClientReportSchedules(
   clientIds: string[],
   payload: ReportSchedulePayload
 ) {
-  const results = await Promise.allSettled(
-    clientIds.map((clientId) => saveClientReportSchedule(clientId, payload))
+  const response = await fetchJsonOrThrow<{
+    ok: true
+    clientCount: number
+    schedules: ReportScheduleResponse[]
+  }>(
+    "/api/reports/schedules/bulk",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        clientIds,
+        payload,
+      }),
+    },
+    "Nao foi possivel salvar o agendamento para os clientes selecionados"
   )
 
-  const schedules = results.flatMap((result) =>
-    result.status === "fulfilled" ? [result.value.schedule] : []
-  )
-  const failedCount = results.length - schedules.length
-
-  if (failedCount > 0) {
-    const successCount = schedules.length
-
-    throw new Error(
-      successCount > 0
-        ? `Agendamento salvo para ${successCount} de ${results.length} clientes. Tente novamente para concluir os restantes.`
-        : "Nao foi possivel salvar o agendamento para os clientes selecionados"
-    )
-  }
-
-  return schedules
+  return response.schedules
 }
 
 export async function disableClientSavedReportSchedule(clientId: string) {

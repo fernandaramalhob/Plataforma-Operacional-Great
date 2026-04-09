@@ -11,8 +11,17 @@ import type {
   ReportSendMode,
 } from "@/types/report.types"
 
-export const REPORT_SCHEDULE_TIMEZONE = "America/Sao_Paulo"
+export const REPORT_SCHEDULE_TIMEZONE = "America/Recife"
 const REPORT_SCHEDULE_OFFSET = "-03:00"
+
+function getReportScheduleTimeZone() {
+  return (
+    process.env.REPORT_SCHEDULE_TIMEZONE?.trim()
+    || process.env.REPORT_TIMEZONE?.trim()
+    || process.env.REPORT_AUTOMATION_TIMEZONE?.trim()
+    || REPORT_SCHEDULE_TIMEZONE
+  )
+}
 
 export const REPORT_SCHEDULE_WEEKDAYS = [
   { value: 0, label: "Domingo" },
@@ -30,7 +39,7 @@ export function formatScheduleTime(hour: number, minute: number) {
 
 function formatSaoPauloDate(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: REPORT_SCHEDULE_TIMEZONE,
+    timeZone: getReportScheduleTimeZone(),
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -39,7 +48,7 @@ function formatSaoPauloDate(date: Date) {
 
 function getSaoPauloWeekday(date: Date) {
   const label = new Intl.DateTimeFormat("en-US", {
-    timeZone: REPORT_SCHEDULE_TIMEZONE,
+    timeZone: getReportScheduleTimeZone(),
     weekday: "short",
   })
     .format(date)
@@ -183,7 +192,7 @@ export async function upsertClientReportSchedule(params: {
           : null,
       hour: params.payload.hour,
       minute: params.payload.minute,
-      timeZone: REPORT_SCHEDULE_TIMEZONE,
+      timeZone: getReportScheduleTimeZone(),
       filtersSince: params.payload.filtersSince,
       filtersUntil: params.payload.filtersUntil,
       objective: params.payload.objective,
@@ -205,7 +214,7 @@ export async function upsertClientReportSchedule(params: {
           : null,
       hour: params.payload.hour,
       minute: params.payload.minute,
-      timeZone: REPORT_SCHEDULE_TIMEZONE,
+      timeZone: getReportScheduleTimeZone(),
       filtersSince: params.payload.filtersSince,
       filtersUntil: params.payload.filtersUntil,
       objective: params.payload.objective,

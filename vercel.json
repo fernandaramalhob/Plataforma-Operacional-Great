@@ -3,8 +3,8 @@
   "buildCommand": "prisma generate && next build",
   "crons": [
     {
-      "path": "/api/cron/send-reports",
-      "schedule": "0 13 * * 1"
+      "path": "/api/cron/report-jobs",
+      "schedule": "0 13 * * *"
     }
   ]
 }
