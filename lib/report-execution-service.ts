@@ -5,13 +5,16 @@ import {
   getMetaCampaigns,
   getMetaInsights,
 } from "@/lib/meta-api"
+import {
+  requireMetaTokenFromOwners,
+  type MetaTokenOwner,
+} from "@/lib/meta-token-status"
 import { prisma } from "@/lib/prisma"
 import {
   buildReferenceWeekDate,
   buildStoredReportPayload,
   serializeStoredReportPayload,
 } from "@/lib/report-domain"
-import { resolveMetaTokenFromOwners, type MetaTokenOwner } from "@/lib/meta-token-status"
 import type {
   ReportAction,
   ReportClient,
@@ -56,13 +59,8 @@ async function resolveMetaToken(user: ReportUser, client: ClientWithManager) {
       metaTokenExpiresAt: user.metaTokenExpiresAt,
     },
   ]
-  const { health } = await resolveMetaTokenFromOwners(owners)
 
-  if (!health.ok || !health.token) {
-    throw new Error(health.detail ?? "Token META nÃ£o configurado")
-  }
-
-  return health.token
+  return requireMetaTokenFromOwners(owners)
 }
 
 export async function generateLiveReportPayload(params: {
@@ -159,7 +157,7 @@ export async function generateLiveReportPayload(params: {
       .slice(0, 5)
       .map((ad) => ({
         id: ad.ad_id ?? randomUUID(),
-        name: ad.ad_name ?? "AnÃºncio sem nome",
+        name: ad.ad_name ?? "Anuncio sem nome",
         impressions: ad.impressions,
         reach: ad.reach,
         clicks: ad.clicks,
@@ -167,7 +165,7 @@ export async function generateLiveReportPayload(params: {
         actions: ad.actions as ReportAction[] | undefined,
       })),
     genderBreakdown: genderBreakdown.map((row) => ({
-      dimension: row.gender ?? "nÃ£o informado",
+      dimension: row.gender ?? "nao informado",
       spend: row.spend,
       impressions: row.impressions,
       reach: row.reach,

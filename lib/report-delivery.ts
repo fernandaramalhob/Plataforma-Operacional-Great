@@ -19,6 +19,7 @@ type SendPersistedReportOptions = {
   pdfBase64?: string | null
   pdfFileName?: string | null
   groupId?: string | null
+  pdfStrategy?: "auto" | "preview" | "standard"
 }
 
 function resolveReportMessage(params: {
@@ -81,6 +82,7 @@ export async function sendPersistedReportNow(
   }
 
   const mode = options?.mode ?? "PDF_AND_MESSAGE"
+  const pdfStrategy = options?.pdfStrategy ?? "auto"
   const attemptNumber = (report.sendLogs[0]?.attemptNumber ?? 0) + 1
   const sendLog = await prisma.sendLog.create({
     data: {
@@ -101,18 +103,23 @@ export async function sendPersistedReportNow(
     if (mode === "PDF_AND_MESSAGE" || mode === "PDF_ONLY") {
       const pdfBuffer = options?.pdfBase64
         ? Buffer.from(options.pdfBase64, "base64")
-        : await buildExactReportPdfBuffer({
-            reportId: report.id,
-          }).catch((pdfError) => {
-            logError("report-delivery.preview-pdf-fallback", pdfError, {
-              reportId: report.id,
-            })
-
-            return buildReportPdfBuffer({
+        : pdfStrategy === "standard"
+          ? buildReportPdfBuffer({
               reportId: report.id,
               payload,
             })
-          })
+          : await buildExactReportPdfBuffer({
+              reportId: report.id,
+            }).catch((pdfError) => {
+              logError("report-delivery.preview-pdf-fallback", pdfError, {
+                reportId: report.id,
+              })
+
+              return buildReportPdfBuffer({
+                reportId: report.id,
+                payload,
+              })
+            })
 
       const fileName =
         options?.pdfFileName?.trim() ||

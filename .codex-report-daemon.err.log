@@ -5,3 +5,46 @@
 Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
 To eliminate this warning, add "type": "module" to C:\Users\ferna\Desktop\Plataforma-Operacional-Great\package.json.
 (Use `node --trace-warnings ...` to show where the warning was created)
+(node:29356) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./tests/alias-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29356) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/ferna/Desktop/Plataforma-Operacional-Great/lib/report-automation.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\ferna\Desktop\Plataforma-Operacional-Great\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41340) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./tests/alias-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41340) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/ferna/Desktop/Plataforma-Operacional-Great/lib/report-automation.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\ferna\Desktop\Plataforma-Operacional-Great\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+^C(node:28748) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./tests/alias-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28748) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/ferna/Desktop/Plataforma-Operacional-Great/lib/report-automation.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\ferna\Desktop\Plataforma-Operacional-Great\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+^C(node:40216) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./tests/alias-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40216) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/ferna/Desktop/Plataforma-Operacional-Great/lib/report-automation.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\ferna\Desktop\Plataforma-Operacional-Great\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+^C(node:6592) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./tests/alias-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6592) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/ferna/Desktop/Plataforma-Operacional-Great/lib/report-automation.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\ferna\Desktop\Plataforma-Operacional-Great\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+^C(node:10320) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./tests/alias-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10320) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/ferna/Desktop/Plataforma-Operacional-Great/lib/report-automation.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\ferna\Desktop\Plataforma-Operacional-Great\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+^C

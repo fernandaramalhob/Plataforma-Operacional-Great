@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getMetaAdAccounts } from "@/lib/meta-api"
 import { resolveMetaTokenFromOwners } from "@/lib/meta-token-status"
-import { prisma } from "@/lib/prisma"
 import { findUserForSession } from "@/lib/session-user"
 import { logError } from "@/lib/safe-logger"
 import type { ApiErrorResponse } from "@/types/api.types"
@@ -14,7 +13,7 @@ export async function GET() {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Não autorizado" },
+        { error: "Nao autorizado" },
         { status: 401 }
       )
     }
@@ -28,10 +27,10 @@ export async function GET() {
       },
     })
 
-    if (!user?.metaAccessToken) {
+    if (!user) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Token META não configurado" },
-        { status: 400 }
+        { error: "Usuario da sessao nao encontrado" },
+        { status: 404 }
       )
     }
 
@@ -40,7 +39,7 @@ export async function GET() {
     if (!health.ok || !health.token) {
       return NextResponse.json<ApiErrorResponse>(
         {
-          error: health.detail ?? "Token META indisponível",
+          error: health.detail ?? "Token META indisponivel",
           tokenStatus: health.status,
           expiresAt: health.expiresAt?.toISOString() ?? null,
         },

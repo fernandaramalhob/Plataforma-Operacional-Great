@@ -3,3 +3,11 @@ prisma:query BEGIN
 prisma:query DEALLOCATE ALL
 prisma:query SELECT "public"."ReportSchedule"."id", "public"."ReportSchedule"."clientId", "public"."ReportSchedule"."createdByUserId", "public"."ReportSchedule"."frequency"::text, "public"."ReportSchedule"."weekday", "public"."ReportSchedule"."scheduledDate", "public"."ReportSchedule"."hour", "public"."ReportSchedule"."minute", "public"."ReportSchedule"."timeZone", "public"."ReportSchedule"."filtersSince", "public"."ReportSchedule"."filtersUntil", "public"."ReportSchedule"."objective", "public"."ReportSchedule"."sendMode", "public"."ReportSchedule"."message", "public"."ReportSchedule"."groupId", "public"."ReportSchedule"."active", "public"."ReportSchedule"."nextRunAt", "public"."ReportSchedule"."lastRunAt", "public"."ReportSchedule"."lastError", "public"."ReportSchedule"."createdAt", "public"."ReportSchedule"."updatedAt" FROM "public"."ReportSchedule" WHERE ("public"."ReportSchedule"."active" = $1 AND "public"."ReportSchedule"."nextRunAt" <= $2) ORDER BY "public"."ReportSchedule"."nextRunAt" ASC OFFSET $3
 prisma:query COMMIT
+[daemon] Scheduler semanal iniciado | timezone=America/Sao_Paulo | cron=0 9 * * 4 | poll=5s | retry=15min
+[daemon] Scheduler semanal iniciado | timezone=America/Sao_Paulo | cron=0 9 * * 4 | poll=5s | retry=15min
+[daemon] Scheduler semanal iniciado | timezone=America/Sao_Paulo | cron=0 9 * * 4 | poll=5s | retry=15min
+[daemon] Scheduler semanal iniciado | timezone=America/Sao_Paulo | cron=0 9 * * 4 | poll=5s | retry=15min
+[launcher] Reiniciando daemon em 09/04/2026 11:00:06,05
+[daemon] Scheduler semanal iniciado | timezone=America/Sao_Paulo | cron=0 9 * * 4 | poll=5s | retry=15min
+[launcher] Reiniciando daemon em 09/04/2026 11:42:57,27
+[daemon] Scheduler semanal iniciado | timezone=America/Sao_Paulo | cron=0 9 * * 4 | poll=5s | retry=15min

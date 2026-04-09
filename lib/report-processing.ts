@@ -1,22 +1,22 @@
+import { randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import {
+  attachReportJobErrorPayload,
   buildReferenceWeekDate,
   buildReportJobErrorPayload,
   buildStoredReportPayload,
+  buildPendingReportJobPayload,
   parsePendingReportJobPayload,
   serializeStoredReportPayload,
 } from "@/lib/report-domain"
 import { sendPersistedReportNow } from "@/lib/report-delivery"
-import {
-  recordReportAlert,
-} from "@/lib/report-monitoring"
+import { recordReportAlert } from "@/lib/report-monitoring"
 import { getRedisConnection, isRedisConfigured } from "@/lib/redis"
-import {
-  generateLiveReportPayload,
-} from "@/lib/report-service"
+import { generateLiveReportPayload } from "@/lib/report-service"
 import { recordIntegrationAlertSafely } from "@/lib/integration-monitoring"
 import { logError } from "@/lib/safe-logger"
+import type { PendingReportJob, StoredReportPayload } from "@/types/report.types"
 
 type QueuedReportResult =
   | { status: "processed"; reportId: string }
@@ -24,8 +24,18 @@ type QueuedReportResult =
   | { status: "skipped"; reportId: string; reason: string }
   | { status: "missing"; reportId: string }
 
+type ParsedPendingReportJob = NonNullable<
+  ReturnType<typeof parsePendingReportJobPayload>
+>
+type ReportForProcessing = NonNullable<
+  Awaited<ReturnType<typeof loadReportForProcessing>>
+>
+
 const DEFAULT_PROCESS_LOCK_TTL_MS = 5 * 60 * 1000
 const DEFAULT_BATCH_SIZE = 5
+const DEFAULT_JOB_MAX_ATTEMPTS = 12
+const DEFAULT_JOB_RETRY_DELAY_MS = 60_000
+const DEFAULT_JOB_RETRY_MAX_DELAY_MS = 15 * 60_000
 
 function getProcessLockTtlMs() {
   const value = Number.parseInt(process.env.REPORT_PROCESS_LOCK_TTL_SECONDS ?? "", 10)
@@ -45,6 +55,133 @@ function getDefaultBatchSize() {
   }
 
   return value
+}
+
+function getDefaultJobMaxAttempts() {
+  const value = Number.parseInt(process.env.REPORT_JOB_MAX_ATTEMPTS ?? "", 10)
+
+  if (!Number.isFinite(value) || value < 1) {
+    return DEFAULT_JOB_MAX_ATTEMPTS
+  }
+
+  return value
+}
+
+function getJobRetryDelayMs(attemptNumber: number) {
+  const baseValue = Number.parseInt(process.env.REPORT_JOB_RETRY_DELAY_SECONDS ?? "", 10)
+  const maxValue = Number.parseInt(process.env.REPORT_JOB_RETRY_MAX_DELAY_SECONDS ?? "", 10)
+  const baseDelayMs =
+    Number.isFinite(baseValue) && baseValue >= 15
+      ? baseValue * 1000
+      : DEFAULT_JOB_RETRY_DELAY_MS
+  const maxDelayMs =
+    Number.isFinite(maxValue) && maxValue >= 60
+      ? maxValue * 1000
+      : DEFAULT_JOB_RETRY_MAX_DELAY_MS
+  const multiplier = 2 ** Math.max(0, attemptNumber - 1)
+
+  return Math.min(baseDelayMs * multiplier, maxDelayMs)
+}
+
+function normalizePendingJob(job: ParsedPendingReportJob): PendingReportJob {
+  return {
+    ...job,
+    kind: job.kind ?? "GENERATION",
+    storedPayload: job.storedPayload ?? null,
+    attemptCount: job.attemptCount ?? 0,
+    maxAttempts: job.maxAttempts ?? getDefaultJobMaxAttempts(),
+    nextAttemptAt: job.nextAttemptAt ?? job.queuedAt,
+    lastAttemptAt: job.lastAttemptAt ?? null,
+    lastError: job.lastError ?? null,
+    lease: job.lease ?? null,
+  }
+}
+
+function getPendingJobNextAttemptAt(job: PendingReportJob) {
+  const value = job.nextAttemptAt ?? job.queuedAt
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return date
+}
+
+function isPendingJobDue(job: PendingReportJob, now = new Date()) {
+  const nextAttemptAt = getPendingJobNextAttemptAt(job)
+
+  if (!nextAttemptAt) {
+    return true
+  }
+
+  return nextAttemptAt.getTime() <= now.getTime()
+}
+
+function isPendingJobLeaseActive(job: PendingReportJob, now = Date.now()) {
+  if (!job.lease?.lockedAt) {
+    return false
+  }
+
+  const lockedAtMs = new Date(job.lease.lockedAt).getTime()
+
+  if (!Number.isFinite(lockedAtMs)) {
+    return false
+  }
+
+  return lockedAtMs + getProcessLockTtlMs() > now
+}
+
+function buildClaimedPendingJob(job: PendingReportJob, now: Date) {
+  return {
+    ...job,
+    lease: {
+      lockedAt: now.toISOString(),
+      lockToken: randomUUID(),
+    },
+  } satisfies PendingReportJob
+}
+
+function buildRetriedPendingJob(job: PendingReportJob, message: string, now: Date) {
+  const normalizedJob = normalizePendingJob(job as ParsedPendingReportJob)
+  const currentAttemptNumber = (normalizedJob.attemptCount ?? 0) + 1
+  const maxAttempts = normalizedJob.maxAttempts ?? getDefaultJobMaxAttempts()
+
+  if (currentAttemptNumber >= maxAttempts) {
+    return null
+  }
+
+  const nextAttemptAt = new Date(
+    now.getTime() + getJobRetryDelayMs(currentAttemptNumber)
+  )
+
+  return {
+    ...normalizedJob,
+    attemptCount: currentAttemptNumber,
+    nextAttemptAt: nextAttemptAt.toISOString(),
+    lastAttemptAt: now.toISOString(),
+    lastError: message,
+    lease: null,
+  } satisfies PendingReportJob
+}
+
+function buildSendPendingJob(params: {
+  baseJob: PendingReportJob
+  storedPayload: StoredReportPayload
+  now: Date
+}) {
+  const normalizedJob = normalizePendingJob(params.baseJob as ParsedPendingReportJob)
+
+  return {
+    ...normalizedJob,
+    kind: "SEND",
+    storedPayload: params.storedPayload,
+    nextAttemptAt: params.now.toISOString(),
+    lastAttemptAt: null,
+    lastError: null,
+    lease: null,
+    attemptCount: 0,
+  } satisfies PendingReportJob
 }
 
 async function withReportLock<T>(reportId: string, task: () => Promise<T>) {
@@ -116,19 +253,11 @@ async function loadRequestedByUser(requestedByUserId: string) {
   })
 }
 
-async function markGenerationFailure(params: {
+async function recordGenerationFailureAlert(params: {
   reportId: string
   message: string
-  pendingJob: NonNullable<ReturnType<typeof parsePendingReportJobPayload>>
+  pendingJob: PendingReportJob
 }) {
-  await prisma.report.update({
-    where: { id: params.reportId },
-    data: {
-      status: "FAILED",
-      payloadJson: buildReportJobErrorPayload(params.message, "GENERATION"),
-    },
-  })
-
   await recordReportAlert({
     severity: "error",
     source: "report-generation",
@@ -140,6 +269,8 @@ async function markGenerationFailure(params: {
       requestedByUserId: params.pendingJob.requestedByUserId,
       filters: params.pendingJob.filters,
       errorMessage: params.message,
+      attemptCount: params.pendingJob.attemptCount,
+      nextAttemptAt: params.pendingJob.nextAttemptAt,
     },
   }).catch((error) => {
     logError("report-processing.alert.generation", error, {
@@ -148,10 +279,10 @@ async function markGenerationFailure(params: {
   })
 }
 
-async function markSendFailure(params: {
+async function recordSendFailureAlert(params: {
   reportId: string
   message: string
-  pendingJob: NonNullable<ReturnType<typeof parsePendingReportJobPayload>>
+  pendingJob: PendingReportJob
 }) {
   await recordReportAlert({
     severity: "warning",
@@ -163,6 +294,8 @@ async function markSendFailure(params: {
     details: {
       sendOptions: params.pendingJob.sendOptions,
       errorMessage: params.message,
+      attemptCount: params.pendingJob.attemptCount,
+      nextAttemptAt: params.pendingJob.nextAttemptAt,
     },
   }).catch((error) => {
     logError("report-processing.alert.send", error, {
@@ -180,8 +313,298 @@ async function markSendFailure(params: {
       reportId: params.reportId,
       errorMessage: params.message,
       sendOptions: params.pendingJob.sendOptions,
+      attemptCount: params.pendingJob.attemptCount,
+      nextAttemptAt: params.pendingJob.nextAttemptAt,
     },
   })
+}
+
+async function claimPendingJob(params: {
+  reportId: string
+  currentPayloadJson: Prisma.JsonValue | null
+  pendingJob: PendingReportJob
+}) {
+  const now = new Date()
+  const normalizedJob = normalizePendingJob(params.pendingJob as ParsedPendingReportJob)
+
+  if (!isPendingJobDue(normalizedJob, now)) {
+    return null
+  }
+
+  if (isPendingJobLeaseActive(normalizedJob, now.getTime())) {
+    return null
+  }
+
+  const claimedJob = buildClaimedPendingJob(normalizedJob, now)
+  const updateResult = await prisma.report.updateMany({
+    where: {
+      id: params.reportId,
+      status: "PENDING",
+      payloadJson: {
+        equals: params.currentPayloadJson as Prisma.InputJsonValue,
+      },
+    },
+    data: {
+      payloadJson: buildPendingReportJobPayload(claimedJob),
+    },
+  })
+
+  return updateResult.count > 0 ? claimedJob : null
+}
+
+async function persistRetriedJob(params: {
+  reportId: string
+  pendingJob: PendingReportJob
+}) {
+  await prisma.report.update({
+    where: { id: params.reportId },
+    data: {
+      status: "PENDING",
+      payloadJson: buildPendingReportJobPayload(params.pendingJob),
+    },
+  })
+}
+
+async function persistFinalGenerationFailure(params: {
+  reportId: string
+  message: string
+}) {
+  await prisma.report.update({
+    where: { id: params.reportId },
+    data: {
+      status: "FAILED",
+      payloadJson: buildReportJobErrorPayload(params.message, "GENERATION"),
+    },
+  })
+}
+
+async function persistFinalSendFailure(params: {
+  reportId: string
+  message: string
+  storedPayload: StoredReportPayload | null
+}) {
+  await prisma.report.update({
+    where: { id: params.reportId },
+    data: {
+      status: "FAILED",
+      payloadJson: params.storedPayload
+        ? attachReportJobErrorPayload(params.storedPayload, params.message, "SEND")
+        : buildReportJobErrorPayload(params.message, "SEND"),
+    },
+  })
+}
+
+async function handleGenerationFailure(params: {
+  reportId: string
+  pendingJob: PendingReportJob
+  message: string
+}) {
+  const now = new Date()
+  const retriedJob = buildRetriedPendingJob(params.pendingJob, params.message, now)
+
+  await recordGenerationFailureAlert(params)
+
+  if (retriedJob) {
+    await persistRetriedJob({
+      reportId: params.reportId,
+      pendingJob: retriedJob,
+    })
+  } else {
+    await persistFinalGenerationFailure({
+      reportId: params.reportId,
+      message: params.message,
+    })
+  }
+}
+
+async function handleSendFailure(params: {
+  reportId: string
+  pendingJob: PendingReportJob
+  storedPayload: StoredReportPayload | null
+  message: string
+}) {
+  const now = new Date()
+  const retriedJob = buildRetriedPendingJob(params.pendingJob, params.message, now)
+
+  await recordSendFailureAlert(params)
+
+  if (retriedJob) {
+    await persistRetriedJob({
+      reportId: params.reportId,
+      pendingJob: {
+        ...retriedJob,
+        kind: "SEND",
+        storedPayload: params.storedPayload,
+      },
+    })
+  } else {
+    await persistFinalSendFailure({
+      reportId: params.reportId,
+      message: params.message,
+      storedPayload: params.storedPayload,
+    })
+  }
+}
+
+async function processSendJob(params: {
+  reportId: string
+  pendingJob: PendingReportJob
+}) {
+  const storedPayload = params.pendingJob.storedPayload ?? null
+
+  if (!storedPayload) {
+    const message = "Relatorio gerado nao encontrado para envio automatico"
+    await handleSendFailure({
+      reportId: params.reportId,
+      pendingJob: params.pendingJob,
+      storedPayload: null,
+      message,
+    })
+
+    return {
+      status: "failed" as const,
+      reportId: params.reportId,
+      message,
+    }
+  }
+
+  try {
+    await sendPersistedReportNow(params.reportId, {
+      mode: params.pendingJob.sendOptions?.mode,
+      message: params.pendingJob.sendOptions?.message,
+      groupId: params.pendingJob.sendOptions?.groupId,
+      pdfStrategy: "standard",
+    })
+
+    await prisma.report.update({
+      where: { id: params.reportId },
+      data: {
+        status: "SENT",
+        payloadJson: serializeStoredReportPayload(storedPayload),
+      },
+    })
+
+    return {
+      status: "processed" as const,
+      reportId: params.reportId,
+    }
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Erro ao enviar relatorio"
+
+    logError("report-processing.send", error, {
+      reportId: params.reportId,
+      source: params.pendingJob.source,
+    })
+
+    await handleSendFailure({
+      reportId: params.reportId,
+      pendingJob: params.pendingJob,
+      storedPayload,
+      message,
+    })
+
+    return {
+      status: "failed" as const,
+      reportId: params.reportId,
+      message,
+    }
+  }
+}
+
+async function processGenerationJob(params: {
+  reportId: string
+  pendingJob: PendingReportJob
+  client: ReportForProcessing["client"]
+}) {
+  const user = await loadRequestedByUser(params.pendingJob.requestedByUserId)
+
+  if (!user) {
+    const message = "Usuario responsavel pelo relatorio nao foi encontrado"
+    await handleGenerationFailure({
+      reportId: params.reportId,
+      pendingJob: params.pendingJob,
+      message,
+    })
+
+    return {
+      status: "failed" as const,
+      reportId: params.reportId,
+      message,
+    }
+  }
+
+  try {
+    const payload = await generateLiveReportPayload({
+      user,
+      client: params.client,
+      filters: params.pendingJob.filters,
+    })
+    const generatedAt = new Date()
+    const storedPayload = buildStoredReportPayload(
+      payload,
+      params.pendingJob.filters,
+      generatedAt
+    )
+
+    if (!params.pendingJob.enqueueSendOnComplete) {
+      await prisma.report.update({
+        where: { id: params.reportId },
+        data: {
+          generatedAt,
+          referenceWeek: buildReferenceWeekDate(params.pendingJob.filters.since),
+          status: "PENDING",
+          payloadJson: serializeStoredReportPayload(storedPayload),
+        },
+      })
+
+      return {
+        status: "processed" as const,
+        reportId: params.reportId,
+      }
+    }
+
+    const sendPendingJob = buildSendPendingJob({
+      baseJob: params.pendingJob,
+      storedPayload,
+      now: generatedAt,
+    })
+
+    await prisma.report.update({
+      where: { id: params.reportId },
+      data: {
+        generatedAt,
+        referenceWeek: buildReferenceWeekDate(params.pendingJob.filters.since),
+        status: "PENDING",
+        payloadJson: buildPendingReportJobPayload(sendPendingJob),
+      },
+    })
+
+    return processSendJob({
+      reportId: params.reportId,
+      pendingJob: sendPendingJob,
+    })
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Erro ao gerar relatorio"
+
+    logError("report-processing.generate", error, {
+      reportId: params.reportId,
+      source: params.pendingJob.source,
+    })
+
+    await handleGenerationFailure({
+      reportId: params.reportId,
+      pendingJob: params.pendingJob,
+      message,
+    })
+
+    return {
+      status: "failed" as const,
+      reportId: params.reportId,
+      message,
+    }
+  }
 }
 
 export async function processQueuedReport(reportId: string): Promise<QueuedReportResult> {
@@ -210,87 +633,32 @@ export async function processQueuedReport(reportId: string): Promise<QueuedRepor
       }
     }
 
-    const user = await loadRequestedByUser(pendingJob.requestedByUserId)
+    const claimedJob = await claimPendingJob({
+      reportId,
+      currentPayloadJson: report.payloadJson,
+      pendingJob,
+    })
 
-    if (!user) {
-      const message = "Usuario responsavel pelo relatorio nao foi encontrado"
-      await markGenerationFailure({
+    if (!claimedJob) {
+      return {
+        status: "skipped" as const,
         reportId,
-        message,
-        pendingJob,
-      })
-      return { status: "failed" as const, reportId, message }
+        reason: isPendingJobLeaseActive(pendingJob) ? "leased" : "not-due",
+      }
     }
 
-    try {
-      const payload = await generateLiveReportPayload({
-        user,
-        client: report.client,
-        filters: pendingJob.filters,
-      })
-      const generatedAt = new Date()
-      const storedPayload = buildStoredReportPayload(
-        payload,
-        pendingJob.filters,
-        generatedAt
-      )
-
-      await prisma.report.update({
-        where: { id: report.id },
-        data: {
-          generatedAt,
-          referenceWeek: buildReferenceWeekDate(pendingJob.filters.since),
-          status: "PENDING",
-          payloadJson: serializeStoredReportPayload(storedPayload),
-        },
-      })
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Erro ao gerar relatorio"
-
-      logError("report-processing.generate", error, {
+    if (claimedJob.kind === "SEND") {
+      return processSendJob({
         reportId,
-        source: pendingJob.source,
+        pendingJob: claimedJob,
       })
-
-      await markGenerationFailure({
-        reportId,
-        message,
-        pendingJob,
-      })
-
-      return { status: "failed" as const, reportId, message }
     }
 
-    if (!pendingJob.enqueueSendOnComplete) {
-      return { status: "processed" as const, reportId }
-    }
-
-    try {
-      await sendPersistedReportNow(report.id, {
-        mode: pendingJob.sendOptions?.mode,
-        message: pendingJob.sendOptions?.message,
-        groupId: pendingJob.sendOptions?.groupId,
-      })
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Erro ao enviar relatorio"
-
-      logError("report-processing.send", error, {
-        reportId,
-        source: pendingJob.source,
-      })
-
-      await markSendFailure({
-        reportId,
-        message,
-        pendingJob,
-      })
-
-      return { status: "failed" as const, reportId, message }
-    }
-
-    return { status: "processed" as const, reportId }
+    return processGenerationJob({
+      reportId,
+      pendingJob: claimedJob,
+      client: report.client,
+    })
   })
 
   if (result) {
@@ -322,27 +690,60 @@ export async function processQueuedReportSafely(reportId: string) {
 }
 
 export async function listPendingQueuedReportIds(limit = getDefaultBatchSize()) {
-  const candidates = await prisma.report.findMany({
-    where: {
-      status: "PENDING",
-      payloadJson: {
-        not: Prisma.JsonNull,
-      },
-    },
-    orderBy: {
-      generatedAt: "asc",
-    },
-    select: {
-      id: true,
-      payloadJson: true,
-    },
-    take: Math.max(limit * 5, limit),
-  })
+  const queuedIds: string[] = []
+  const pageSize = Math.max(limit * 5, 25)
+  let skip = 0
+  const now = new Date()
 
-  return candidates
-    .filter((candidate) => parsePendingReportJobPayload(candidate.payloadJson))
-    .slice(0, limit)
-    .map((candidate) => candidate.id)
+  while (queuedIds.length < limit) {
+    const candidates = await prisma.report.findMany({
+      where: {
+        status: "PENDING",
+        payloadJson: {
+          not: Prisma.JsonNull,
+        },
+      },
+      orderBy: {
+        generatedAt: "asc",
+      },
+      select: {
+        id: true,
+        payloadJson: true,
+      },
+      take: pageSize,
+      skip,
+    })
+
+    if (candidates.length === 0) {
+      break
+    }
+
+    for (const candidate of candidates) {
+      const pendingJob = parsePendingReportJobPayload(candidate.payloadJson)
+
+      if (!pendingJob) {
+        continue
+      }
+
+      if (!isPendingJobDue(pendingJob, now) || isPendingJobLeaseActive(pendingJob, now.getTime())) {
+        continue
+      }
+
+      queuedIds.push(candidate.id)
+
+      if (queuedIds.length >= limit) {
+        break
+      }
+    }
+
+    if (candidates.length < pageSize) {
+      break
+    }
+
+    skip += pageSize
+  }
+
+  return queuedIds
 }
 
 export async function processPendingReportBatch(limit = getDefaultBatchSize()) {

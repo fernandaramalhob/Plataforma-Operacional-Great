@@ -274,6 +274,22 @@ async function executeReportSchedule(schedule: DueSchedule) {
   })
 }
 
+async function claimDueSchedule(schedule: DueSchedule, retryMinutes: number) {
+  const provisionalNextRunAt = new Date(Date.now() + retryMinutes * 60_000)
+  const updateResult = await prisma.reportSchedule.updateMany({
+    where: {
+      id: schedule.id,
+      active: true,
+      nextRunAt: schedule.nextRunAt,
+    },
+    data: {
+      nextRunAt: provisionalNextRunAt,
+    },
+  })
+
+  return updateResult.count > 0
+}
+
 export async function processDueReportSchedules(params?: {
   retryMinutes?: number
   dryRun?: boolean
@@ -322,6 +338,12 @@ export async function processDueReportSchedules(params?: {
 
   for (const schedule of dueSchedules) {
     if (dryRun) {
+      continue
+    }
+
+    const claimed = await claimDueSchedule(schedule, retryMinutes)
+
+    if (!claimed) {
       continue
     }
 

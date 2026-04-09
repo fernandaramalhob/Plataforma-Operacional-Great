@@ -7,6 +7,7 @@ export type ReportObjectiveValue =
 export type ReportStatusValue = "PENDING" | "SENT" | "FAILED"
 
 export type ReportJobStage = "GENERATION" | "SEND"
+export type PendingReportJobKind = "GENERATION" | "SEND"
 
 export type ReportSendMode =
   | "PDF_AND_MESSAGE"
@@ -68,7 +69,13 @@ export type PendingReportSendOptions = {
 
 export type PendingReportSource = "manual" | "schedule" | "weekly"
 
+export type PendingReportJobLease = {
+  lockedAt: string
+  lockToken: string
+}
+
 export type PendingReportJob = {
+  kind?: PendingReportJobKind
   queuedAt: string
   requestedByUserId: string
   source: PendingReportSource
@@ -79,6 +86,13 @@ export type PendingReportJob = {
   }
   enqueueSendOnComplete: boolean
   sendOptions: PendingReportSendOptions | null
+  storedPayload?: StoredReportPayload | null
+  attemptCount?: number
+  maxAttempts?: number
+  nextAttemptAt?: string
+  lastAttemptAt?: string | null
+  lastError?: string | null
+  lease?: PendingReportJobLease | null
 }
 
 export type ReportAction = {
@@ -230,6 +244,28 @@ export type ReportScheduleResponse = {
   lastError: string | null
   createdAt: string
   updatedAt: string
+}
+
+export type ReportScheduleStatusValue =
+  | "SCHEDULED"
+  | "IN_PROGRESS"
+  | "SENT"
+  | "FAILED"
+
+export type ReportScheduleListItem = {
+  clientId: string
+  clientName: string
+  clientCompany: string | null
+  clientStatus: string
+  clientWhatsappGroupId: string | null
+  schedule: ReportScheduleResponse
+  status: ReportScheduleStatusValue
+  statusLabel: string
+  statusDetail: string | null
+  lastReportId: string | null
+  lastReportGeneratedAt: string | null
+  lastSendAttemptAt: string | null
+  lastSendError: string | null
 }
 
 export type SavedReportResponse = {

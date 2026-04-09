@@ -53,11 +53,11 @@ export async function GET(
     const pendingJob = parsePendingReportJobPayload(report.payloadJson)
     const errorMessage = report.sendLogs[0]?.errorMessage ?? jobError?.message ?? null
 
-    if (!payload) {
-      if (report.status === "PENDING" && pendingJob) {
-        after(() => processQueuedReportSafely(report.id))
-      }
+    if (report.status === "PENDING" && pendingJob) {
+      after(() => processQueuedReportSafely(report.id))
+    }
 
+    if (!payload) {
       return NextResponse.json(
         {
           id: report.id,

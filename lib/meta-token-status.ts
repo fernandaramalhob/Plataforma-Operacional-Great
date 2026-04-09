@@ -5,8 +5,12 @@ import {
   MetaApiError,
 } from "@/lib/meta-api"
 import { recordIntegrationAlertSafely } from "@/lib/integration-monitoring"
+import {
+  resolveMetaToken,
+  resolveMetaTokenCandidate,
+  type MetaTokenSource,
+} from "@/lib/meta-token"
 import { prisma } from "@/lib/prisma"
-import { resolveMetaToken } from "@/lib/meta-token"
 import { logError } from "@/lib/safe-logger"
 
 const META_TOKEN_WARNING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
@@ -38,6 +42,7 @@ export type MetaTokenHealth = {
   expiresAt: Date | null
   token: string | null
   encryptedToken: string | null
+  source: MetaTokenSource | null
   metaUser: MetaTokenUser | null
 }
 
@@ -49,12 +54,12 @@ export function getMetaTokenReadErrorDetail(error: unknown) {
     message.includes("unsupported state or unable to authenticate data") ||
     message.includes("invalid authentication tag") ||
     message.includes("descriptografar") ||
-    message.includes("criptografado inválido")
+    message.includes("criptografado invalido")
   ) {
-    return "O token META salvo não pode ser lido neste ambiente. Confirme se META_TOKEN_ENCRYPTION_KEY ou NEXTAUTH_SECRET são os mesmos do PC de origem, ou salve um novo token."
+    return "O token META salvo nao pode ser lido neste ambiente. Confirme se META_TOKEN_ENCRYPTION_KEY ou NEXTAUTH_SECRET sao os mesmos do PC de origem, ou salve um novo token."
   }
 
-  return "Não foi possível ler o token META salvo. Salve um novo token ou revise a configuração deste ambiente."
+  return "Nao foi possivel ler o token META salvo. Salve um novo token ou revise a configuracao deste ambiente."
 }
 
 function inferMetaTokenStatus(message: string): MetaTokenStatus {
@@ -74,6 +79,16 @@ function inferMetaTokenStatus(message: string): MetaTokenStatus {
 
 function buildExpiryDetail(expiresAt: Date, prefix: string) {
   return `${prefix} em ${expiresAt.toLocaleString("pt-BR")}`
+}
+
+function buildEnvironmentTokenDetail(detail?: string | null) {
+  const baseDetail = detail?.trim()
+
+  if (!baseDetail) {
+    return "Token META carregado de META_ACCESS_TOKEN."
+  }
+
+  return `${baseDetail} (via META_ACCESS_TOKEN).`
 }
 
 function isNearExpiry(expiresAt: Date | null) {
@@ -101,7 +116,7 @@ function pickNearestExpiry(
 
 export async function inspectMetaTokenValue(
   token: string
-): Promise<Omit<MetaTokenHealth, "token" | "encryptedToken">> {
+): Promise<Omit<MetaTokenHealth, "token" | "encryptedToken" | "source">> {
   try {
     const profile = await getMetaMeProfile(token)
 
@@ -114,7 +129,7 @@ export async function inspectMetaTokenValue(
 
         if (debugData.is_valid === false) {
           const message =
-            debugData.error?.message ?? "Token META inválido ou expirado"
+            debugData.error?.message ?? "Token META invalido ou expirado"
 
           return {
             ok: false,
@@ -145,11 +160,11 @@ export async function inspectMetaTokenValue(
     const detail = expiresAt
       ? buildExpiryDetail(
           expiresAt,
-          status === "expiring_soon" ? "Token META expira" : "Token META válido até"
+          status === "expiring_soon" ? "Token META expira" : "Token META valido ate"
         )
       : appAccessToken
         ? "Token META ativo"
-        : "Token META ativo. Configure META_APP_ID e META_APP_SECRET para rastrear a expiração."
+        : "Token META ativo. Configure META_APP_ID e META_APP_SECRET para rastrear a expiracao."
 
     return {
       ok: true,
@@ -181,16 +196,57 @@ export async function inspectMetaTokenValue(
 }
 
 export async function getStoredMetaTokenHealth(params: {
-  storedToken: string
+  storedToken: string | null
   storedExpiresAt: Date | null
   forceRemote?: boolean
 }): Promise<MetaTokenHealth> {
   const { storedToken, storedExpiresAt, forceRemote = false } = params
+  const candidate = resolveMetaTokenCandidate(storedToken)
+
+  if (!candidate) {
+    return {
+      ok: false,
+      status: "missing",
+      detail: "Token META nao configurado",
+      expiresAt: null,
+      token: null,
+      encryptedToken: null,
+      source: null,
+      metaUser: null,
+    }
+  }
+
+  if (candidate.source === "environment") {
+    if (!forceRemote) {
+      return {
+        ok: true,
+        status: "active",
+        detail: buildEnvironmentTokenDetail(),
+        expiresAt: null,
+        token: candidate.token,
+        encryptedToken: null,
+        source: "environment",
+        metaUser: null,
+      }
+    }
+
+    const inspected = await inspectMetaTokenValue(candidate.token)
+
+    return {
+      ...inspected,
+      detail: buildEnvironmentTokenDetail(inspected.detail),
+      expiresAt: inspected.expiresAt,
+      token: candidate.token,
+      encryptedToken: null,
+      source: "environment",
+    }
+  }
+
   let token: string
   let encryptedToken: string | null
 
   try {
-    const resolvedToken = resolveMetaToken(storedToken)
+    const resolvedToken = resolveMetaToken(storedToken ?? "")
     token = resolvedToken.token
     encryptedToken = resolvedToken.encryptedToken
   } catch (error) {
@@ -203,6 +259,7 @@ export async function getStoredMetaTokenHealth(params: {
       expiresAt: storedExpiresAt,
       token: null,
       encryptedToken: null,
+      source: "database",
       metaUser: null,
     }
   }
@@ -215,6 +272,7 @@ export async function getStoredMetaTokenHealth(params: {
       expiresAt: storedExpiresAt,
       token,
       encryptedToken,
+      source: "database",
       metaUser: null,
     }
   }
@@ -227,10 +285,11 @@ export async function getStoredMetaTokenHealth(params: {
     return {
       ok: true,
       status: "active",
-      detail: buildExpiryDetail(storedExpiresAt, "Token META válido até"),
+      detail: buildExpiryDetail(storedExpiresAt, "Token META valido ate"),
       expiresAt: storedExpiresAt,
       token,
       encryptedToken,
+      source: "database",
       metaUser: null,
     }
   }
@@ -242,6 +301,7 @@ export async function getStoredMetaTokenHealth(params: {
     expiresAt: inspected.expiresAt ?? storedExpiresAt,
     token,
     encryptedToken,
+    source: "database",
   }
 }
 
@@ -314,6 +374,19 @@ export async function resolveMetaTokenFromOwners(
   owners: MetaTokenOwner[],
   options?: { forceRemote?: boolean }
 ) {
+  const environmentHealth = await getStoredMetaTokenHealth({
+    storedToken: null,
+    storedExpiresAt: null,
+    forceRemote: options?.forceRemote,
+  })
+
+  if (environmentHealth.ok && environmentHealth.token) {
+    return {
+      ownerId: null,
+      health: environmentHealth,
+    }
+  }
+
   const ownersWithTokens = owners.filter(
     (owner) =>
       typeof owner.metaAccessToken === "string" && owner.metaAccessToken.trim()
@@ -325,10 +398,11 @@ export async function resolveMetaTokenFromOwners(
       health: {
         ok: false,
         status: "missing" as MetaTokenStatus,
-        detail: "Token META não configurado",
+        detail: "Token META nao configurado",
         expiresAt: null,
         token: null,
         encryptedToken: null,
+        source: null,
         metaUser: null,
       },
     }
@@ -341,7 +415,7 @@ export async function resolveMetaTokenFromOwners(
     const owner = ownersWithTokens[index]
     const forceRemote = options?.forceRemote || index > 0
     const health = await getStoredMetaTokenHealth({
-      storedToken: owner.metaAccessToken ?? "",
+      storedToken: owner.metaAccessToken,
       storedExpiresAt: owner.metaTokenExpiresAt,
       forceRemote,
     })
@@ -377,11 +451,25 @@ export async function resolveMetaTokenFromOwners(
       lastHealth ?? {
         ok: false,
         status: "unknown",
-        detail: "Não foi possível validar nenhum token META disponível",
+        detail: "Nao foi possivel validar nenhum token META disponivel",
         expiresAt: null,
         token: null,
         encryptedToken: null,
+        source: null,
         metaUser: null,
       },
   }
+}
+
+export async function requireMetaTokenFromOwners(
+  owners: MetaTokenOwner[],
+  options?: { forceRemote?: boolean }
+) {
+  const { health } = await resolveMetaTokenFromOwners(owners, options)
+
+  if (!health.ok || !health.token) {
+    throw new Error(health.detail ?? "Token META nao configurado")
+  }
+
+  return health.token
 }

@@ -13,6 +13,7 @@ import { CampaignSelector } from "@/components/clients/campaign-selector"
 import { Header } from "@/components/layout/header"
 import { ReportPreview } from "@/components/reports/report-preview"
 import { ReportScheduleModal } from "@/components/reports/report-schedule-modal"
+import { ReportSchedulesPanel } from "@/components/reports/report-schedules-panel"
 import { ReportTemplateEditor } from "@/components/reports/report-template-editor"
 import { SendReportComposer } from "@/components/reports/send-report-composer"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -106,6 +107,7 @@ export default function ReportsPage() {
   const [loadingClients, setLoadingClients] = useState(true)
   const [search, setSearch] = useState("")
   const [selectedClient, setSelectedClient] = useState<ClientListItem | null>(null)
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([])
   const [reportData, setReportData] = useState<ReportPayload | null>(null)
   const [loadingReport, setLoadingReport] = useState(false)
   const [loadingReportMessage, setLoadingReportMessage] = useState("")
@@ -121,7 +123,7 @@ export default function ReportsPage() {
   const [sendMode, setSendMode] = useState<ReportSendMode>("PDF_AND_MESSAGE")
   const [sendMessage, setSendMessage] = useState("")
   const [templateName, setTemplateName] = useState(DEFAULT_TEMPLATE_NAME)
-  const [customTitle, setCustomTitle] = useState("FACEBOOK - Visão Geral")
+  const [customTitle, setCustomTitle] = useState("FACEBOOK - VisÃ£o Geral")
   const [executiveSummary, setExecutiveSummary] = useState("")
   const [closingNotes, setClosingNotes] = useState("")
   const [sectionVisibility, setSectionVisibility] = useState<ReportSectionVisibility>(
@@ -132,6 +134,10 @@ export default function ReportsPage() {
   )
   const [savedTemplateLabel, setSavedTemplateLabel] = useState<string | null>(null)
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+  const [bulkScheduleModalOpen, setBulkScheduleModalOpen] = useState(false)
+  const [activeListTab, setActiveListTab] = useState<"clients" | "schedules">(
+    "clients"
+  )
 
   const [activePeriod, setActivePeriod] = useState("7d")
   const [startDate, setStartDate] = useState("")
@@ -149,7 +155,7 @@ export default function ReportsPage() {
 
   const resetCustomization = useCallback(() => {
     setTemplateName(DEFAULT_TEMPLATE_NAME)
-    setCustomTitle("FACEBOOK - Visão Geral")
+    setCustomTitle("FACEBOOK - VisÃ£o Geral")
     setExecutiveSummary("")
     setClosingNotes("")
     setSectionVisibility(DEFAULT_REPORT_SECTIONS)
@@ -168,7 +174,7 @@ export default function ReportsPage() {
       }
 
       setTemplateName(template.name || DEFAULT_TEMPLATE_NAME)
-      setCustomTitle(template.customTitle || "FACEBOOK - Visão Geral")
+      setCustomTitle(template.customTitle || "FACEBOOK - VisÃ£o Geral")
       setExecutiveSummary(template.executiveSummary || "")
       setClosingNotes(template.closingNotes || "")
       setSectionVisibility(template.sections || DEFAULT_REPORT_SECTIONS)
@@ -277,6 +283,12 @@ export default function ReportsPage() {
       })
   }, [])
 
+  useEffect(() => {
+    setSelectedClientIds((current) =>
+      current.filter((clientId) => clients.some((client) => client.id === clientId))
+    )
+  }, [clients])
+
   const waitForQueuedReport = useCallback(
     async (reportId: string, sequence: number) => {
       const savedReport = await pollSavedReportUntilReady({
@@ -284,7 +296,7 @@ export default function ReportsPage() {
         sequence,
         getCurrentSequence: () => reportPollSequenceRef.current,
         sleep,
-        fallbackMessage: "Erro ao acompanhar a fila do relatório",
+        fallbackMessage: "Erro ao acompanhar a fila do relatÃ³rio",
         onUpdate: (nextReport) => {
           setCurrentReportId(nextReport.id)
           setCurrentReportGeneratedAt(nextReport.generatedAt)
@@ -295,14 +307,14 @@ export default function ReportsPage() {
           }
 
           setLoadingReportMessage(
-            "Relatório em fila. Processando dados da META API..."
+            "RelatÃ³rio em fila. Processando dados da META API..."
           )
         },
       })
 
       if (savedReport?.status === "FAILED") {
         throw new Error(
-          savedReport.errorMessage || "Não foi possível gerar o relatório"
+          savedReport.errorMessage || "NÃ£o foi possÃ­vel gerar o relatÃ³rio"
         )
       }
     },
@@ -318,7 +330,7 @@ export default function ReportsPage() {
     setLoadingReport(true)
     setReportError("")
     setActionFeedback("")
-    setLoadingReportMessage("Enfileirando relatório...")
+    setLoadingReportMessage("Enfileirando relatÃ³rio...")
     const sequence = reportPollSequenceRef.current
 
     try {
@@ -330,7 +342,7 @@ export default function ReportsPage() {
       })
       setCurrentReportId(response.reportId)
       setCurrentReportGeneratedAt(response.generatedAt)
-      setLoadingReportMessage("Relatório em fila. Processando dados da META API...")
+      setLoadingReportMessage("RelatÃ³rio em fila. Processando dados da META API...")
       await waitForQueuedReport(response.reportId, sequence)
     } catch (error) {
       const message =
@@ -360,6 +372,37 @@ export default function ReportsPage() {
       client.name.toLowerCase().includes(search.toLowerCase()) ||
       (client.company ?? "").toLowerCase().includes(search.toLowerCase())
   )
+  const allFilteredSelected =
+    filteredClients.length > 0 &&
+    filteredClients.every((client) => selectedClientIds.includes(client.id))
+  const selectedClients = clients.filter((client) =>
+    selectedClientIds.includes(client.id)
+  )
+
+  function toggleClientSelection(clientId: string) {
+    setSelectedClientIds((current) =>
+      current.includes(clientId)
+        ? current.filter((id) => id !== clientId)
+        : [...current, clientId]
+    )
+  }
+
+  function handleToggleAllFilteredClients() {
+    setSelectedClientIds((current) => {
+      if (allFilteredSelected) {
+        return current.filter(
+          (clientId) => !filteredClients.some((client) => client.id === clientId)
+        )
+      }
+
+      const next = new Set(current)
+      filteredClients.forEach((client) => {
+        next.add(client.id)
+      })
+
+      return Array.from(next)
+    })
+  }
 
   function toggleCampaign(id: string) {
     setSelectedCampaigns((current) =>
@@ -411,7 +454,7 @@ export default function ReportsPage() {
 
     const template = loadReportTemplate(selectedClient.id)
     if (!template) {
-      setActionFeedback("Ainda não existe template salvo para este cliente.")
+      setActionFeedback("Ainda nÃ£o existe template salvo para este cliente.")
       return
     }
 
@@ -440,7 +483,7 @@ export default function ReportsPage() {
       })
     } catch (error) {
       logError("dashboard.reports.page", error)
-      setReportError("Não foi possível gerar o PDF do relatório")
+      setReportError("NÃ£o foi possÃ­vel gerar o PDF do relatÃ³rio")
     } finally {
       setIsExporting(false)
     }
@@ -478,12 +521,12 @@ export default function ReportsPage() {
         pdfBase64: pdfAttachment?.base64,
         pdfFileName: pdfAttachment?.fileName,
       })
-      setActionFeedback("Envio concluído com o formato selecionado.")
+      setActionFeedback("Envio concluÃ­do com o formato selecionado.")
     } catch (error) {
       setReportError(
         error instanceof Error
           ? error.message
-          : "Não foi possível enviar o relatório"
+          : "NÃ£o foi possÃ­vel enviar o relatÃ³rio"
       )
     } finally {
       setIsSending(false)
@@ -495,71 +538,200 @@ export default function ReportsPage() {
       <>
         <div className="print:hidden">
           <Header
-            title="Relatórios"
-            subtitle="Selecione um cliente para visualizar o relatório"
+            title="RelatÃ³rios"
+            subtitle="Selecione um cliente para visualizar o relatÃ³rio"
           />
         </div>
         <div className="p-8">
           <div className="mx-auto max-w-2xl">
-            <FilterSearchInput
-              type="text"
-              placeholder="Buscar cliente por nome ou empresa..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="mb-6"
-              inputClassName="rounded-[26px] py-3.5"
-            />
-
-            {loadingClients ? (
-              <LoadingSkeleton label="Carregando clientes..." />
-            ) : filteredClients.length === 0 ? (
-              <EmptyState
-                title="Nenhum cliente encontrado"
-                description="Ajuste a busca para localizar outro cliente."
-                className="border-none py-20"
-              />
-            ) : (
-              <div className="space-y-3">
-                {filteredClients.map((client) => (
-                  <button
-                    key={client.id}
-                    onClick={() => {
-                      setSelectedClient(client)
-                      clearCurrentReport()
-                    }}
-                    className="flex w-full items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition hover:border-[#C1121F] hover:shadow-md"
-                  >
-                    <div
-                      className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full ${getColor(client.name)}`}
-                    >
-                      <span className="text-sm font-bold text-white">
-                        {getInitials(client.name)}
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {client.name}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {client.company ?? "-"} · {client.email ?? "-"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <StatusBadge
-                        tone={client.status === "ACTIVE" ? "success" : "neutral"}
-                      >
-                        {client.status === "ACTIVE" ? "Ativo" : "Inativo"}
-                      </StatusBadge>
-                      <span className="text-sm font-medium text-[#C1121F]">
-                        Ver relatório
-                      </span>
-                    </div>
-                  </button>
-                ))}
+            {actionFeedback ? (
+              <div className="mb-4 rounded-2xl border border-green-100 bg-green-50 px-5 py-4 text-sm text-green-700">
+                {actionFeedback}
               </div>
+            ) : null}
+
+            <div className="mb-4 flex flex-wrap justify-center gap-2 rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setActiveListTab("clients")}
+                className={`rounded-2xl px-4 py-2.5 text-sm font-medium transition ${
+                  activeListTab === "clients"
+                    ? "bg-[#C1121F] text-white shadow-[0_16px_30px_-22px_rgba(193,18,31,0.9)]"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                Gerar relatorio
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveListTab("schedules")}
+                className={`rounded-2xl px-4 py-2.5 text-sm font-medium transition ${
+                  activeListTab === "schedules"
+                    ? "bg-[#C1121F] text-white shadow-[0_16px_30px_-22px_rgba(193,18,31,0.9)]"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                Agendamentos
+              </button>
+            </div>
+
+            {activeListTab === "clients" ? (
+              <>
+                <FilterSearchInput
+                  type="text"
+                  placeholder="Buscar cliente por nome ou empresa..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="mb-4"
+                  inputClassName="rounded-[26px] py-3.5"
+                />
+
+                {!loadingClients && filteredClients.length > 0 ? (
+                  <div className="mb-6 flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        Selecionados: {selectedClientIds.length}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Marque varios clientes ou todos os filtrados para agendar no
+                        mesmo horario.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={handleToggleAllFilteredClients}
+                        className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                      >
+                        {allFilteredSelected
+                          ? "Desmarcar filtrados"
+                          : "Selecionar todos"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedClientIds([])}
+                        disabled={selectedClientIds.length === 0}
+                        className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        Limpar selecao
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBulkScheduleModalOpen(true)}
+                        disabled={selectedClientIds.length === 0}
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-[#C1121F] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
+                      >
+                        <Calendar className="h-4 w-4" />
+                        Agendar selecionados
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {loadingClients ? (
+                  <LoadingSkeleton label="Carregando clientes..." />
+                ) : filteredClients.length === 0 ? (
+                  <EmptyState
+                    title="Nenhum cliente encontrado"
+                    description="Ajuste a busca para localizar outro cliente."
+                    className="border-none py-20"
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {filteredClients.map((client) => (
+                      <div
+                        key={client.id}
+                        className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-[#C1121F] hover:shadow-md"
+                      >
+                        <button
+                          type="button"
+                          aria-label={`Selecionar ${client.name}`}
+                          aria-pressed={selectedClientIds.includes(client.id)}
+                          onClick={() => toggleClientSelection(client.id)}
+                          className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border text-[11px] font-bold transition ${
+                            selectedClientIds.includes(client.id)
+                              ? "border-[#C1121F] bg-[#C1121F] text-white"
+                              : "border-slate-300 bg-white text-transparent"
+                          }`}
+                        >
+                          X
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedClient(client)
+                            clearCurrentReport()
+                          }}
+                          className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                        >
+                          <div
+                            className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full ${getColor(client.name)}`}
+                          >
+                            <span className="text-sm font-bold text-white">
+                              {getInitials(client.name)}
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {client.name}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {client.company ?? "-"} - {client.email ?? "-"}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <StatusBadge
+                              tone={
+                                client.status === "ACTIVE" ? "success" : "neutral"
+                              }
+                            >
+                              {client.status === "ACTIVE" ? "Ativo" : "Inativo"}
+                            </StatusBadge>
+                            <span className="text-sm font-medium text-[#C1121F]">
+                              Ver relatorio
+                            </span>
+                          </div>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <ReportSchedulesPanel
+                clients={clients}
+                onSelectClient={(client) => {
+                  setSelectedClient(client)
+                  clearCurrentReport()
+                }}
+              />
             )}
           </div>
         </div>
+        <ReportScheduleModal
+          open={bulkScheduleModalOpen}
+          clientIds={selectedClientIds}
+          clientNames={selectedClients.map((client) => client.name)}
+          defaultFilters={{
+            since: startDate,
+            until: endDate,
+            objective,
+          }}
+          defaultSendMode={sendMode}
+          defaultMessage={sendMessage}
+          onClose={() => setBulkScheduleModalOpen(false)}
+          onSaved={({ schedules, clientCount }) => {
+            const nextRunAt = schedules[0]?.nextRunAt
+            setActionFeedback(
+              nextRunAt
+                ? `Agendamento salvo para ${clientCount} clientes. Primeiro envio em ${new Date(nextRunAt).toLocaleString("pt-BR")}.`
+                : `Agendamento salvo para ${clientCount} clientes.`
+            )
+            setActiveListTab("schedules")
+            setBulkScheduleModalOpen(false)
+            setSelectedClientIds([])
+          }}
+        />
       </>
     )
   }
@@ -568,8 +740,8 @@ export default function ReportsPage() {
     <>
       <div className="print:hidden">
         <Header
-          title="Relatório"
-          subtitle={`${selectedClient.name} · ${startDate} até ${endDate}`}
+          title="RelatÃ³rio"
+          subtitle={`${selectedClient.name} Â· ${startDate} atÃ© ${endDate}`}
         />
       </div>
 
@@ -605,11 +777,11 @@ export default function ReportsPage() {
           </div>
 
           <div className="mb-5 rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
-            <FilterLabel>Período</FilterLabel>
+            <FilterLabel>PerÃ­odo</FilterLabel>
             <div className="mb-4 grid grid-cols-2 gap-2">
               {[
                 { label: "1 semana", value: "7d" },
-                { label: "1 mês", value: "30d" },
+                { label: "1 mÃªs", value: "30d" },
                 { label: "3 meses", value: "90d" },
                 { label: "6 meses", value: "180d" },
                 { label: "1 ano", value: "365d" },
@@ -629,7 +801,7 @@ export default function ReportsPage() {
               ))}
             </div>
             <p className="mb-2 text-xs font-medium text-slate-400">
-              Período personalizado
+              PerÃ­odo personalizado
             </p>
             <div className="flex gap-2">
               <input
@@ -658,8 +830,8 @@ export default function ReportsPage() {
             <div className="grid gap-2">
               {[
                 { label: "Todos", value: "ALL" },
-                { label: "Tráfego", value: "LINK_CLICKS" },
-                { label: "Conversão", value: "CONVERSIONS" },
+                { label: "TrÃ¡fego", value: "LINK_CLICKS" },
+                { label: "ConversÃ£o", value: "CONVERSIONS" },
                 { label: "Mensagens", value: "MESSAGES" },
               ].map((option) => (
                 <button
@@ -721,10 +893,10 @@ export default function ReportsPage() {
             <label className="flex items-center justify-between gap-3">
               <span>
                 <span className="block text-sm font-semibold text-slate-800">
-                  Insights automáticos
+                  Insights automÃ¡ticos
                 </span>
                 <span className="mt-1 block text-xs text-slate-400">
-                  Gera observações inteligentes junto com o relatório.
+                  Gera observaÃ§Ãµes inteligentes junto com o relatÃ³rio.
                 </span>
               </span>
               <div
@@ -760,13 +932,13 @@ export default function ReportsPage() {
         <section className="min-h-0 flex-1 overflow-y-auto bg-[#eef1f6] print:overflow-visible print:bg-white">
           {loadingReport ? (
             <LoadingSkeleton
-              label={loadingReportMessage || "Gerando relatório..."}
+              label={loadingReportMessage || "Gerando relatÃ³rio..."}
               className="h-full"
             />
           ) : reportError ? (
             <div className="flex h-full items-center justify-center px-6">
               <ErrorState
-                title="Erro ao carregar relatório"
+                title="Erro ao carregar relatÃ³rio"
                 message={reportError}
                 action={
                   <button
@@ -782,7 +954,7 @@ export default function ReportsPage() {
           ) : !reportData ? (
             <div className="flex h-full items-center justify-center px-6">
               <EmptyState
-                title="Nenhum relatório carregado"
+                title="Nenhum relatÃ³rio carregado"
                 description='Selecione os filtros e clique em "Aplicar filtros".'
                 className="w-full max-w-lg border-none bg-transparent py-20"
               />
@@ -846,7 +1018,7 @@ export default function ReportsPage() {
                     href={`/dashboard/reports/${currentReportId}`}
                     className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 transition hover:bg-gray-50"
                   >
-                    Ver relatório salvo
+                    Ver relatÃ³rio salvo
                   </Link>
                 ) : null}
                 <button
@@ -870,7 +1042,7 @@ export default function ReportsPage() {
                   className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
                 >
                   <Download className="h-4 w-4" />
-                  {isExporting ? "Gerando PDF..." : "Salvar relatório em PDF"}
+                  {isExporting ? "Gerando PDF..." : "Salvar relatÃ³rio em PDF"}
                 </button>
               </div>
             </div>
@@ -916,14 +1088,18 @@ export default function ReportsPage() {
         defaultMessage={sendMessage}
         defaultGroupId={selectedClient?.whatsappGroupId ?? null}
         onClose={() => setScheduleModalOpen(false)}
-        onSaved={(schedule) => {
+        onSaved={({ schedules }) => {
+          const schedule = schedules[0]
+          if (!schedule) {
+            return
+          }
           setActionFeedback(
-            `Agendamento salvo. Próximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
+            `Agendamento salvo. PrÃ³ximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
           )
           setScheduleModalOpen(false)
         }}
         onDisabled={() => {
-          setActionFeedback("Agendamento automático desativado com sucesso.")
+          setActionFeedback("Agendamento automÃ¡tico desativado com sucesso.")
         }}
       />
     </>

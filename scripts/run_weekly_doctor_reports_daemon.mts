@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
 import { config as loadDotenv } from "dotenv"
 import { REPORT_AUTOMATION_DEFAULT_TIMEZONE } from "@/lib/report-automation"
+import { processPendingReportBatch } from "@/lib/report-processing"
 import { processDueReportSchedules } from "@/lib/report-schedule"
 
 type WeeklyDoctorReportsCliArgs = {
@@ -404,6 +405,11 @@ async function main() {
       retryMinutes,
       dryRun: cliArgs.dryRun,
     })
+    await processPendingReportBatch().catch((error) => {
+      console.error(
+        `[ERRO] ${error instanceof Error ? error.message : "Falha ao processar fila pendente de relatorios"}`
+      )
+    })
 
     const result = await tryRunScheduledAutomation({
       cliArgs,
@@ -411,6 +417,12 @@ async function main() {
       stateFilePath,
       timeZone,
       retryMinutes,
+    })
+
+    await processPendingReportBatch().catch((error) => {
+      console.error(
+        `[ERRO] ${error instanceof Error ? error.message : "Falha ao processar fila apos disparo da automacao"}`
+      )
     })
 
     if (cliArgs.once) {

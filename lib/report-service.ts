@@ -4,7 +4,10 @@ import {
   getMetaCampaigns,
   getMetaInsights,
 } from "@/lib/meta-api"
-import { resolveMetaTokenFromOwners, type MetaTokenOwner } from "@/lib/meta-token-status"
+import {
+  requireMetaTokenFromOwners,
+  type MetaTokenOwner,
+} from "@/lib/meta-token-status"
 import { prisma } from "@/lib/prisma"
 import {
   buildPendingReportJobPayload,
@@ -61,13 +64,7 @@ async function resolveMetaToken(user: ReportUser, client: ClientWithManager) {
       metaTokenExpiresAt: user.metaTokenExpiresAt,
     },
   ]
-  const { health } = await resolveMetaTokenFromOwners(owners)
-
-  if (!health.ok || !health.token) {
-    throw new Error(health.detail ?? "Token META nao configurado")
-  }
-
-  return health.token
+  return requireMetaTokenFromOwners(owners)
 }
 
 export async function generateLiveReportPayload(params: {

@@ -74,7 +74,7 @@ export default function ReportPreviewPage() {
 
           if (!report.payload && report.status !== "FAILED") {
             setActionFeedback(
-              "Relatório em processamento na fila. Atualizando automaticamente."
+              "RelatÃ³rio em processamento na fila. Atualizando automaticamente."
             )
             return
           }
@@ -92,7 +92,7 @@ export default function ReportPreviewPage() {
     reportPollSequenceRef.current = sequence
 
     if (!reportId) {
-      setError("Relatório inválido")
+      setError("RelatÃ³rio invÃ¡lido")
       setLoading(false)
       return
     }
@@ -111,7 +111,7 @@ export default function ReportPreviewPage() {
         setError(
           fetchError instanceof Error
             ? fetchError.message
-            : "Não foi possível carregar o relatório"
+            : "NÃ£o foi possÃ­vel carregar o relatÃ³rio"
         )
       })
       .finally(() => {
@@ -152,7 +152,7 @@ export default function ReportPreviewPage() {
       logError("dashboard.report-preview.page", pdfError, {
         reportId: savedReport.id,
       })
-      setError("Não foi possível gerar o PDF do relatório")
+      setError("NÃ£o foi possÃ­vel gerar o PDF do relatÃ³rio")
     } finally {
       setGenerating(false)
     }
@@ -189,12 +189,12 @@ export default function ReportPreviewPage() {
         pdfBase64: pdfAttachment?.base64,
         pdfFileName: pdfAttachment?.fileName,
       })
-      setActionFeedback("Envio concluído com o formato selecionado.")
+      setActionFeedback("Envio concluÃ­do com o formato selecionado.")
     } catch (sendError) {
       setError(
         sendError instanceof Error
           ? sendError.message
-          : "Não foi possível enviar o relatório"
+          : "NÃ£o foi possÃ­vel enviar o relatÃ³rio"
       )
     } finally {
       setSending(false)
@@ -206,11 +206,11 @@ export default function ReportPreviewPage() {
       <div>
         <div className="print:hidden">
           <Header
-            title="Relatório salvo"
-            subtitle="Carregando relatório persistido"
+            title="RelatÃ³rio salvo"
+            subtitle="Carregando relatÃ³rio persistido"
           />
         </div>
-        <LoadingSkeleton label="Carregando relatório salvo..." />
+        <LoadingSkeleton label="Carregando relatÃ³rio salvo..." />
       </div>
     )
   }
@@ -220,21 +220,21 @@ export default function ReportPreviewPage() {
       <div>
         <div className="print:hidden">
           <Header
-            title="Relatório salvo"
-            subtitle="Não foi possível abrir este relatório"
+            title="RelatÃ³rio salvo"
+            subtitle="NÃ£o foi possÃ­vel abrir este relatÃ³rio"
           />
         </div>
         <div className="p-8">
           <ErrorState
-            title="Relatório indisponível"
-            message={error || "Relatório não encontrado"}
+            title="RelatÃ³rio indisponÃ­vel"
+            message={error || "RelatÃ³rio nÃ£o encontrado"}
             action={
               <button
                 onClick={() => router.push("/dashboard/history")}
                 className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Voltar para o histórico
+                Voltar para o histÃ³rico
               </button>
             }
           />
@@ -248,18 +248,18 @@ export default function ReportPreviewPage() {
       <div>
         <div className="print:hidden">
           <Header
-            title="Relatório salvo"
+            title="RelatÃ³rio salvo"
             subtitle="Aguardando processamento do job"
           />
         </div>
         <div className="p-8">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
             {savedReport.status === "FAILED" ? (
-              <p>{savedReport.errorMessage || "Não foi possível gerar este relatório."}</p>
+              <p>{savedReport.errorMessage || "NÃ£o foi possÃ­vel gerar este relatÃ³rio."}</p>
             ) : (
               <div className="flex items-center gap-3">
                 <Loader2 className="h-5 w-5 animate-spin text-[#C1121F]" />
-                <p>Relatório em fila. Esta página atualiza automaticamente.</p>
+                <p>RelatÃ³rio em fila. Esta pÃ¡gina atualiza automaticamente.</p>
               </div>
             )}
             <button
@@ -267,7 +267,7 @@ export default function ReportPreviewPage() {
               className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
             >
               <ChevronLeft className="h-4 w-4" />
-              Voltar para o histórico
+              Voltar para o histÃ³rico
             </button>
           </div>
         </div>
@@ -281,8 +281,8 @@ export default function ReportPreviewPage() {
     <>
       <div className="print:hidden">
         <Header
-          title="Relatório salvo"
-          subtitle={`${payload.client.name} · ${payload.filters.since} até ${payload.filters.until}`}
+          title="RelatÃ³rio salvo"
+          subtitle={`${payload.client.name} Â· ${payload.filters.since} atÃ© ${payload.filters.until}`}
         />
       </div>
 
@@ -293,7 +293,7 @@ export default function ReportPreviewPage() {
             className="mb-5 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
           >
             <ChevronLeft className="h-4 w-4" />
-            Voltar para o histórico
+            Voltar para o histÃ³rico
           </button>
 
           <div className="mb-5 rounded-2xl border border-gray-100 bg-gray-50 p-4">
@@ -304,7 +304,7 @@ export default function ReportPreviewPage() {
               {payload.client.name}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {payload.client.company ?? "Marca não informada"}
+              {payload.client.company ?? "Marca nÃ£o informada"}
             </p>
           </div>
 
@@ -314,7 +314,7 @@ export default function ReportPreviewPage() {
             </p>
             <div className="mt-3 space-y-2 text-sm text-gray-600">
               <p>De: {payload.filters.since}</p>
-              <p>Até: {payload.filters.until}</p>
+              <p>AtÃ©: {payload.filters.until}</p>
               <p>Objetivo: {payload.filters.objective}</p>
               <p>
                 Gerado em:{" "}
@@ -349,7 +349,7 @@ export default function ReportPreviewPage() {
                 }`}
               />
             </div>
-            Insights automáticos
+            Insights automÃ¡ticos
           </label>
         </aside>
 
@@ -420,7 +420,7 @@ export default function ReportPreviewPage() {
                 className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
               >
                 <Download className="h-4 w-4" />
-                {generating ? "Gerando PDF..." : "Salvar relatório em PDF"}
+                {generating ? "Gerando PDF..." : "Salvar relatÃ³rio em PDF"}
               </button>
             </div>
           </div>
@@ -457,14 +457,18 @@ export default function ReportPreviewPage() {
         defaultSendMode={sendMode}
         defaultMessage={sendMessage}
         onClose={() => setScheduleModalOpen(false)}
-        onSaved={(schedule) => {
+        onSaved={({ schedules }) => {
+          const schedule = schedules[0]
+          if (!schedule) {
+            return
+          }
           setActionFeedback(
-            `Agendamento salvo. Próximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
+            `Agendamento salvo. PrÃ³ximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
           )
           setScheduleModalOpen(false)
         }}
         onDisabled={() => {
-          setActionFeedback("Agendamento automático desativado com sucesso.")
+          setActionFeedback("Agendamento automÃ¡tico desativado com sucesso.")
         }}
       />
     </>

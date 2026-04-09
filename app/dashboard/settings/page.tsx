@@ -30,6 +30,9 @@ import type {
 } from "@/types/meta.types"
 import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
+const META_TOKEN_SUGGESTION =
+  "EAAVENRIKYhMBRMK1owvwMHrFXiMkbqKbMlNpblRusw6GUa5TgBwfdh4SAcRnptnK0ykP8VwtHtD8gbls3ZCzbzo73L1enQPU5tfhXff9muSWijIwgeguz38rZCaI3yQyIwzlZB45vpCDTeCOjHyiwqseQpkJIKvrsZClxZB8DpPPf2yNCF5p8fn2YeSzywZCa1"
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -336,6 +339,7 @@ export default function SettingsPage() {
               isSubmitting={isValidating}
               disabled={!sessionUser}
               hasSavedToken={Boolean(savedTokenMasked)}
+              placeholder={META_TOKEN_SUGGESTION}
               onChange={setToken}
               onToggleVisibility={() => setShowToken((current) => !current)}
               onSubmit={() => void handleValidateAndSave()}

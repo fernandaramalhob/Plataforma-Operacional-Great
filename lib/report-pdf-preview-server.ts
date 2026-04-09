@@ -9,6 +9,7 @@ import { logError } from "@/lib/safe-logger"
 
 const execFileAsync = promisify(execFile)
 const TOKEN_TTL_MS = 5 * 60 * 1000
+const DEFAULT_PDF_RENDER_TIMEOUT_MS = 20_000
 const BROWSER_CANDIDATES = [
   process.env.CHROME_EXECUTABLE_PATH,
   "/usr/bin/google-chrome-stable",
@@ -52,6 +53,16 @@ function resolveBrowserPath() {
   )
 }
 
+function getPdfRenderTimeoutMs() {
+  const parsed = Number.parseInt(process.env.REPORT_PDF_RENDER_TIMEOUT_MS ?? "", 10)
+
+  if (!Number.isFinite(parsed) || parsed < 5_000) {
+    return DEFAULT_PDF_RENDER_TIMEOUT_MS
+  }
+
+  return parsed
+}
+
 function signReportPayload(reportId: string, expiresAt: number) {
   return createHmac("sha256", getPdfRenderSecret())
     .update(`${reportId}.${expiresAt}`)
@@ -86,6 +97,7 @@ export function verifyReportPdfAccessToken(reportId: string, token: string) {
 
 export async function buildExactReportPdfBuffer(params: { reportId: string }) {
   const browserPath = resolveBrowserPath()
+  const timeoutMs = getPdfRenderTimeoutMs()
 
   if (!browserPath) {
     throw new Error(
@@ -118,7 +130,7 @@ export async function buildExactReportPdfBuffer(params: { reportId: string }) {
         reportUrl.toString(),
       ],
       {
-        timeout: 120000,
+        timeout: timeoutMs,
         windowsHide: true,
         maxBuffer: 10 * 1024 * 1024,
       }

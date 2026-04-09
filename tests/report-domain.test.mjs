@@ -2,6 +2,7 @@ import { assert, test } from "./test-helpers.mjs"
 import {
   buildStoredReportPayload,
   mapReportToHistoryRow,
+  parsePendingReportJobPayload,
   parseReportJobErrorPayload,
   parseStoredReportPayload,
 } from "@/lib/report-domain"
@@ -25,6 +26,67 @@ test("buildStoredReportPayload fills a fallback client when missing", () => {
 
 test("parseStoredReportPayload returns null for invalid payload", () => {
   assert.equal(parseStoredReportPayload({ foo: "bar" }), null)
+})
+
+test("parseStoredReportPayload reads nested stored payload used by send retries", () => {
+  const storedPayload = buildStoredReportPayload(
+    {
+      client: {
+        id: "client-1",
+        name: "Cliente Teste",
+        company: "Empresa",
+        adAccountId: "123456",
+      },
+      campaigns: [],
+    },
+    {
+      since: "2026-03-01",
+      until: "2026-03-25",
+      objective: "ALL",
+    },
+    new Date("2026-03-25T10:00:00.000Z")
+  )
+
+  const parsed = parseStoredReportPayload({
+    pendingJob: {
+      kind: "SEND",
+      queuedAt: "2026-03-25T10:00:00.000Z",
+      requestedByUserId: "user-1",
+      source: "schedule",
+      filters: {
+        since: "2026-03-01",
+        until: "2026-03-25",
+        objective: "ALL",
+      },
+      enqueueSendOnComplete: true,
+      sendOptions: null,
+      storedPayload,
+    },
+  })
+
+  assert.equal(parsed?.client.name, "Cliente Teste")
+  assert.equal(parsed?.filters.until, "2026-03-25")
+})
+
+test("parsePendingReportJobPayload normalizes legacy jobs", () => {
+  const parsed = parsePendingReportJobPayload({
+    pendingJob: {
+      queuedAt: "2026-03-25T10:00:00.000Z",
+      requestedByUserId: "user-1",
+      source: "manual",
+      filters: {
+        since: "2026-03-01",
+        until: "2026-03-25",
+        objective: "ALL",
+      },
+      enqueueSendOnComplete: false,
+      sendOptions: null,
+    },
+  })
+
+  assert.equal(parsed?.kind, "GENERATION")
+  assert.equal(parsed?.attemptCount, 0)
+  assert.equal(parsed?.nextAttemptAt, "2026-03-25T10:00:00.000Z")
 })
 
 test("parseReportJobErrorPayload reads serialized job errors", () => {

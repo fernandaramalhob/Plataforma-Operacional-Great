@@ -68,13 +68,6 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
                   >
                     {stat.value}
                   </p>
-                  <p
-                    className={`mt-3 text-sm leading-6 ${
-                      stat.subColor ?? "text-[color:var(--color-app-text-soft)]"
-                    }`}
-                  >
-                    {stat.sub}
-                  </p>
                 </div>
               </div>
 

@@ -1,11 +1,13 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Calendar, Clock3, Loader2, Repeat, X } from "lucide-react"
+import { Calendar, Clock3, Loader2, RefreshCw, Repeat, Users, X } from "lucide-react"
 import {
   disableClientSavedReportSchedule,
   loadClientReportSchedule,
+  loadEvolutionSettings,
   saveClientReportSchedule,
+  saveMultipleClientReportSchedules,
 } from "@/lib/report-client"
 import {
   REPORT_SCHEDULE_WEEKDAYS,
@@ -14,14 +16,18 @@ import {
 import type {
   ReportObjectiveValue,
   ReportScheduleFrequency,
+  ReportSchedulePayload,
   ReportScheduleResponse,
   ReportSendMode,
 } from "@/types/report.types"
+import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
 type ReportScheduleModalProps = {
   open: boolean
-  clientId: string | null
+  clientId?: string | null
+  clientIds?: string[]
   clientName?: string | null
+  clientNames?: string[]
   defaultFilters: {
     since: string
     until: string
@@ -31,7 +37,10 @@ type ReportScheduleModalProps = {
   defaultMessage: string
   defaultGroupId?: string | null
   onClose: () => void
-  onSaved?: (schedule: ReportScheduleResponse) => void
+  onSaved?: (result: {
+    schedules: ReportScheduleResponse[]
+    clientCount: number
+  }) => void
   onDisabled?: () => void
 }
 
@@ -67,14 +76,61 @@ function buildInitialForm(props: Pick<
   }
 }
 
+function buildGroupOptionValue(instance: string, groupId: string) {
+  return `${instance}::${groupId}`
+}
+
+function normalizeGroupSelection(value: string) {
+  const trimmed = value.trim()
+  const separatorIndex = trimmed.indexOf("::")
+
+  if (separatorIndex < 0) {
+    return trimmed
+  }
+
+  return trimmed.slice(separatorIndex + 2).trim()
+}
+
 export function ReportScheduleModal(props: ReportScheduleModalProps) {
   const { defaultGroupId, defaultMessage, defaultSendMode, open } = props
+  const clientIds = props.clientIds ?? (props.clientId ? [props.clientId] : [])
+  const primaryClientId = clientIds[0] ?? null
+  const isBatchMode = clientIds.length > 1
+  const visibleClientNames = (props.clientNames ?? []).filter(Boolean).slice(0, 4)
+  const hiddenClientNamesCount = Math.max(
+    clientIds.length - visibleClientNames.length,
+    0
+  )
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [disabling, setDisabling] = useState(false)
   const [error, setError] = useState("")
   const [schedule, setSchedule] = useState<ReportScheduleResponse | null>(null)
   const [form, setForm] = useState(() => buildInitialForm(props))
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false)
+  const [groupsError, setGroupsError] = useState("")
+  const [groupsResponse, setGroupsResponse] = useState<EvolutionSettingsResponse | null>(
+    null
+  )
+
+  async function loadGroups() {
+    setIsLoadingGroups(true)
+    setGroupsError("")
+
+    try {
+      const response = await loadEvolutionSettings()
+      setGroupsResponse(response)
+    } catch (loadError) {
+      setGroupsError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Nao foi possivel carregar os grupos da Evolution."
+      )
+      setGroupsResponse(null)
+    } finally {
+      setIsLoadingGroups(false)
+    }
+  }
 
   useEffect(() => {
     if (!open) {
@@ -88,22 +144,25 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
         defaultSendMode,
       })
     )
-  }, [
-    defaultGroupId,
-    defaultMessage,
-    defaultSendMode,
-    open,
-  ])
+  }, [defaultGroupId, defaultMessage, defaultSendMode, open])
 
   useEffect(() => {
-    if (!props.open || !props.clientId) {
+    if (!open) {
+      return
+    }
+
+    void loadGroups()
+  }, [open])
+
+  useEffect(() => {
+    if (!props.open || !primaryClientId || isBatchMode) {
       return
     }
 
     setLoading(true)
     setError("")
 
-    void loadClientReportSchedule(props.clientId)
+    void loadClientReportSchedule(primaryClientId)
       .then((response) => {
         setSchedule(response.schedule)
 
@@ -126,20 +185,36 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "NÃ£o foi possÃ­vel carregar o agendamento."
+            : "Nao foi possivel carregar o agendamento."
         )
       })
       .finally(() => {
         setLoading(false)
       })
-  }, [props.clientId, props.defaultGroupId, props.defaultMessage, props.open])
+  }, [
+    isBatchMode,
+    primaryClientId,
+    props.defaultGroupId,
+    props.defaultMessage,
+    props.open,
+  ])
 
   const timeValue = useMemo(
     () => formatScheduleTime(form.hour, form.minute),
     [form.hour, form.minute]
   )
+  const availableGroups = groupsResponse?.groups ?? []
+  const manualGroupValue = normalizeGroupSelection(form.groupId)
+  const selectedGroupValue =
+    availableGroups
+      .map((group) => buildGroupOptionValue(group.instance, group.id))
+      .find((value) => {
+        const rawGroupId = normalizeGroupSelection(value)
 
-  if (!props.open || !props.clientId) {
+        return form.groupId === value || form.groupId === rawGroupId
+      }) ?? ""
+
+  if (!props.open || !primaryClientId) {
     return null
   }
 
@@ -148,7 +223,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
     setError("")
 
     try {
-      const response = await saveClientReportSchedule(props.clientId!, {
+      const payload: ReportSchedulePayload = {
         frequency: form.frequency,
         weekday: form.frequency === "WEEKLY" ? form.weekday : null,
         scheduledDate: form.frequency === "ONCE" ? form.scheduledDate : null,
@@ -161,15 +236,28 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
         message: form.message.trim() || null,
         groupId: form.groupId.trim() || null,
         active: true,
-      })
+      }
 
+      if (isBatchMode) {
+        const schedules = await saveMultipleClientReportSchedules(clientIds, payload)
+        props.onSaved?.({
+          schedules,
+          clientCount: clientIds.length,
+        })
+        return
+      }
+
+      const response = await saveClientReportSchedule(primaryClientId, payload)
       setSchedule(response.schedule)
-      props.onSaved?.(response.schedule)
+      props.onSaved?.({
+        schedules: [response.schedule],
+        clientCount: 1,
+      })
     } catch (saveError) {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "NÃ£o foi possÃ­vel salvar o agendamento."
+          : "Nao foi possivel salvar o agendamento."
       )
     } finally {
       setSaving(false)
@@ -181,7 +269,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
     setError("")
 
     try {
-      await disableClientSavedReportSchedule(props.clientId!)
+      await disableClientSavedReportSchedule(primaryClientId)
       setSchedule(null)
       props.onDisabled?.()
       props.onClose()
@@ -189,7 +277,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
       setError(
         disableError instanceof Error
           ? disableError.message
-          : "NÃ£o foi possÃ­vel desativar o agendamento."
+          : "Nao foi possivel desativar o agendamento."
       )
     } finally {
       setDisabling(false)
@@ -202,17 +290,29 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
         <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-              Automação de envio
+              {isBatchMode ? "Agendamento em lote" : "Automacao de envio"}
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-900">
-              Agendar envio
+              {isBatchMode ? "Agendar varios envios" : "Agendar envio"}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Configure o envio automático do relatório para{" "}
-              <span className="font-medium text-slate-700">
-                {props.clientName || "este cliente"}
-              </span>
-              .
+              {isBatchMode ? (
+                <>
+                  Aplique a mesma data e horario para{" "}
+                  <span className="font-medium text-slate-700">
+                    {clientIds.length} clientes selecionados
+                  </span>
+                  .
+                </>
+              ) : (
+                <>
+                  Configure o envio automatico do relatorio para{" "}
+                  <span className="font-medium text-slate-700">
+                    {props.clientName || "este cliente"}
+                  </span>
+                  .
+                </>
+              )}
             </p>
           </div>
           <button
@@ -224,22 +324,22 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
         </div>
 
         <div className="space-y-6 overflow-y-auto px-6 py-5">
-          {loading ? (
+          {loading && !isBatchMode ? (
             <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
               <Loader2 className="h-4 w-4 animate-spin" />
               Carregando agendamento atual...
             </div>
           ) : null}
 
-          {schedule?.active ? (
+          {schedule?.active && !isBatchMode ? (
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
               <p className="font-semibold">Agendamento ativo</p>
               <p className="mt-1">
-                Próximo envio: {new Date(schedule.nextRunAt).toLocaleString("pt-BR")}
+                Proximo envio: {new Date(schedule.nextRunAt).toLocaleString("pt-BR")}
               </p>
               {schedule.lastError ? (
                 <p className="mt-2 text-amber-700">
-                  Último erro: {schedule.lastError}
+                  Ultimo erro: {schedule.lastError}
                 </p>
               ) : null}
             </div>
@@ -248,6 +348,20 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
           {error ? (
             <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-4 text-sm text-rose-700">
               {error}
+            </div>
+          ) : null}
+
+          {isBatchMode ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+              <p className="font-semibold text-slate-800">
+                Clientes selecionados
+              </p>
+              <p className="mt-1">
+                {visibleClientNames.join(", ")}
+                {hiddenClientNamesCount > 0
+                  ? ` e mais ${hiddenClientNamesCount}`
+                  : ""}
+              </p>
             </div>
           ) : null}
 
@@ -266,7 +380,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
                 <div>
                   <p className="font-semibold text-slate-900">Toda semana</p>
                   <p className="text-sm text-slate-500">
-                    Escolha um dia fixo da semana e o horário.
+                    Escolha um dia fixo da semana e o horario.
                   </p>
                 </div>
               </div>
@@ -286,7 +400,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
                 <div>
                   <p className="font-semibold text-slate-900">Somente uma vez</p>
                   <p className="text-sm text-slate-500">
-                    Defina um dia específico e o horário do envio.
+                    Defina um dia especifico e o horario do envio.
                   </p>
                 </div>
               </div>
@@ -334,7 +448,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
             <label className="space-y-2 text-sm text-slate-700">
               <span className="flex items-center gap-2 font-medium">
                 <Clock3 className="h-4 w-4" />
-                Horário
+                Horario
               </span>
               <input
                 type="time"
@@ -373,18 +487,83 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
 
             <label className="space-y-2 text-sm text-slate-700">
               <span className="font-medium">Grupo de WhatsApp</span>
+              <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    <Users className="h-4 w-4" />
+                    Grupos da Evolution
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void loadGroups()}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#C1121F] transition hover:opacity-80"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${isLoadingGroups ? "animate-spin" : ""}`} />
+                    Atualizar
+                  </button>
+                </div>
+
+                {isLoadingGroups ? (
+                  <p className="text-xs text-slate-500">
+                    Carregando grupos das instancias conectadas...
+                  </p>
+                ) : groupsError ? (
+                  <p className="text-xs text-rose-600">{groupsError}</p>
+                ) : !groupsResponse?.configured ? (
+                  <p className="text-xs text-slate-500">
+                    Evolution nao configurada neste ambiente.
+                  </p>
+                ) : !groupsResponse.connected ? (
+                  <p className="text-xs text-rose-600">
+                    {groupsResponse.detail ?? "Nao foi possivel consultar os grupos."}
+                  </p>
+                ) : availableGroups.length === 0 ? (
+                  <p className="text-xs text-slate-500">
+                    Nenhum grupo encontrado nas instancias conectadas.
+                  </p>
+                ) : (
+                  <>
+                    <select
+                      value={selectedGroupValue}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          groupId: event.target.value,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#C1121F]"
+                    >
+                      <option value="">Usar grupo padrao do cliente</option>
+                      {availableGroups.map((group) => (
+                        <option
+                          key={`${group.instance}:${group.id}`}
+                          value={buildGroupOptionValue(group.instance, group.id)}
+                        >
+                          [{group.instance}] {group.subject} - {group.size} participante(s)
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-slate-500">
+                      {groupsResponse.instances.length} instancia(s) detectada(s) nesta integracao.
+                    </p>
+                  </>
+                )}
+              </div>
               <input
                 type="text"
-                value={form.groupId}
+                value={manualGroupValue}
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
                     groupId: event.target.value,
                   }))
                 }
-                placeholder="Usar grupo padrão do cliente"
+                placeholder="Usar grupo padrao do cliente"
                 className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-[#C1121F]"
               />
+              <p className="text-xs text-slate-500">
+                Se preferir, voce ainda pode colar manualmente um ID de grupo da Evolution.
+              </p>
             </label>
           </div>
 
@@ -404,9 +583,9 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
           </label>
 
           <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-            <p className="font-semibold text-slate-800">Base do relatório agendado</p>
+            <p className="font-semibold text-slate-800">Base do relatorio agendado</p>
             <p className="mt-1">
-              Período: {props.defaultFilters.since} até {props.defaultFilters.until}
+              Periodo: {props.defaultFilters.since} ate {props.defaultFilters.until}
             </p>
             <p>Objetivo: {props.defaultFilters.objective}</p>
           </div>
@@ -414,7 +593,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
 
         <div className="sticky bottom-0 flex flex-col gap-3 border-t border-slate-100 bg-white px-6 py-5 sm:flex-row sm:justify-between">
           <div>
-            {schedule?.active ? (
+            {schedule?.active && !isBatchMode ? (
               <button
                 type="button"
                 onClick={() => void handleDisable()}
@@ -439,7 +618,11 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
               disabled={saving}
               className="rounded-2xl bg-[#C1121F] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
             >
-              {saving ? "Confirmando..." : "Confirmar agendamento"}
+              {saving
+                ? "Confirmando..."
+                : isBatchMode
+                  ? "Agendar selecionados"
+                  : "Confirmar agendamento"}
             </button>
           </div>
         </div>

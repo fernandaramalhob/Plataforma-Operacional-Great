@@ -1,12 +1,10 @@
 ﻿import { Prisma, ReportStatus, SendLogStatus } from "@prisma/client"
 import { getCurrentUser, isAdmin, scopeClientWhere } from "@/lib/authorization"
+import { hasConfiguredMetaToken } from "@/lib/meta-token"
 import { prisma } from "@/lib/prisma"
 import { parseStoredReportPayload } from "@/lib/report-domain"
 import { getReportQueuesHealth } from "@/lib/report-monitoring"
 
-const DAYS_TO_SHOW = 7
-const WEEKS_TO_SHOW = 8
-const MONTHS_TO_SHOW = 6
 const RECENT_ACTIVITY_LIMIT = 5
 const CLIENT_SEND_STATUS_LIMIT = 8
 const CONFIG_ISSUES_LIMIT = 6
@@ -124,8 +122,14 @@ export type DashboardData = {
   configIndicators: DashboardConfigIndicators
 }
 
+export type DashboardDateRange = {
+  startDate: Date
+  endDate: Date
+}
+
 type GetDashboardDataOptions = {
   includeOperational?: boolean
+  dateRange?: DashboardDateRange
 }
 
 type ClientWithCampaigns = {
@@ -168,14 +172,16 @@ type RecentReport = {
   client: ClientWithCampaigns
 }
 
-function buildEmptyDashboardData(): DashboardData {
+function buildEmptyDashboardData(dateRange: DashboardDateRange): DashboardData {
+  const periodLabel = buildPeriodLabel(dateRange)
+
   return {
     stats: [
       {
         key: "sentReports",
         label: "Enviados",
         value: "0",
-        sub: "últimos 30 dias",
+        sub: periodLabel,
         valueColor: "text-emerald-700",
         subColor: "text-emerald-600",
       },
@@ -183,7 +189,7 @@ function buildEmptyDashboardData(): DashboardData {
         key: "failedReports",
         label: "Falhas",
         value: "0",
-        sub: "últimos 30 dias",
+        sub: periodLabel,
         valueColor: "text-red-500",
         subColor: "text-red-400",
       },
@@ -191,12 +197,12 @@ function buildEmptyDashboardData(): DashboardData {
         key: "pendingReports",
         label: "Pendentes",
         value: "0",
-        sub: "últimos 30 dias",
+        sub: periodLabel,
         valueColor: "text-gray-700",
         subColor: "text-gray-500",
       },
     ],
-    chart: buildChartData([]),
+    chart: buildChartData([], dateRange),
     recentActivity: [],
     operational: {
       mode: "manager",
@@ -234,6 +240,18 @@ function startOfDay(date: Date) {
   return normalized
 }
 
+function endOfDay(date: Date) {
+  const normalized = new Date(date)
+  normalized.setHours(23, 59, 59, 999)
+  return normalized
+}
+
+function addDays(date: Date, amount: number) {
+  const normalized = new Date(date)
+  normalized.setDate(normalized.getDate() + amount)
+  return normalized
+}
+
 function startOfMonth(date: Date) {
   const normalized = new Date(date)
   normalized.setDate(1)
@@ -261,6 +279,25 @@ function formatReferenceWeek(date: Date) {
     month: "2-digit",
     year: "numeric",
   })
+}
+
+function formatCalendarDate(date: Date) {
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
+}
+
+function buildPeriodLabel(dateRange: DashboardDateRange) {
+  const startLabel = formatCalendarDate(dateRange.startDate)
+  const endLabel = formatCalendarDate(dateRange.endDate)
+
+  if (startLabel === endLabel) {
+    return startLabel
+  }
+
+  return `${startLabel} - ${endLabel}`
 }
 
 function formatRelativeTime(date: Date) {
@@ -343,60 +380,63 @@ function buildRecentActivityFromReports(reports: RecentReport[]) {
   })
 }
 
-function buildRecentActivityFromClients(clients: ClientWithCampaigns[]) {
-  return clients
-    .filter((client) => client.adAccountId || client.campaigns.length > 0)
-    .slice(0, RECENT_ACTIVITY_LIMIT)
-    .map((client) => ({
-      id: client.id,
-      name: client.name,
-      campaign: buildCampaignSummary(
-        client.campaigns
-          .filter((campaign) => campaign.isActive)
-          .map((campaign) => campaign.campaignName)
-      ),
-      status: "Conectado" as const,
-      time: formatRelativeTime(client.createdAt),
-    }))
+function buildRangeLabel(count: number, singular: string, plural: string) {
+  if (count === 1) {
+    return `1 ${singular} no período`
+  }
+
+  return `${count} ${plural} no período`
 }
 
-function buildChartData(reports: Array<{ generatedAt: Date }>): DashboardChartData {
-  const currentDayStart = startOfDay(new Date())
-  const currentWeekStart = startOfWeek(new Date())
-  const currentMonthStart = startOfMonth(new Date())
+function buildChartData(
+  reports: Array<{ generatedAt: Date }>,
+  dateRange: DashboardDateRange
+): DashboardChartData {
+  const rangeDayStart = startOfDay(dateRange.startDate)
+  const rangeDayEnd = startOfDay(dateRange.endDate)
+  const rangeWeekStart = startOfWeek(dateRange.startDate)
+  const rangeWeekEnd = startOfWeek(dateRange.endDate)
+  const rangeMonthStart = startOfMonth(dateRange.startDate)
+  const rangeMonthEnd = startOfMonth(dateRange.endDate)
 
-  const days = Array.from({ length: DAYS_TO_SHOW }, (_, index) => {
-    const dayStart = new Date(currentDayStart)
-    dayStart.setDate(currentDayStart.getDate() - (DAYS_TO_SHOW - index - 1))
-
-    return {
-      key: dayStart.getTime(),
-      week: formatWeekLabel(dayStart),
+  const days = []
+  for (
+    let current = new Date(rangeDayStart);
+    current.getTime() <= rangeDayEnd.getTime();
+    current = addDays(current, 1)
+  ) {
+    days.push({
+      key: current.getTime(),
+      week: formatWeekLabel(current),
       reports: 0,
-    }
-  })
+    })
+  }
 
-  const weeks = Array.from({ length: WEEKS_TO_SHOW }, (_, index) => {
-    const weekStart = new Date(currentWeekStart)
-    weekStart.setDate(currentWeekStart.getDate() - (WEEKS_TO_SHOW - index - 1) * 7)
-
-    return {
-      key: weekStart.getTime(),
-      week: formatWeekLabel(weekStart),
+  const weeks = []
+  for (
+    let current = new Date(rangeWeekStart);
+    current.getTime() <= rangeWeekEnd.getTime();
+    current = addDays(current, 7)
+  ) {
+    weeks.push({
+      key: current.getTime(),
+      week: formatWeekLabel(current),
       reports: 0,
-    }
-  })
+    })
+  }
 
-  const months = Array.from({ length: MONTHS_TO_SHOW }, (_, index) => {
-    const monthStart = new Date(currentMonthStart)
-    monthStart.setMonth(currentMonthStart.getMonth() - (MONTHS_TO_SHOW - index - 1))
-
-    return {
-      key: monthStart.getTime(),
-      week: formatMonthLabel(monthStart),
+  const months = []
+  for (
+    let current = new Date(rangeMonthStart);
+    current.getTime() <= rangeMonthEnd.getTime();
+    current = new Date(current.getFullYear(), current.getMonth() + 1, 1)
+  ) {
+    months.push({
+      key: current.getTime(),
+      week: formatMonthLabel(current),
       reports: 0,
-    }
-  })
+    })
+  }
 
   const reportsByDay = new Map<number, number>()
   const reportsByWeek = new Map<number, number>()
@@ -414,21 +454,21 @@ function buildChartData(reports: Array<{ generatedAt: Date }>): DashboardChartDa
 
   return {
     days: {
-      label: "Ãšltimos 7 dias",
+      label: buildRangeLabel(days.length, "dia", "dias"),
       data: days.map((day) => ({
         week: day.week,
         reports: reportsByDay.get(day.key) ?? 0,
       })),
     },
     weeks: {
-      label: "Ãšltimas 8 semanas",
+      label: buildRangeLabel(weeks.length, "semana", "semanas"),
       data: weeks.map((week) => ({
         week: week.week,
         reports: reportsByWeek.get(week.key) ?? 0,
       })),
     },
     months: {
-      label: "Ãšltimos 6 meses",
+      label: buildRangeLabel(months.length, "mês", "meses"),
       data: months.map((month) => ({
         week: month.week,
         reports: reportsByMonth.get(month.key) ?? 0,
@@ -442,7 +482,7 @@ function resolveClientMetaTokenState(
   fallbackMetaTokenAvailable: boolean
 ) {
   if (client.managerId) {
-    return Boolean(client.manager?.metaAccessToken?.trim())
+    return hasConfiguredMetaToken(client.manager?.metaAccessToken)
   }
 
   return fallbackMetaTokenAvailable
@@ -531,6 +571,7 @@ function buildClientSendStatus(clients: ClientWithCampaigns[]) {
         sortTime: activityDate?.getTime() ?? 0,
       }
     })
+    .filter((item) => item.status !== "Nunca enviado")
     .sort((left, right) => right.sortTime - left.sortTime)
 
   return items.slice(0, CLIENT_SEND_STATUS_LIMIT).map((item) => ({
@@ -799,17 +840,21 @@ export async function getDashboardData(
   options: GetDashboardDataOptions = {}
 ): Promise<DashboardData> {
   const user = await getCurrentUser()
-
-  if (!user) {
-    return buildEmptyDashboardData()
+  const dateRange = options.dateRange ?? {
+    startDate: startOfWeek(new Date()),
+    endDate: addDays(startOfWeek(new Date()), 6),
   }
 
-  const currentMonthStart = startOfMonth(new Date())
-  const firstMonthStart = new Date(currentMonthStart)
-  firstMonthStart.setMonth(currentMonthStart.getMonth() - (MONTHS_TO_SHOW - 1))
+  if (!user) {
+    return buildEmptyDashboardData(dateRange)
+  }
 
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const rangeStart = startOfDay(dateRange.startDate)
+  const rangeEnd = endOfDay(dateRange.endDate)
+  const reportDateRangeWhere = {
+    gte: rangeStart,
+    lte: rangeEnd,
+  }
 
   const reportScopeWhere: Prisma.ReportWhereInput = isAdmin(user)
     ? {}
@@ -819,8 +864,11 @@ export async function getDashboardData(
         },
       }
 
-  const adminFallbackTokenPromise = isAdmin(user)
-    ? prisma.user.findFirst({
+  const environmentMetaTokenAvailable = hasConfiguredMetaToken()
+  const adminFallbackTokenPromise = environmentMetaTokenAvailable
+    ? Promise.resolve({ id: "environment" })
+    : isAdmin(user)
+      ? prisma.user.findFirst({
         where: {
           role: "ADMIN",
           metaAccessToken: {
@@ -831,7 +879,7 @@ export async function getDashboardData(
           id: true,
         },
       })
-    : Promise.resolve(user.metaAccessToken ? { id: user.id } : null)
+      : Promise.resolve(hasConfiguredMetaToken(user.metaAccessToken) ? { id: user.id } : null)
 
   const [clients, weeklyReports, recentReports, reportStatusGroups, adminFallbackToken] = await Promise.all([
     prisma.client.findMany({
@@ -860,6 +908,9 @@ export async function getDashboardData(
           },
         },
         reports: {
+          where: {
+            generatedAt: reportDateRangeWhere,
+          },
           orderBy: {
             generatedAt: "desc",
           },
@@ -888,9 +939,7 @@ export async function getDashboardData(
     prisma.report.findMany({
       where: {
         ...reportScopeWhere,
-        generatedAt: {
-          gte: firstMonthStart,
-        },
+        generatedAt: reportDateRangeWhere,
       },
       select: {
         generatedAt: true,
@@ -898,7 +947,10 @@ export async function getDashboardData(
       },
     }),
     prisma.report.findMany({
-      where: reportScopeWhere,
+      where: {
+        ...reportScopeWhere,
+        generatedAt: reportDateRangeWhere,
+      },
       orderBy: { generatedAt: "desc" },
       take: 100,
       select: {
@@ -930,6 +982,9 @@ export async function getDashboardData(
               },
             },
             reports: {
+              where: {
+                generatedAt: reportDateRangeWhere,
+              },
               orderBy: {
                 generatedAt: "desc",
               },
@@ -961,9 +1016,7 @@ export async function getDashboardData(
       by: ["status"],
       where: {
         ...reportScopeWhere,
-        generatedAt: {
-          gte: thirtyDaysAgo,
-        },
+        generatedAt: reportDateRangeWhere,
       },
       _count: {
         _all: true,
@@ -983,9 +1036,10 @@ export async function getDashboardData(
       FAILED: 0,
     }
   )
-  const sentReportsLast30Days = reportStatusCounts.SENT
-  const pendingReportsLast30Days = reportStatusCounts.PENDING
-  const failedReportsLast30Days = reportStatusCounts.FAILED
+  const sentReportsInPeriod = reportStatusCounts.SENT
+  const pendingReportsInPeriod = reportStatusCounts.PENDING
+  const failedReportsInPeriod = reportStatusCounts.FAILED
+  const periodLabel = buildPeriodLabel(dateRange)
   const fallbackMetaTokenAvailable = Boolean(adminFallbackToken)
   const configIndicators = buildConfigIndicators(
     clients,
@@ -994,44 +1048,41 @@ export async function getDashboardData(
   const shouldIncludeOperational = options.includeOperational === true
   const operational =
     shouldIncludeOperational && isAdmin(user)
-      ? await buildAdminOperationalPanel()
-      : buildLightOperationalPanel({
+        ? await buildAdminOperationalPanel()
+        : buildLightOperationalPanel({
           isAdminMode: isAdmin(user),
           configIndicators,
-          failedReportsLast30Days,
+          failedReportsLast30Days: failedReportsInPeriod,
         })
   return {
     stats: [
       {
         key: "sentReports",
         label: "Enviados",
-        value: sentReportsLast30Days.toString(),
-        sub: "últimos 30 dias",
+        value: sentReportsInPeriod.toString(),
+        sub: periodLabel,
         valueColor: "text-emerald-700",
         subColor: "text-emerald-600",
       },
       {
         key: "failedReports",
         label: "Falhas",
-        value: failedReportsLast30Days.toString(),
-        sub: "últimos 30 dias",
+        value: failedReportsInPeriod.toString(),
+        sub: periodLabel,
         valueColor: "text-red-500",
         subColor: "text-red-400",
       },
       {
         key: "pendingReports",
         label: "Pendentes",
-        value: pendingReportsLast30Days.toString(),
-        sub: "últimos 30 dias",
+        value: pendingReportsInPeriod.toString(),
+        sub: periodLabel,
         valueColor: "text-gray-700",
         subColor: "text-gray-500",
       },
     ],
-    chart: buildChartData(weeklyReports),
-    recentActivity:
-      recentReports.length > 0
-        ? buildRecentActivityFromReports(recentReports)
-        : buildRecentActivityFromClients(clients),
+    chart: buildChartData(weeklyReports, dateRange),
+    recentActivity: buildRecentActivityFromReports(recentReports),
     operational,
     clientSendStatus: buildClientSendStatus(clients),
     configIndicators,

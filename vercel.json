@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/cron/report-jobs",
-      "schedule": "0 9 * * *"
+      "schedule": "* * * * *"
     }
   ]
 }

@@ -3,11 +3,13 @@ import type {
   ReportSendRequest,
   QueuedReportResponse,
   ReportRequest,
+  ReportScheduleListItem,
   ReportSchedulePayload,
   ReportScheduleResponse,
   ReportSendResponse,
   SavedReportResponse,
 } from "@/types/report.types"
+import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
 type PollSavedReportOptions = {
   reportId: string
@@ -122,6 +124,32 @@ export async function saveClientReportSchedule(
   )
 }
 
+export async function saveMultipleClientReportSchedules(
+  clientIds: string[],
+  payload: ReportSchedulePayload
+) {
+  const results = await Promise.allSettled(
+    clientIds.map((clientId) => saveClientReportSchedule(clientId, payload))
+  )
+
+  const schedules = results.flatMap((result) =>
+    result.status === "fulfilled" ? [result.value.schedule] : []
+  )
+  const failedCount = results.length - schedules.length
+
+  if (failedCount > 0) {
+    const successCount = schedules.length
+
+    throw new Error(
+      successCount > 0
+        ? `Agendamento salvo para ${successCount} de ${results.length} clientes. Tente novamente para concluir os restantes.`
+        : "Nao foi possivel salvar o agendamento para os clientes selecionados"
+    )
+  }
+
+  return schedules
+}
+
 export async function disableClientSavedReportSchedule(clientId: string) {
   return fetchJsonOrThrow<{ ok?: true; schedule: ReportScheduleResponse | null }>(
     `/api/clients/${clientId}/report-schedule`,
@@ -129,5 +157,25 @@ export async function disableClientSavedReportSchedule(clientId: string) {
       method: "DELETE",
     },
     "NÃ£o foi possÃ­vel desativar o agendamento"
+  )
+}
+
+export async function loadReportSchedules() {
+  return fetchJsonOrThrow<{ schedules: ReportScheduleListItem[] }>(
+    "/api/reports/schedules",
+    {
+      cache: "no-store",
+    },
+    "Nao foi possivel carregar os agendamentos"
+  )
+}
+
+export async function loadEvolutionSettings() {
+  return fetchJsonOrThrow<EvolutionSettingsResponse>(
+    "/api/settings/evolution",
+    {
+      cache: "no-store",
+    },
+    "Nao foi possivel carregar os grupos da Evolution"
   )
 }

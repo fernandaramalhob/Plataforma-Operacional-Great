@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { prisma } from "@/lib/prisma"
+import { getStoredMetaTokenHealth } from "@/lib/meta-token-status"
 import {
   parsePendingReportJobPayload,
   parseReportJobErrorPayload,
@@ -92,7 +93,7 @@ export async function listRecentReportAlerts(limit = 20) {
   })
 }
 
-async function listPendingGenerationReports() {
+async function listPendingQueuedReports() {
   const candidates = await prisma.report.findMany({
     where: {
       status: "PENDING",
@@ -107,9 +108,20 @@ async function listPendingGenerationReports() {
     },
   })
 
-  return candidates.filter((candidate) =>
-    Boolean(parsePendingReportJobPayload(candidate.payloadJson))
-  )
+  return candidates.flatMap((candidate) => {
+    const pendingJob = parsePendingReportJobPayload(candidate.payloadJson)
+
+    if (!pendingJob) {
+      return []
+    }
+
+    return [
+      {
+        id: candidate.id,
+        pendingJob,
+      },
+    ]
+  })
 }
 
 async function countFailedGenerationReports() {
@@ -163,21 +175,45 @@ function buildQueueCounts(params?: Partial<ReportQueueCounts>): ReportQueueCount
 }
 
 export async function getReportQueuesHealth() {
-  const [pendingGeneration, failedGeneration, failedSend, dueSchedules, alerts, integrationAlerts] =
+  const [
+    pendingReports,
+    failedGeneration,
+    failedSend,
+    dueSchedules,
+    alerts,
+    integrationAlerts,
+    metaToken,
+  ] =
     await Promise.all([
-      listPendingGenerationReports(),
+      listPendingQueuedReports(),
       countFailedGenerationReports(),
       countFailedSendReports(),
       countDueSchedules(),
       listRecentReportAlerts(10),
       listRecentIntegrationAlerts(10),
+      getStoredMetaTokenHealth({
+        storedToken: null,
+        storedExpiresAt: null,
+        forceRemote: true,
+      }),
     ])
 
   const schedulerConfigured = Boolean(process.env.CRON_SECRET?.trim())
+  const redisConfigured = isRedisConfigured()
+  const metaAppConfigured = Boolean(
+    process.env.META_APP_ID?.trim() && process.env.META_APP_SECRET?.trim()
+  )
+  const pendingGeneration = pendingReports.filter(
+    (report) => report.pendingJob.kind !== "SEND"
+  )
+  const pendingSend = pendingReports.filter(
+    (report) => report.pendingJob.kind === "SEND"
+  )
 
   return {
     ok:
       schedulerConfigured &&
+      metaToken.ok &&
       failedGeneration === 0 &&
       failedSend === 0 &&
       alerts.every((alert) => alert.severity !== "error") &&
@@ -196,12 +232,24 @@ export async function getReportQueuesHealth() {
         failed: failedGeneration,
       }),
       send: buildQueueCounts({
+        waiting: pendingSend.length,
         failed: failedSend,
       }),
       weekly: buildQueueCounts({
         waiting: dueSchedules,
       }),
       deadLetter: buildQueueCounts(),
+    },
+    dependencies: {
+      cronSecretConfigured: schedulerConfigured,
+      redisConfigured,
+      metaToken: {
+        ok: metaToken.ok,
+        status: metaToken.status,
+        detail: metaToken.detail,
+        source: metaToken.source,
+      },
+      metaAppCredentialsConfigured: metaAppConfigured,
     },
     alerts,
     integrationAlerts,

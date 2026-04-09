@@ -23,7 +23,7 @@ export async function GET() {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Não autorizado" },
+        { error: "Nao autorizado" },
         { status: 401 }
       )
     }
@@ -37,10 +37,10 @@ export async function GET() {
       },
     })
 
-    if (!user?.metaAccessToken) {
+    if (!user) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Token META não configurado para o usuário logado" },
-        { status: 400 }
+        { error: "Usuario da sessao nao encontrado" },
+        { status: 404 }
       )
     }
 
@@ -49,7 +49,7 @@ export async function GET() {
     if (!health.ok || !health.token) {
       return NextResponse.json<ApiErrorResponse>(
         {
-          error: health.detail ?? "Token META indisponível",
+          error: health.detail ?? "Token META indisponivel",
           tokenStatus: health.status,
           expiresAt: health.expiresAt?.toISOString() ?? null,
         },
@@ -153,7 +153,7 @@ export async function GET() {
   } catch (error) {
     logError("clients.meta-options.get", error)
     return NextResponse.json<ApiErrorResponse>(
-      { error: "Erro ao carregar opções META para clientes" },
+      { error: "Erro ao carregar opcoes META para clientes" },
       { status: 500 }
     )
   }

@@ -75,7 +75,7 @@ async function getAuthenticatedContext() {
       email,
       user: null,
       dbError:
-        "Falha temporária ao consultar o banco de dados. O token salvo pode continuar la; tente novamente em instantes.",
+        "Falha temporaria ao consultar o banco de dados. O token salvo pode continuar la; tente novamente em instantes.",
     } satisfies AuthenticatedContext
   }
 }
@@ -86,7 +86,7 @@ export async function GET() {
 
     if (!context) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Não autorizado" },
+        { error: "Nao autorizado" },
         { status: 401 }
       )
     }
@@ -111,30 +111,20 @@ export async function GET() {
       )
     }
 
-    if (!user?.metaAccessToken) {
-      return NextResponse.json<MetaTokenStatusResponse>({
-        sessionUser: {
-          id: session.user.id,
-          email,
-          role: session.user.role,
-          name: session.user.name ?? email,
-        },
-        hasSavedToken: false,
-        tokenStatus: "missing" satisfies MetaTokenStatus,
-        expiresAt: null,
-      })
-    }
-
     const validation = await getStoredMetaTokenHealth({
-      storedToken: user.metaAccessToken,
-      storedExpiresAt: user.metaTokenExpiresAt,
+      storedToken: user?.metaAccessToken ?? null,
+      storedExpiresAt: user?.metaTokenExpiresAt ?? null,
       forceRemote: true,
     })
 
     if (
-      validation.encryptedToken ||
-      (user.metaTokenExpiresAt?.getTime() ?? null) !==
-        (validation.expiresAt?.getTime() ?? null)
+      user?.id &&
+      validation.source === "database" &&
+      (
+        validation.encryptedToken ||
+        (user.metaTokenExpiresAt?.getTime() ?? null) !==
+          (validation.expiresAt?.getTime() ?? null)
+      )
     ) {
       try {
         await prisma.user.update({
@@ -158,7 +148,7 @@ export async function GET() {
         role: session.user.role,
         name: session.user.name ?? email,
       },
-      hasSavedToken: true,
+      hasSavedToken: validation.status !== "missing",
       tokenMasked: validation.token ? maskToken(validation.token) : null,
       tokenStatus: validation.status,
       metaUser: validation.ok ? validation.metaUser : null,
@@ -180,7 +170,7 @@ export async function POST(request: Request) {
 
     if (!context) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Não autorizado" },
+        { error: "Nao autorizado" },
         { status: 401 }
       )
     }
@@ -190,7 +180,7 @@ export async function POST(request: Request) {
     if (dbError) {
       return NextResponse.json<ApiErrorResponse>(
         {
-          error: "Banco de dados indisponível",
+          error: "Banco de dados indisponivel",
           detail: dbError,
         },
         { status: 503 }
@@ -201,7 +191,7 @@ export async function POST(request: Request) {
 
     if (!parsedBody.success) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Token META obrigatório" },
+        { error: "Token META obrigatorio" },
         { status: 400 }
       )
     }
@@ -212,7 +202,7 @@ export async function POST(request: Request) {
     if (!validation.ok) {
       return NextResponse.json<ApiErrorResponse>(
         {
-          error: "Token META inválido",
+          error: "Token META invalido",
           detail: validation.detail,
           tokenStatus: validation.status,
         },

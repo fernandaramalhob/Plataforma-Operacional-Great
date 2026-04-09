@@ -6,6 +6,7 @@ import type {
   ReportJobError,
   ReportJobStage,
   PendingReportJob,
+  PendingReportJobKind,
   PendingReportSource,
   ReportPayload,
   ReportSendMode,
@@ -22,12 +23,41 @@ function isPendingReportSource(value: unknown): value is PendingReportSource {
   return value === "manual" || value === "schedule" || value === "weekly"
 }
 
+function isPendingReportJobKind(value: unknown): value is PendingReportJobKind {
+  return value === "GENERATION" || value === "SEND"
+}
+
 function isReportSendMode(value: unknown): value is ReportSendMode {
   return (
     value === "PDF_AND_MESSAGE" ||
     value === "PDF_ONLY" ||
     value === "MESSAGE_ONLY"
   )
+}
+
+function parseStoredReportPayloadRecord(
+  payloadJson: Record<string, unknown>
+): StoredReportPayload | null {
+  const client = payloadJson.client
+  const filters = payloadJson.filters
+  const campaigns = payloadJson.campaigns
+
+  if (!isRecord(client) || !isRecord(filters) || !Array.isArray(campaigns)) {
+    return null
+  }
+
+  if (
+    typeof client.id !== "string" ||
+    typeof client.name !== "string" ||
+    typeof filters.since !== "string" ||
+    typeof filters.until !== "string" ||
+    typeof filters.objective !== "string" ||
+    typeof filters.generatedAt !== "string"
+  ) {
+    return null
+  }
+
+  return payloadJson as unknown as StoredReportPayload
 }
 
 function formatDate(date: Date) {
@@ -72,26 +102,19 @@ export function parseStoredReportPayload(
     return null
   }
 
-  const client = payloadJson.client
-  const filters = payloadJson.filters
-  const campaigns = payloadJson.campaigns
+  const directPayload = parseStoredReportPayloadRecord(payloadJson)
 
-  if (!isRecord(client) || !isRecord(filters) || !Array.isArray(campaigns)) {
+  if (directPayload) {
+    return directPayload
+  }
+
+  const pendingJob = isRecord(payloadJson.pendingJob) ? payloadJson.pendingJob : null
+
+  if (!pendingJob || !isRecord(pendingJob.storedPayload)) {
     return null
   }
 
-  if (
-    typeof client.id !== "string" ||
-    typeof client.name !== "string" ||
-    typeof filters.since !== "string" ||
-    typeof filters.until !== "string" ||
-    typeof filters.objective !== "string" ||
-    typeof filters.generatedAt !== "string"
-  ) {
-    return null
-  }
-
-  return payloadJson as unknown as StoredReportPayload
+  return parseStoredReportPayloadRecord(pendingJob.storedPayload)
 }
 
 export function buildReportJobErrorPayload(
@@ -99,6 +122,21 @@ export function buildReportJobErrorPayload(
   stage: ReportJobStage
 ) {
   return {
+    jobError: {
+      message,
+      stage,
+      failedAt: new Date().toISOString(),
+    },
+  } as Prisma.InputJsonValue
+}
+
+export function attachReportJobErrorPayload(
+  payload: StoredReportPayload,
+  message: string,
+  stage: ReportJobStage
+) {
+  return {
+    ...payload,
     jobError: {
       message,
       stage,
@@ -128,10 +166,24 @@ export function parsePendingReportJobPayload(
       : isRecord(pendingJob.sendOptions)
         ? pendingJob.sendOptions
         : undefined
+  const storedPayload =
+    pendingJob.storedPayload == null
+      ? null
+      : isRecord(pendingJob.storedPayload)
+        ? parseStoredReportPayloadRecord(pendingJob.storedPayload)
+        : undefined
+  const lease =
+    pendingJob.lease == null
+      ? null
+      : isRecord(pendingJob.lease)
+        ? pendingJob.lease
+        : undefined
 
   if (
     !filters ||
     sendOptions === undefined ||
+    storedPayload === undefined ||
+    lease === undefined ||
     typeof pendingJob.queuedAt !== "string" ||
     typeof pendingJob.requestedByUserId !== "string" ||
     !isPendingReportSource(pendingJob.source) ||
@@ -139,6 +191,14 @@ export function parsePendingReportJobPayload(
     typeof filters.until !== "string" ||
     typeof filters.objective !== "string" ||
     typeof pendingJob.enqueueSendOnComplete !== "boolean"
+  ) {
+    return null
+  }
+
+  if (
+    "kind" in pendingJob &&
+    pendingJob.kind != null &&
+    !isPendingReportJobKind(pendingJob.kind)
   ) {
     return null
   }
@@ -158,7 +218,39 @@ export function parsePendingReportJobPayload(
     return null
   }
 
+  if (
+    ("attemptCount" in pendingJob &&
+      pendingJob.attemptCount != null &&
+      (typeof pendingJob.attemptCount !== "number" ||
+        !Number.isFinite(pendingJob.attemptCount) ||
+        pendingJob.attemptCount < 0)) ||
+    ("maxAttempts" in pendingJob &&
+      pendingJob.maxAttempts != null &&
+      (typeof pendingJob.maxAttempts !== "number" ||
+        !Number.isFinite(pendingJob.maxAttempts) ||
+        pendingJob.maxAttempts < 1)) ||
+    ("nextAttemptAt" in pendingJob &&
+      pendingJob.nextAttemptAt != null &&
+      typeof pendingJob.nextAttemptAt !== "string") ||
+    ("lastAttemptAt" in pendingJob &&
+      pendingJob.lastAttemptAt != null &&
+      typeof pendingJob.lastAttemptAt !== "string") ||
+    ("lastError" in pendingJob &&
+      pendingJob.lastError != null &&
+      typeof pendingJob.lastError !== "string")
+  ) {
+    return null
+  }
+
+  if (
+    lease &&
+    (typeof lease.lockedAt !== "string" || typeof lease.lockToken !== "string")
+  ) {
+    return null
+  }
+
   return {
+    kind: isPendingReportJobKind(pendingJob.kind) ? pendingJob.kind : "GENERATION",
     queuedAt: pendingJob.queuedAt,
     requestedByUserId: pendingJob.requestedByUserId,
     source: pendingJob.source,
@@ -176,6 +268,26 @@ export function parsePendingReportJobPayload(
             typeof sendOptions.message === "string" ? sendOptions.message : null,
           groupId:
             typeof sendOptions.groupId === "string" ? sendOptions.groupId : null,
+        }
+      : null,
+    storedPayload,
+    attemptCount:
+      typeof pendingJob.attemptCount === "number" ? pendingJob.attemptCount : 0,
+    maxAttempts:
+      typeof pendingJob.maxAttempts === "number" ? pendingJob.maxAttempts : undefined,
+    nextAttemptAt:
+      typeof pendingJob.nextAttemptAt === "string"
+        ? pendingJob.nextAttemptAt
+        : pendingJob.queuedAt,
+    lastAttemptAt:
+      typeof pendingJob.lastAttemptAt === "string" ? pendingJob.lastAttemptAt : null,
+    lastError: typeof pendingJob.lastError === "string" ? pendingJob.lastError : null,
+    lease: lease
+      && typeof lease.lockedAt === "string"
+      && typeof lease.lockToken === "string"
+      ? {
+          lockedAt: lease.lockedAt,
+          lockToken: lease.lockToken,
         }
       : null,
   }

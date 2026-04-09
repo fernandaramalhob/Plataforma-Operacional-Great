@@ -8,6 +8,8 @@ import {
 const META_TOKEN_PREFIX = "enc:v1"
 const META_TOKEN_IV_LENGTH = 12
 
+export type MetaTokenSource = "environment" | "database"
+
 type ParsedEncryptedMetaToken = {
   ivBase64: string
   authTagBase64: string
@@ -127,21 +129,36 @@ export function resolveMetaToken(storedToken: string) {
   }
 }
 
+export function getMetaAccessTokenFromEnv() {
+  const envToken = process.env.META_ACCESS_TOKEN?.trim()
+
+  if (!envToken) {
+    return null
+  }
+
+  return resolveMetaToken(envToken).token
+}
+
 export function getMetaTokenFromCandidates(
   ...storedTokens: Array<string | null | undefined>
 ) {
-  for (const storedToken of storedTokens) {
-    if (typeof storedToken === "string" && storedToken.trim()) {
-      return resolveMetaToken(storedToken).token
-    }
-  }
-
-  return null
+  return resolveMetaTokenCandidate(...storedTokens)?.token ?? null
 }
 
 export function resolveMetaTokenCandidate(
   ...storedTokens: Array<string | null | undefined>
 ) {
+  const environmentToken = getMetaAccessTokenFromEnv()
+
+  if (environmentToken) {
+    return {
+      token: environmentToken,
+      encryptedToken: null,
+      index: -1,
+      source: "environment" as const,
+    }
+  }
+
   for (let index = 0; index < storedTokens.length; index += 1) {
     const storedToken = storedTokens[index]
 
@@ -149,9 +166,16 @@ export function resolveMetaTokenCandidate(
       return {
         ...resolveMetaToken(storedToken),
         index,
+        source: "database" as const,
       }
     }
   }
 
   return null
+}
+
+export function hasConfiguredMetaToken(
+  ...storedTokens: Array<string | null | undefined>
+) {
+  return resolveMetaTokenCandidate(...storedTokens) !== null
 }

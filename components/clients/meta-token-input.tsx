@@ -6,6 +6,7 @@ type MetaTokenInputProps = {
   isSubmitting: boolean
   disabled?: boolean
   hasSavedToken: boolean
+  placeholder?: string
   onChange: (value: string) => void
   onToggleVisibility: () => void
   onSubmit: () => void
@@ -17,6 +18,7 @@ export function MetaTokenInput({
   isSubmitting,
   disabled,
   hasSavedToken,
+  placeholder,
   onChange,
   onToggleVisibility,
   onSubmit,
@@ -32,7 +34,7 @@ export function MetaTokenInput({
             type={showToken ? "text" : "password"}
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            placeholder="EAAxxxxxxxxxxxxxxxx..."
+            placeholder={placeholder ?? "EAAxxxxxxxxxxxxxxxx..."}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
           />
           <button

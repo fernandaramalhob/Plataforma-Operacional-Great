@@ -2,6 +2,7 @@ import { logIntegrationEvent } from "@/lib/integration-monitoring"
 
 const META_GRAPH_API_VERSION = "v18.0"
 const META_GRAPH_API_BASE_URL = `https://graph.facebook.com/${META_GRAPH_API_VERSION}`
+const DEFAULT_META_API_TIMEOUT_MS = 30_000
 
 type MetaApiErrorPayload = {
   error?: {
@@ -45,6 +46,16 @@ type MetaApiRequestParams = {
   path: string
   token: string
   query?: Record<string, MetaRequestValue>
+}
+
+function getMetaApiTimeoutMs() {
+  const parsed = Number.parseInt(process.env.META_API_TIMEOUT_MS ?? "", 10)
+
+  if (!Number.isFinite(parsed) || parsed < 1_000) {
+    return DEFAULT_META_API_TIMEOUT_MS
+  }
+
+  return parsed
 }
 
 type MetaListResponse<T> = {
@@ -133,11 +144,15 @@ export async function metaApiRequest<T>(
   params: MetaApiRequestParams
 ): Promise<T> {
   const startedAt = Date.now()
+  const timeoutMs = getMetaApiTimeoutMs()
   let response: Response | null = null
   let data: (T & MetaApiErrorPayload) | null = null
 
   try {
-    response = await fetch(buildMetaUrl(params), { cache: "no-store" })
+    response = await fetch(buildMetaUrl(params), {
+      cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
+    })
     data = (await response.json()) as T & MetaApiErrorPayload
 
     if (!response.ok || data.error) {
@@ -164,6 +179,14 @@ export async function metaApiRequest<T>(
 
     return data
   } catch (error) {
+    const normalizedError =
+      error instanceof Error &&
+      (error.name === "AbortError" || error.name === "TimeoutError")
+        ? new Error(
+            `Tempo limite ao consultar a META API (${timeoutMs} ms) em ${params.path}`
+          )
+        : error
+
     logIntegrationEvent({
       integration: "meta-graph",
       action: params.path,
@@ -174,10 +197,10 @@ export async function metaApiRequest<T>(
         query: params.query,
         statusCode: response?.status ?? null,
       },
-      error,
+      error: normalizedError,
     })
 
-    throw error
+    throw normalizedError
   }
 }
 

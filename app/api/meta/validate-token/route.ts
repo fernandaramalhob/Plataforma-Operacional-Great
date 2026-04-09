@@ -15,20 +15,8 @@ export async function GET() {
 
     if (!user) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Não autorizado" },
+        { error: "Nao autorizado" },
         { status: 401 }
-      )
-    }
-
-    if (!user.metaAccessToken) {
-      return NextResponse.json<MetaTokenValidationResponse>(
-        {
-          ok: false,
-          tokenStatus: "missing",
-          detail: "Token META não configurado",
-          expiresAt: null,
-        },
-        { status: 200 }
       )
     }
 
@@ -60,7 +48,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Não autorizado" },
+        { error: "Nao autorizado" },
         { status: 401 }
       )
     }
@@ -69,7 +57,7 @@ export async function POST(request: Request) {
 
     if (!parsedBody.success) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Token META obrigatório" },
+        { error: "Token META obrigatorio" },
         { status: 400 }
       )
     }

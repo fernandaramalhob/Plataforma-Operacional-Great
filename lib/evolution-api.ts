@@ -4,6 +4,8 @@ import type {
   EvolutionInstance,
 } from "@/types/evolution.types"
 
+const DEFAULT_EVOLUTION_API_TIMEOUT_MS = 30_000
+
 type EvolutionSendTextResponse = {
   key?: {
     id?: string
@@ -66,11 +68,60 @@ function maskWhatsAppDestination(number: string) {
   return `${normalized.slice(0, 4)}***${normalized.slice(-2)}`
 }
 
+function parseEvolutionDestination(value: string) {
+  const normalized = value.trim()
+  const separatorIndex = normalized.indexOf("::")
+
+  if (separatorIndex < 0) {
+    return {
+      destination: normalized,
+      instance: null,
+    }
+  }
+
+  const instance = normalizeEvolutionInstanceName(
+    normalized.slice(0, separatorIndex)
+  )
+  const destination = normalized.slice(separatorIndex + 2).trim()
+
+  return {
+    destination,
+    instance: instance || null,
+  }
+}
+
 function buildEvolutionRequestHeaders(apiKey: string) {
   return {
     "Content-Type": "application/json",
     apikey: apiKey,
   }
+}
+
+function getEvolutionApiTimeoutMs() {
+  const parsed = Number.parseInt(process.env.EVOLUTION_API_TIMEOUT_MS ?? "", 10)
+
+  if (!Number.isFinite(parsed) || parsed < 1_000) {
+    return DEFAULT_EVOLUTION_API_TIMEOUT_MS
+  }
+
+  return parsed
+}
+
+function normalizeEvolutionError(
+  error: unknown,
+  timeoutMs: number,
+  path: string
+) {
+  if (
+    error instanceof Error &&
+    (error.name === "AbortError" || error.name === "TimeoutError")
+  ) {
+    return new Error(
+      `Tempo limite ao consultar a Evolution API (${timeoutMs} ms) em ${path}`
+    )
+  }
+
+  return error
 }
 
 function dedupeStrings(values: string[]) {
@@ -126,31 +177,38 @@ async function fetchEvolutionJson<T>(
     body?: string
   }
 ) {
-  const response = await fetch(
-    `${params.apiUrl.replace(/\/+$/, "")}${params.path}`,
-    {
-      method: params.method ?? "GET",
-      headers: buildEvolutionRequestHeaders(params.apiKey),
-      body: params.body,
-      cache: "no-store",
-    }
-  )
-  const data = (await response.json().catch(() => null)) as
-    | T
-    | { error?: string; message?: string }
-    | null
+  const timeoutMs = getEvolutionApiTimeoutMs()
 
-  if (!response.ok) {
-    throw new Error(
-      (data &&
-        typeof data === "object" &&
-        (("error" in data && typeof data.error === "string" && data.error) ||
-          ("message" in data && typeof data.message === "string" && data.message))) ||
-        "Falha ao consultar a Evolution API"
+  try {
+    const response = await fetch(
+      `${params.apiUrl.replace(/\/+$/, "")}${params.path}`,
+      {
+        method: params.method ?? "GET",
+        headers: buildEvolutionRequestHeaders(params.apiKey),
+        body: params.body,
+        cache: "no-store",
+        signal: AbortSignal.timeout(timeoutMs),
+      }
     )
-  }
+    const data = (await response.json().catch(() => null)) as
+      | T
+      | { error?: string; message?: string }
+      | null
 
-  return data
+    if (!response.ok) {
+      throw new Error(
+        (data &&
+          typeof data === "object" &&
+          (("error" in data && typeof data.error === "string" && data.error) ||
+            ("message" in data && typeof data.message === "string" && data.message))) ||
+          "Falha ao consultar a Evolution API"
+      )
+    }
+
+    return data
+  } catch (error) {
+    throw normalizeEvolutionError(error, timeoutMs, params.path)
+  }
 }
 
 function isEvolutionSendTextResponse(
@@ -170,13 +228,15 @@ export async function sendWhatsAppText(params: {
   text: string
   instance?: string | null
 }) {
+  const parsedDestination = parseEvolutionDestination(params.number)
   const startedAt = Date.now()
-  const maskedNumber = maskWhatsAppDestination(params.number)
+  const maskedNumber = maskWhatsAppDestination(parsedDestination.destination)
   const apiUrl = getRequiredEnv("EVOLUTION_API_URL").replace(/\/+$/, "")
   const apiKey = getRequiredEnv("EVOLUTION_API_KEY")
+  const timeoutMs = getEvolutionApiTimeoutMs()
   const instance = await resolveEvolutionInstanceForDestination(
-    params.number,
-    params.instance
+    parsedDestination.destination,
+    params.instance ?? parsedDestination.instance
   )
   let response: Response | null = null
   let data:
@@ -191,12 +251,13 @@ export async function sendWhatsAppText(params: {
         ...buildEvolutionRequestHeaders(apiKey),
       },
       body: JSON.stringify({
-        number: params.number,
+        number: parsedDestination.destination,
         text: params.text,
         delay: 1200,
         linkPreview: true,
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
     })
 
     data = (await response.json().catch(() => ({}))) as
@@ -229,6 +290,12 @@ export async function sendWhatsAppText(params: {
 
     return data
   } catch (error) {
+    const normalizedError = normalizeEvolutionError(
+      error,
+      timeoutMs,
+      `/message/sendText/${instance}`
+    )
+
     logIntegrationEvent({
       integration: "whatsapp",
       action: "send-text",
@@ -242,10 +309,10 @@ export async function sendWhatsAppText(params: {
             ? data.status
             : null,
       },
-      error,
+      error: normalizedError,
     })
 
-    throw error
+    throw normalizedError
   }
 }
 
@@ -256,13 +323,15 @@ export async function sendWhatsAppDocument(params: {
   caption?: string | null
   instance?: string | null
 }) {
+  const parsedDestination = parseEvolutionDestination(params.number)
   const startedAt = Date.now()
-  const maskedNumber = maskWhatsAppDestination(params.number)
+  const maskedNumber = maskWhatsAppDestination(parsedDestination.destination)
   const apiUrl = getRequiredEnv("EVOLUTION_API_URL").replace(/\/+$/, "")
   const apiKey = getRequiredEnv("EVOLUTION_API_KEY")
+  const timeoutMs = getEvolutionApiTimeoutMs()
   const instance = await resolveEvolutionInstanceForDestination(
-    params.number,
-    params.instance
+    parsedDestination.destination,
+    params.instance ?? parsedDestination.instance
   )
   let response: Response | null = null
   let data:
@@ -277,7 +346,7 @@ export async function sendWhatsAppDocument(params: {
         ...buildEvolutionRequestHeaders(apiKey),
       },
       body: JSON.stringify({
-        number: params.number,
+        number: parsedDestination.destination,
         mediatype: "document",
         mimetype: "application/pdf",
         fileName: params.fileName,
@@ -285,6 +354,7 @@ export async function sendWhatsAppDocument(params: {
         caption: params.caption ?? undefined,
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
     })
 
     data = (await response.json().catch(() => ({}))) as
@@ -313,6 +383,12 @@ export async function sendWhatsAppDocument(params: {
 
     return data
   } catch (error) {
+    const normalizedError = normalizeEvolutionError(
+      error,
+      timeoutMs,
+      `/message/sendMedia/${instance}`
+    )
+
     logIntegrationEvent({
       integration: "whatsapp",
       action: "send-document",
@@ -323,10 +399,10 @@ export async function sendWhatsAppDocument(params: {
         statusCode: response?.status ?? null,
         fileName: params.fileName,
       },
-      error,
+      error: normalizedError,
     })
 
-    throw error
+    throw normalizedError
   }
 }
 
@@ -355,6 +431,7 @@ export function getEvolutionConfig() {
 export async function listEvolutionInstances() {
   const startedAt = Date.now()
   const config = getEvolutionConfig()
+  const timeoutMs = getEvolutionApiTimeoutMs()
 
   if (!config.apiUrl || !config.apiKey) {
     return config.instance
@@ -375,6 +452,7 @@ export async function listEvolutionInstances() {
       method: "GET",
       headers: buildEvolutionRequestHeaders(config.apiKey),
       cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
     })
 
     const data = (await response.json().catch(() => [])) as
@@ -438,6 +516,12 @@ export async function listEvolutionInstances() {
 
     return normalizedInstances
   } catch (error) {
+    const normalizedError = normalizeEvolutionError(
+      error,
+      timeoutMs,
+      "/instance/fetchInstances"
+    )
+
     logIntegrationEvent({
       integration: "whatsapp",
       action: "list-instances",
@@ -447,10 +531,10 @@ export async function listEvolutionInstances() {
         primaryInstance: config.instance || null,
         statusCode: response?.status ?? null,
       },
-      error,
+      error: normalizedError,
     })
 
-    throw error
+    throw normalizedError
   }
 }
 
@@ -638,11 +722,15 @@ async function resolveEvolutionInstanceForDestination(
   }
 
   try {
-    const { groups } = await loadEvolutionCatalog()
-    const match = groups.find((group) => group.id === normalizedDestination)
+    const catalog = await loadEvolutionCatalog()
+    const matchingGroup = catalog.groups.find((group) => group.id === normalizedDestination)
 
-    return match?.instance || configuredInstance
+    if (matchingGroup?.instance) {
+      return matchingGroup.instance
+    }
   } catch {
-    return configuredInstance
+    // Fallback para a instancia padrao quando a consulta de grupos falhar.
   }
+
+  return configuredInstance
 }
