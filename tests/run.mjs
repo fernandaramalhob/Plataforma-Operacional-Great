@@ -14,6 +14,7 @@ await import("./report-pdf-server.test.mjs")
 await import("./report-pdf-preview-server.test.mjs")
 await import("./report.schema.test.mjs")
 await import("./session-user.test.mjs")
+await import("./weekly-report-time.test.mjs")
 
 const { runRegisteredTests } = await import("./test-helpers.mjs")
 

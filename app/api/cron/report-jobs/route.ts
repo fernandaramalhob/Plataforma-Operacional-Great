@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { isAuthorizedCronRequest } from "@/lib/cron-auth"
 import { processPendingReportBatch } from "@/lib/report-processing"
 import { processDueReportSchedules } from "@/lib/report-schedule"
-import { maybeDispatchWeeklyReports } from "@/lib/report-weekly-dispatch"
 import { logError } from "@/lib/safe-logger"
 
 export const runtime = "nodejs"
@@ -27,10 +26,7 @@ export async function GET(request: Request) {
   const batchSize = getBatchSize()
 
   try {
-    const [schedules, weeklyDispatch] = await Promise.all([
-      processDueReportSchedules({ limit: batchSize }),
-      maybeDispatchWeeklyReports(),
-    ])
+    const schedules = await processDueReportSchedules({ limit: batchSize })
 
     const processing = await processPendingReportBatch(batchSize)
 
@@ -38,7 +34,6 @@ export async function GET(request: Request) {
       ok: true,
       checkedAt: new Date().toISOString(),
       schedulesProcessed: schedules,
-      weeklyDispatch,
       processing,
     })
   } catch (error) {
