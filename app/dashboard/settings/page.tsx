@@ -30,8 +30,17 @@ import type {
 } from "@/types/meta.types"
 import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
-const META_TOKEN_SUGGESTION =
-  "EAAVENRIKYhMBRMK1owvwMHrFXiMkbqKbMlNpblRusw6GUa5TgBwfdh4SAcRnptnK0ykP8VwtHtD8gbls3ZCzbzo73L1enQPU5tfhXff9muSWijIwgeguz38rZCaI3yQyIwzlZB45vpCDTeCOjHyiwqseQpkJIKvrsZClxZB8DpPPf2yNCF5p8fn2YeSzywZCa1"
+const DEFAULT_META_TOKEN_SUGGESTION = "EAAxxxxxxxxxxxxxxxx..."
+
+const META_TOKEN_SUGGESTIONS_BY_EMAIL: Record<string, string> = {
+  "pedrojuan.mwdigital@gmail.com":
+    "EAANXgm6L88ABRJYgIEgTZBM6XUxPtuAWilhiQHtz3sRxG896WwaiYoM57eRUe0hEt3JVjCwna1Nv4ieuD3mUCJIVrM0vmcvI0dpeZAWR5rCSus7YT6hojJQPGZCri9lCtYc8jbKmaKaEHFDl2LRNkjf55rlB2RjyKtQTPjDZC4CBpjSsibR7jYtHYHZBZAFY2H",
+}
+
+const META_CONNECTED_NAME_BY_EMAIL: Record<string, string> = {
+  "braytonmaycon5@gmail.com": "Brayton Maycon",
+  "pedrojuan.mwdigital@gmail.com": "Lucas D. Oliveira",
+}
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -88,6 +97,21 @@ function readSessionUser(value: unknown) {
   return isObject(value) ? (value as MetaSessionUser) : null
 }
 
+function getConnectedMetaDisplayName(
+  sessionUser: MetaSessionUser | null,
+  metaUser: MetaUser | null
+) {
+  if (sessionUser?.email) {
+    const overrideName = META_CONNECTED_NAME_BY_EMAIL[sessionUser.email]
+
+    if (overrideName) {
+      return overrideName
+    }
+  }
+
+  return metaUser?.name ?? metaUser?.email ?? "usuÃ¡rio META"
+}
+
 
 export default function SettingsPage() {
   const [token, setToken] = useState("")
@@ -109,6 +133,9 @@ export default function SettingsPage() {
   const [evolutionData, setEvolutionData] = useState<EvolutionSettingsResponse | null>(null)
   const [evolutionError, setEvolutionError] = useState("")
   const [copiedGroupId, setCopiedGroupId] = useState("")
+  const tokenSuggestion = sessionUser?.email
+    ? META_TOKEN_SUGGESTIONS_BY_EMAIL[sessionUser.email] ?? DEFAULT_META_TOKEN_SUGGESTION
+    : DEFAULT_META_TOKEN_SUGGESTION
 
   const loadAccounts = useCallback(async () => {
     const data = await fetchJsonOrThrow<MetaAccount[]>(
@@ -339,13 +366,20 @@ export default function SettingsPage() {
               isSubmitting={isValidating}
               disabled={!sessionUser}
               hasSavedToken={Boolean(savedTokenMasked)}
-              placeholder={META_TOKEN_SUGGESTION}
+              placeholder={tokenSuggestion}
               onChange={setToken}
               onToggleVisibility={() => setShowToken((current) => !current)}
               onSubmit={() => void handleValidateAndSave()}
             />
 
-            {result === "success" ? (
+            {result === "success" && metaUser ? (
+              <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
+                <CheckCircle className="h-4 w-4" />
+                Token válido. Conectado como <strong>{getConnectedMetaDisplayName(sessionUser, metaUser)}</strong>
+              </div>
+            ) : null}
+
+            {result === "success" && !metaUser ? (
               <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
                 <CheckCircle className="h-4 w-4" />
                 {metaUser ? (
