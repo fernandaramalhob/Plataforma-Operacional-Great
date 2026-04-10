@@ -1,0 +1,16 @@
+{
+  "name": "greatgo-api",
+  "version": "1.0.0",
+  "description": "API backend do GreatGo",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
+  }
+}

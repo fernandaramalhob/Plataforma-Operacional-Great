@@ -14,7 +14,9 @@
     "report:weekly:daemon:dry-run": "node --env-file ./.env.local --experimental-strip-types --loader ./tests/alias-loader.mjs ./scripts/run_weekly_doctor_reports_daemon.mts --dry-run --once --force-run",
     "user:create": "node scripts/create-user.mjs",
     "prisma:generate": "prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "cypress:open": "start-server-and-test dev http://localhost:3000 \"cypress open\"",
+    "cypress:run": "start-server-and-test dev http://localhost:3000 \"cypress run\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -47,6 +49,8 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.27",
     "babel-plugin-react-compiler": "1.0.0",
+    "cypress": "^15.13.1",
+    "start-server-and-test": "^2.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "postcss": "^8.5.8",
