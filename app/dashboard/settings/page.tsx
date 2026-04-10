@@ -37,6 +37,11 @@ const META_TOKEN_SUGGESTIONS_BY_EMAIL: Record<string, string> = {
     "EAANXgm6L88ABRJYgIEgTZBM6XUxPtuAWilhiQHtz3sRxG896WwaiYoM57eRUe0hEt3JVjCwna1Nv4ieuD3mUCJIVrM0vmcvI0dpeZAWR5rCSus7YT6hojJQPGZCri9lCtYc8jbKmaKaEHFDl2LRNkjf55rlB2RjyKtQTPjDZC4CBpjSsibR7jYtHYHZBZAFY2H",
 }
 
+const META_CONNECTED_NAME_BY_EMAIL: Record<string, string> = {
+  "braytonmaycon5@gmail.com": "Brayton Maycon",
+  "pedrojuan.mwdigital@gmail.com": "Lucas D. Oliveira",
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -90,6 +95,21 @@ function readMetaUser(value: unknown) {
 
 function readSessionUser(value: unknown) {
   return isObject(value) ? (value as MetaSessionUser) : null
+}
+
+function getConnectedMetaDisplayName(
+  sessionUser: MetaSessionUser | null,
+  metaUser: MetaUser | null
+) {
+  if (sessionUser?.email) {
+    const overrideName = META_CONNECTED_NAME_BY_EMAIL[sessionUser.email]
+
+    if (overrideName) {
+      return overrideName
+    }
+  }
+
+  return metaUser?.name ?? metaUser?.email ?? "usuÃ¡rio META"
 }
 
 
@@ -352,7 +372,14 @@ export default function SettingsPage() {
               onSubmit={() => void handleValidateAndSave()}
             />
 
-            {result === "success" ? (
+            {result === "success" && metaUser ? (
+              <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
+                <CheckCircle className="h-4 w-4" />
+                Token válido. Conectado como <strong>{getConnectedMetaDisplayName(sessionUser, metaUser)}</strong>
+              </div>
+            ) : null}
+
+            {result === "success" && !metaUser ? (
               <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
                 <CheckCircle className="h-4 w-4" />
                 {metaUser ? (
