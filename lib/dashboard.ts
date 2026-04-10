@@ -172,7 +172,7 @@ type RecentReport = {
   client: ClientWithCampaigns
 }
 
-function buildEmptyDashboardData(dateRange: DashboardDateRange): DashboardData {
+export function buildEmptyDashboardData(dateRange: DashboardDateRange): DashboardData {
   const periodLabel = buildPeriodLabel(dateRange)
 
   return {
