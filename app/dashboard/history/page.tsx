@@ -284,7 +284,7 @@ export default function HistoryPage() {
                     Cliente
                   </th>
                   <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Per?odo de ref.
+                    Período de ref.
                   </th>
                   <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Status

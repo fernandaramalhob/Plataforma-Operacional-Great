@@ -1,37 +1,35 @@
 /// <reference types="cypress" />
-// ***********************************************
-// This example commands.ts shows you how to
-// create various custom commands and overwrite
-// existing commands.
-//
-// For more comprehensive examples of custom
-// commands please read more here:
-// https://on.cypress.io/custom-commands
-// ***********************************************
-//
-//
-// -- This is a parent command --
-// Cypress.Commands.add('login', (email, password) => { ... })
-//
-//
-// -- This is a child command --
-// Cypress.Commands.add('drag', { prevSubject: 'element'}, (subject, options) => { ... })
-//
-//
-// -- This is a dual command --
-// Cypress.Commands.add('dismiss', { prevSubject: 'optional'}, (subject, options) => { ... })
-//
-//
-// -- This will overwrite an existing command --
-// Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
-//
-// declare global {
-//   namespace Cypress {
-//     interface Chainable {
-//       login(email: string, password: string): Chainable<void>
-//       drag(subject: string, options?: Partial<TypeOptions>): Chainable<Element>
-//       dismiss(subject: string, options?: Partial<TypeOptions>): Chainable<Element>
-//       visit(originalFn: CommandOriginalFn, url: string, options: Partial<VisitOptions>): Chainable<Element>
-//     }
-//   }
-// }
+
+export {}
+
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      login(email?: string, password?: string): Chainable<void>
+    }
+  }
+}
+
+/**
+ * Faz login via UI e armazena a sessão em cache para evitar re-login a cada teste.
+ * As credenciais podem ser sobrescritas via cypress.env.json:
+ *   { "email": "admin@greatgo.com", "password": "suasenha" }
+ */
+Cypress.Commands.add("login", (email?: string, password?: string) => {
+  const userEmail = email ?? Cypress.env("email") ?? "admin@greatgo.com"
+  const userPassword = password ?? Cypress.env("password") ?? "admin123"
+
+  cy.session(
+    [userEmail, userPassword],
+    () => {
+      cy.visit("/login")
+      cy.get('input[type="email"]').type(userEmail)
+      cy.get('input[type="password"]').type(userPassword)
+      cy.get('button[type="submit"]').click()
+      cy.url().should("include", "/dashboard")
+    },
+    {
+      cacheAcrossSpecs: true,
+    }
+  )
+})
