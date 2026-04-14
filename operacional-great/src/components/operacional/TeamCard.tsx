@@ -16,15 +16,20 @@ interface TeamCardProps {
   subtitle?: string;
   stats: TeamStats;
   className?: string;
+  'data-cy'?: string;
+  statPrefix?: string;
 }
 
-export function TeamCard({ title, subtitle, stats, className }: TeamCardProps) {
+export function TeamCard({ title, subtitle, stats, className, 'data-cy': dataCy, statPrefix }: TeamCardProps) {
 
   return (
-    <div className={cn(
-      'p-card rounded-lg border border-border bg-card shadow-card card-hover',
-      className
-    )}>
+    <div
+      data-cy={dataCy}
+      className={cn(
+        'p-card rounded-lg border border-border bg-card shadow-card card-hover',
+        className
+      )}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -70,23 +75,23 @@ export function TeamCard({ title, subtitle, stats, className }: TeamCardProps) {
       {/* Stats Grid */}
       <div className="grid grid-cols-5 gap-3">
         <div className="text-center p-2 rounded-lg bg-surface-2">
-          <p className="text-kpi-sm text-foreground">{stats.total}</p>
+          <p data-cy={statPrefix ? `${statPrefix}-total` : undefined} className="text-kpi-sm text-foreground">{stats.total}</p>
           <p className="text-caption text-muted-foreground mt-0.5">Total</p>
         </div>
         <div className="text-center p-2 rounded-lg bg-success/10">
-          <p className="text-kpi-sm text-success">{stats.ativos}</p>
+          <p data-cy={statPrefix ? `${statPrefix}-ativos` : undefined} className="text-kpi-sm text-success">{stats.ativos}</p>
           <p className="text-caption text-muted-foreground mt-0.5">Ativos</p>
         </div>
         <div className="text-center p-2 rounded-lg bg-warning/10">
-          <p className="text-kpi-sm text-warning">{stats.emOnboarding}</p>
+          <p data-cy={statPrefix ? `${statPrefix}-onboarding` : undefined} className="text-kpi-sm text-warning">{stats.emOnboarding}</p>
           <p className="text-caption text-muted-foreground mt-0.5">Onboarding</p>
         </div>
         <div className="text-center p-2 rounded-lg bg-primary/10">
-          <p className="text-kpi-sm text-primary">{stats.renewals || 0}</p>
+          <p data-cy={statPrefix ? `${statPrefix}-renovacoes` : undefined} className="text-kpi-sm text-primary">{stats.renewals || 0}</p>
           <p className="text-caption text-muted-foreground mt-0.5">Renovações</p>
         </div>
         <div className="text-center p-2 rounded-lg bg-orange-500/10">
-          <p className="text-kpi-sm text-orange-600">{stats.churned || 0}</p>
+          <p data-cy={statPrefix ? `${statPrefix}-cancelados` : undefined} className="text-kpi-sm text-orange-600">{stats.churned || 0}</p>
           <p className="text-caption text-muted-foreground mt-0.5">Cancelados</p>
         </div>
       </div>

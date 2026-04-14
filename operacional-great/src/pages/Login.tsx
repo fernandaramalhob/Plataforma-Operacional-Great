@@ -341,6 +341,7 @@ export default function Login() {
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
+                    data-cy="input-email"
                     type="email"
                     placeholder="seu@email.com"
                     value={email}
@@ -362,6 +363,7 @@ export default function Login() {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
+                    data-cy="input-senha"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
@@ -405,7 +407,7 @@ export default function Login() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.6 }}
               >
-                <Button type="submit" size="xl" className="w-full" disabled={isSubmitting}>
+                <Button data-cy="btn-login" type="submit" size="xl" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <LogoLoader className="h-5 w-5" />

@@ -11,6 +11,8 @@ interface KPICardProps {
   iconColor?: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info';
   variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger';
   className?: string;
+  'data-cy'?: string;
+  'data-value-cy'?: string;
 }
 
 const iconColorClasses = {
@@ -46,15 +48,20 @@ export function KPICard({
   iconColor = 'default',
   variant = 'default',
   className,
+  'data-cy': dataCy,
+  'data-value-cy': dataValueCy,
 }: KPICardProps) {
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
 
   return (
-    <div className={cn(
-      'p-card rounded-lg border bg-card shadow-card card-hover',
-      variantBorderClasses[variant],
-      className
-    )}>
+    <div
+      data-cy={dataCy}
+      className={cn(
+        'p-card rounded-lg border bg-card shadow-card card-hover',
+        variantBorderClasses[variant],
+        className
+      )}
+    >
       <div className="flex items-start justify-between mb-3">
         <span className="text-caption text-muted-foreground">{label}</span>
         {icon && (
@@ -65,7 +72,7 @@ export function KPICard({
       </div>
       
       <div className="space-y-1">
-        <p className="text-kpi text-foreground tabular-nums">
+        <p data-cy={dataValueCy} className="text-kpi text-foreground tabular-nums">
           {value}
         </p>
         

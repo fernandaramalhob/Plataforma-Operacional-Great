@@ -12,15 +12,17 @@ interface WidgetCardProps {
   tone?: 'default' | 'danger' | 'warning' | 'success';
   children: React.ReactNode;
   className?: string;
+  'data-cy'?: string;
 }
 
-export function WidgetCard({ 
-  title, 
-  action, 
-  count, 
+export function WidgetCard({
+  title,
+  action,
+  count,
   tone = 'default',
-  children, 
-  className 
+  children,
+  className,
+  'data-cy': dataCy,
 }: WidgetCardProps) {
   const toneStyles = {
     default: {
@@ -42,11 +44,14 @@ export function WidgetCard({
   };
   
   return (
-    <div className={cn(
-      'rounded-lg border bg-card shadow-card overflow-hidden',
-      toneStyles[tone].border,
-      className
-    )}>
+    <div
+      data-cy={dataCy}
+      className={cn(
+        'rounded-lg border bg-card shadow-card overflow-hidden',
+        toneStyles[tone].border,
+        className
+      )}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-card py-3 border-b border-border">
         <div className="flex items-center gap-2">

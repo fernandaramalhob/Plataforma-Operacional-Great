@@ -624,24 +624,32 @@ export default function OperacionalDashboard() {
       {/* Primary KPIs */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-grid">
         <KPICard
+          data-cy="card-clientes-ativos"
+          data-value-cy="card-clientes-ativos-value"
           label="Clientes Ativos"
           value={totalAtivos}
           icon={<CheckCircle className="h-4 w-4" />}
           iconColor="success"
         />
         <KPICard
+          data-cy="card-novos-clientes"
+          data-value-cy="card-novos-clientes-value"
           label="Novos Clientes"
           value={totalNovos}
           icon={<UserPlus className="h-4 w-4" />}
           iconColor="primary"
         />
         <KPICard
+          data-cy="card-churned"
+          data-value-cy="card-churned-value"
           label="Churned"
           value={totalChurned}
           icon={<TrendingDown className="h-4 w-4" />}
           iconColor="danger"
         />
         <KPICard
+          data-cy="card-sla-risco"
+          data-value-cy="card-sla-risco-value"
           label="SLA em risco"
           value={slaAtRisk}
           icon={<AlertTriangle className="h-4 w-4" />}
@@ -651,13 +659,17 @@ export default function OperacionalDashboard() {
 
       {/* Team Snapshot */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-grid">
-        <TeamCard 
-          title="Tropa de Elite" 
+        <TeamCard
+          data-cy="equipe-tropa-elite"
+          statPrefix="tropa"
+          title="Tropa de Elite"
           subtitle="Time Lira"
           stats={mergedTropaEliteStats}
         />
-        <TeamCard 
-          title="Equipe 7" 
+        <TeamCard
+          data-cy="equipe-7"
+          statPrefix="equipe7"
+          title="Equipe 7"
           subtitle="Time Kauan"
           stats={mergedEquipe7Stats}
         />
@@ -803,16 +815,18 @@ export default function OperacionalDashboard() {
           title="Ações Rápidas"
         >
           <div className="space-y-3 py-2">
-            <Button 
-              variant="outline" 
+            <Button
+              data-cy="acao-rapida-nova-tarefa"
+              variant="outline"
               className="w-full justify-start gap-2 h-10"
               onClick={() => setIsCreateTaskDialogOpen(true)}
             >
               <ClipboardList className="h-4 w-4 text-primary" />
               Criar nova tarefa
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              data-cy="acao-rapida-nova-reuniao"
+              variant="outline"
               className="w-full justify-start gap-2 h-10"
               onClick={() => setIsCreateMeetingDialogOpen(true)}
             >
@@ -832,7 +846,8 @@ export default function OperacionalDashboard() {
       {/* Second Widgets Row - Tasks & Meetings */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-grid">
         {/* Tasks - Real Data */}
-        <WidgetCard 
+        <WidgetCard
+          data-cy="card-proximas-tarefas"
           title="Próximas Tarefas"
           action={{ label: 'Ver todas', href: '/operacional/meu-dia' }}
         >
@@ -858,6 +873,7 @@ export default function OperacionalDashboard() {
               {upcomingTasks.map((task) => (
                 <div
                   key={task.id}
+                  data-cy="proxima-tarefa-item"
                   className="flex items-center justify-between p-3 rounded-lg bg-surface-2 hover:bg-surface-3 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
@@ -892,7 +908,8 @@ export default function OperacionalDashboard() {
         </WidgetCard>
 
         {/* Meetings - Real Data including Onboarding meetings */}
-        <WidgetCard 
+        <WidgetCard
+          data-cy="card-proximas-reunioes"
           title="Próximas Reuniões"
           count={upcomingMeetings?.length || 0}
           action={{ label: 'Ver agenda', href: '/operacional/reunioes' }}
@@ -921,6 +938,7 @@ export default function OperacionalDashboard() {
                 return (
                   <div
                     key={meeting.id}
+                    data-cy="proxima-reuniao-item"
                     className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer ${
                       isOnboarding 
                         ? 'bg-primary/5 border border-primary/20 hover:bg-primary/10' 
@@ -968,7 +986,8 @@ export default function OperacionalDashboard() {
       {/* Third Widgets Row - Losses and Renewals */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-grid">
         {/* Losses (Perdas) */}
-        <WidgetCard 
+        <WidgetCard
+          data-cy="card-perdas"
           title="Perdas"
           count={lostClients.length}
           tone="danger"
@@ -993,6 +1012,7 @@ export default function OperacionalDashboard() {
                 return (
                   <div
                     key={client.id}
+                    data-cy="perda-item"
                     className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/20 hover:bg-destructive/10 transition-colors cursor-pointer"
                     onClick={() => openLossDetailsDialog(client)}
                   >
@@ -1020,7 +1040,8 @@ export default function OperacionalDashboard() {
         </WidgetCard>
 
         {/* Renewals (Renovações) */}
-        <WidgetCard 
+        <WidgetCard
+          data-cy="card-renovacoes"
           title="Renovações"
           count={renewedClients.length}
           tone="success"
@@ -1045,6 +1066,7 @@ export default function OperacionalDashboard() {
                 return (
                   <div
                     key={client.id}
+                    data-cy="renovacao-item"
                     className="flex items-center justify-between p-3 rounded-lg bg-success/5 border border-success/20 hover:bg-success/10 transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -1302,7 +1324,7 @@ export default function OperacionalDashboard() {
 
       {/* Create Task Dialog */}
       <Dialog open={isCreateTaskDialogOpen} onOpenChange={setIsCreateTaskDialogOpen}>
-        <DialogContent className="sm:max-w-lg bg-card border-border">
+        <DialogContent data-cy="modal-nova-tarefa" className="sm:max-w-lg bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
               <ClipboardList className="h-5 w-5 text-primary" />
@@ -1317,6 +1339,7 @@ export default function OperacionalDashboard() {
             <div className="space-y-2">
               <Label className="text-foreground">Título *</Label>
               <Input
+                data-cy="input-tarefa-titulo"
                 value={newTaskForm.title}
                 onChange={(e) => setNewTaskForm({ ...newTaskForm, title: e.target.value })}
                 placeholder="Ex: Configurar campanha de anúncios"
@@ -1327,6 +1350,7 @@ export default function OperacionalDashboard() {
             <div className="space-y-2">
               <Label className="text-foreground">Descrição</Label>
               <Textarea
+                data-cy="input-tarefa-descricao"
                 value={newTaskForm.description}
                 onChange={(e) => setNewTaskForm({ ...newTaskForm, description: e.target.value })}
                 placeholder="Detalhes da tarefa..."
@@ -1388,7 +1412,8 @@ export default function OperacionalDashboard() {
             >
               Cancelar
             </Button>
-            <Button 
+            <Button
+              data-cy="btn-salvar-tarefa"
               onClick={handleCreateTask}
               disabled={createTaskMutation.isPending}
               className="bg-primary hover:bg-primary/90"
@@ -1402,7 +1427,7 @@ export default function OperacionalDashboard() {
 
       {/* Create Meeting Dialog */}
       <Dialog open={isCreateMeetingDialogOpen} onOpenChange={setIsCreateMeetingDialogOpen}>
-        <DialogContent className="sm:max-w-lg bg-card border-border">
+        <DialogContent data-cy="modal-nova-reuniao" className="sm:max-w-lg bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
               <Video className="h-5 w-5 text-primary" />
@@ -1417,6 +1442,7 @@ export default function OperacionalDashboard() {
             <div className="space-y-2">
               <Label className="text-foreground">Título *</Label>
               <Input
+                data-cy="input-reuniao-titulo"
                 value={newMeetingForm.title}
                 onChange={(e) => setNewMeetingForm({ ...newMeetingForm, title: e.target.value })}
                 placeholder="Ex: Alinhamento semanal"
@@ -1465,7 +1491,8 @@ export default function OperacionalDashboard() {
             >
               Cancelar
             </Button>
-            <Button 
+            <Button
+              data-cy="btn-salvar-reuniao"
               onClick={handleCreateMeeting}
               disabled={createMeetingMutation.isPending}
               className="bg-primary hover:bg-primary/90"

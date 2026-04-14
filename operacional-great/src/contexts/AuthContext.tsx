@@ -144,6 +144,26 @@ const INITIAL_USERS: (User & { password: string })[] = [
     active: true,
     createdAt: new Date(),
   },
+  // ── Usuários de teste (Cypress) ───────────────────────────
+  {
+    id: 'test-user-1',
+    name: 'Usuário Teste',
+    email: 'user@teste.com',
+    password: '123456',
+    role: 'ATENDENTE',
+    teamId: 'team-1',
+    active: true,
+    createdAt: new Date(),
+  },
+  {
+    id: 'test-admin-1',
+    name: 'Admin Teste',
+    email: 'admin@teste.com',
+    password: '123456',
+    role: 'ADMIN',
+    active: true,
+    createdAt: new Date(),
+  },
 ];
 
 const ROLE_MODULE_MAP: Record<UserRole, Module | null> = {
