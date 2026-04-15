@@ -11,7 +11,7 @@ import { useUpcomingTasks, useUpcomingMeetings, useBlockedTasks, useOverdueTasks
 import { useOperationalClients } from '@/hooks/useCRMData';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
+import { useUserPreference } from '@/hooks/useUserPreference';
 import { 
   CheckCircle, 
   Users, 
@@ -120,15 +120,16 @@ export default function OperacionalDashboard() {
     agenda: '',
   });
   
-  const [isCheckedIn, setIsCheckedIn] = useState(() => {
-    const today = new Date().toDateString();
-    const lastCheckIn = safeGetItem('great_last_checkin');
-    return lastCheckIn === today;
-  });
-  
-  const [checkInTime, setCheckInTime] = useState<string | null>(() => {
-    return safeGetItem('great_checkin_time');
-  });
+  const today = new Date().toDateString();
+  const { value: lastCheckIn, setValue: setLastCheckIn } = useUserPreference<string | null>(
+    'great_last_checkin',
+    null,
+  );
+  const { value: checkInTime, setValue: setCheckInTime } = useUserPreference<string | null>(
+    'great_checkin_time',
+    null,
+  );
+  const isCheckedIn = lastCheckIn === today;
 
   // Real data from database
   const { data: upcomingTasks, isLoading: tasksLoading } = useUpcomingTasks(5);
@@ -267,13 +268,9 @@ export default function OperacionalDashboard() {
     createMeetingMutation.mutate(newMeetingForm);
   };
 
-  const handleCheckIn = () => {
-    const today = new Date().toDateString();
+  const handleCheckIn = async () => {
     const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    safeSetItem('great_last_checkin', today);
-    safeSetItem('great_checkin_time', time);
-    setIsCheckedIn(true);
-    setCheckInTime(time);
+    await Promise.all([setLastCheckIn(today), setCheckInTime(time)]);
     setIsCheckInDialogOpen(false);
     toast.success('Check-in realizado com sucesso!', {
       description: `Você fez check-in às ${time}`,
@@ -511,10 +508,12 @@ export default function OperacionalDashboard() {
   
   // Filter lost and renewed clients
   const lostClients = (dbClients || []).filter(
-    c => c.churn_status === 'CONFIRMED'
+    c => c.churn_status === 'CONFIRMED' &&
+         (selectedTeamFilter === 'all' || c.churn_responsible_team_id === selectedTeamFilter || c.team_id === selectedTeamFilter)
   );
   const renewedClients = (dbClients || []).filter(
-    c => c.renewal_status === 'RENEWED'
+    c => c.renewal_status === 'RENEWED' &&
+         (selectedTeamFilter === 'all' || c.renewal_responsible_team_id === selectedTeamFilter || c.team_id === selectedTeamFilter)
   );
 
   // Calculate team stats from database

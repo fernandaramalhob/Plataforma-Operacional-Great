@@ -129,6 +129,10 @@ const ritualTemplates = [
   },
 ];
 
+function toIsoFromLocalInput(value: string) {
+  return value ? new Date(value).toISOString() : '';
+}
+
 export default function Rituais() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -210,8 +214,10 @@ export default function Rituais() {
         .insert({
           title: meetingData.title,
           scope: meetingData.scope,
-          datetime_start: meetingData.datetime_start,
-          datetime_end: meetingData.datetime_end || addHours(new Date(meetingData.datetime_start), 1).toISOString(),
+          datetime_start: toIsoFromLocalInput(meetingData.datetime_start),
+          datetime_end: meetingData.datetime_end
+            ? toIsoFromLocalInput(meetingData.datetime_end)
+            : addHours(new Date(meetingData.datetime_start), 1).toISOString(),
           agenda: meetingData.agenda || null,
           created_by_user_id: user.id,
           participants: [],

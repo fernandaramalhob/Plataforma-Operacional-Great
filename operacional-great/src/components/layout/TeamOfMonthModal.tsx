@@ -5,6 +5,7 @@ import { Trophy, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { useUserPreference } from '@/hooks/useUserPreference';
 
 interface TeamStat {
   teamName: string;
@@ -14,7 +15,7 @@ interface TeamStat {
 function isEndOfMonth(): boolean {
   const today = new Date();
   const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  return today.getDate() >= lastDay - 4; // últimos 5 dias do mês
+  return today.getDate() >= lastDay - 4; // Ãºltimos 5 dias do mÃªs
 }
 
 function getStorageKey(): string {
@@ -26,21 +27,24 @@ export function TeamOfMonthModal() {
   const { user, isAdmin } = useAuth();
   const [visible, setVisible] = useState(false);
   const [best, setBest] = useState<TeamStat | null>(null);
+  const storageKey = getStorageKey();
+  const { value: hasSeenThisMonth, setValue: setHasSeenThisMonth } = useUserPreference<boolean>(
+    storageKey,
+    false,
+  );
 
   useEffect(() => {
     if (!user || isAdmin) return;
     if (!isEndOfMonth()) return;
-    if (localStorage.getItem(getStorageKey())) return;
+    if (hasSeenThisMonth) return;
 
     async function load() {
-      // Fetch teams
       const { data: teams } = await supabase
         .from('teams')
         .select('id, name');
 
       if (!teams || teams.length === 0) return;
 
-      // Fetch active clients
       const { data: clients } = await supabase
         .from('operational_clients')
         .select('team_id')
@@ -48,13 +52,11 @@ export function TeamOfMonthModal() {
 
       if (!clients || clients.length === 0) return;
 
-      // Count clients per team
       const counts: Record<string, number> = {};
       clients.forEach((c: any) => {
         if (c.team_id) counts[c.team_id] = (counts[c.team_id] || 0) + 1;
       });
 
-      // Find best team
       let bestId = '';
       let bestCount = 0;
       Object.entries(counts).forEach(([id, count]) => {
@@ -71,7 +73,7 @@ export function TeamOfMonthModal() {
     }
 
     load();
-  }, [user, isAdmin]);
+  }, [hasSeenThisMonth, isAdmin, user]);
 
   useEffect(() => {
     if (!visible) return;
@@ -87,8 +89,8 @@ export function TeamOfMonthModal() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [visible]);
 
-  function handleClose() {
-    localStorage.setItem(getStorageKey(), '1');
+  async function handleClose() {
+    await setHasSeenThisMonth(true);
     setVisible(false);
   }
 
@@ -110,7 +112,6 @@ export function TeamOfMonthModal() {
             transition={{ type: 'spring', damping: 18, stiffness: 200 }}
             className="relative bg-card border border-border rounded-3xl shadow-2xl px-12 py-14 flex flex-col items-center text-center max-w-xl w-full mx-4"
           >
-            {/* Close */}
             <button
               onClick={handleClose}
               className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
@@ -118,7 +119,6 @@ export function TeamOfMonthModal() {
               <X className="h-5 w-5" />
             </button>
 
-            {/* Trophy */}
             <motion.div
               animate={{ rotate: [-8, 8, -8] }}
               transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
@@ -127,12 +127,10 @@ export function TeamOfMonthModal() {
               <Trophy className="h-10 w-10 text-warning" />
             </motion.div>
 
-            {/* Label */}
             <p className="text-sm font-semibold text-primary uppercase tracking-widest mb-2">
-              Melhor equipe do mês
+              Melhor equipe do mÃªs
             </p>
 
-            {/* Team name */}
             <motion.h1
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
@@ -142,13 +140,12 @@ export function TeamOfMonthModal() {
               {best.teamName}
             </motion.h1>
 
-            {/* Message */}
             <p className="text-xl text-muted-foreground mb-8">
-              Parabéns{' '}
+              ParabÃ©ns{' '}
               <span className="font-bold text-foreground">{best.teamName}</span>
               {' '}pelas{' '}
               <span className="font-bold text-primary">{best.count}</span>
-              {' '}conquistas este mês! 🎉
+              {' '}conquistas este mÃªs! ðŸŽ‰
             </p>
 
             <Button onClick={handleClose} size="lg" className="px-10 rounded-full text-base">

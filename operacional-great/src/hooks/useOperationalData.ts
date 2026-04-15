@@ -40,6 +40,19 @@ export interface Meeting {
   created_at: string;
 }
 
+function parseMeetingDate(value: string): Date | null {
+  if (!value) return null;
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed;
+  }
+
+  const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+  const fallback = new Date(normalized);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
 export function useWorkItems() {
   return useQuery({
     queryKey: ['work-items'],
@@ -98,19 +111,25 @@ export function useUpcomingMeetings(limit = 5) {
   return useQuery({
     queryKey: ['upcoming-meetings', limit],
     queryFn: async () => {
-      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('meetings')
         .select('*')
-        .gte('datetime_start', now)
-        .order('datetime_start', { ascending: true })
-        .limit(limit);
+        .order('datetime_start', { ascending: true });
 
       if (error) throw error;
-      return (data as Meeting[]).filter((meeting) => {
-        const meetingDate = new Date(meeting.datetime_start);
-        return !Number.isNaN(meetingDate.getTime()) && meetingDate >= new Date(now);
-      });
+
+      const now = Date.now();
+      return (data as Meeting[])
+        .filter((meeting) => {
+          const meetingDate = parseMeetingDate(meeting.datetime_start);
+          return meetingDate !== null && meetingDate.getTime() >= now;
+        })
+        .sort((a, b) => {
+          const first = parseMeetingDate(a.datetime_start)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+          const second = parseMeetingDate(b.datetime_start)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+          return first - second;
+        })
+        .slice(0, limit);
     },
   });
 }

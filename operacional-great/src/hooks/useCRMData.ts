@@ -200,6 +200,14 @@ export function useActivateClient() {
     mutationFn: async (clientId: string) => {
       if (!user) throw new Error('User not authenticated');
 
+      const { data: clientData, error: clientFetchError } = await supabase
+        .from('operational_clients')
+        .select('id, client_name')
+        .eq('id', clientId)
+        .single();
+
+      if (clientFetchError) throw clientFetchError;
+
       // Update client status
       const { error: clientError } = await supabase
         .from('operational_clients')
@@ -235,12 +243,52 @@ export function useActivateClient() {
         .update({ column_id: ATIVO_COLUMN_ID })
         .eq('board_id', CLIENTS_BOARD_ID)
         .eq('client_id', clientId);
+
+      await supabase
+        .from('ad_creatives')
+        .update({ client_name: clientData.client_name })
+        .eq('client_id', clientId);
+
+      const { data: existingCreatives } = await supabase
+        .from('ad_creatives')
+        .select('image_url')
+        .eq('client_id', clientId);
+
+      const existingUrls = new Set((existingCreatives || []).map((creative) => creative.image_url));
+
+      const { data: clientFiles } = await supabase
+        .from('client_files')
+        .select('file_url, uploaded_by_user_id')
+        .eq('client_id', clientId);
+
+      const missingCreativeRows = (clientFiles || [])
+        .filter((file) => file.file_url && !existingUrls.has(file.file_url))
+        .map((file) => ({
+          client_id: clientId,
+          client_name: clientData.client_name,
+          image_url: file.file_url,
+          image_urls: [file.file_url],
+          created_by_user_id: file.uploaded_by_user_id || user.id,
+          created_by_name: user.name,
+          status: 'PARA_SUBIR',
+        }));
+
+      if (missingCreativeRows.length > 0) {
+        const { error: creativeInsertError } = await supabase
+          .from('ad_creatives')
+          .insert(missingCreativeRows);
+
+        if (creativeInsertError) throw creativeInsertError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operational-clients'] });
       queryClient.invalidateQueries({ queryKey: ['crm-events'] });
       queryClient.invalidateQueries({ queryKey: ['clients-in-activation'] });
       queryClient.invalidateQueries({ queryKey: ['exec-cards'] });
+      queryClient.invalidateQueries({ queryKey: ['ad-creatives'] });
+      queryClient.invalidateQueries({ queryKey: ['client-ad-creatives'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-creatives-list'] });
     },
   });
 }
@@ -373,6 +421,7 @@ export function useMarkClientAsLoss() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operational-clients'] });
       queryClient.invalidateQueries({ queryKey: ['crm-events'] });
+      queryClient.invalidateQueries({ queryKey: ['operational-sales-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['championship-teams'] });
       queryClient.invalidateQueries({ queryKey: ['championship-events'] });
     },
@@ -488,6 +537,7 @@ export function useMarkClientAsRenewed() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operational-clients'] });
       queryClient.invalidateQueries({ queryKey: ['crm-events'] });
+      queryClient.invalidateQueries({ queryKey: ['operational-sales-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['championship-teams'] });
       queryClient.invalidateQueries({ queryKey: ['championship-events'] });
     },
@@ -545,7 +595,17 @@ export function useOperationalSalesMetrics() {
       // Get operational clients with their team info
       const { data: clients, error: clientsError } = await supabase
         .from('operational_clients')
-        .select('id, client_name, team_id');
+        .select(`
+          id,
+          client_name,
+          team_id,
+          renewal_status,
+          renewal_date,
+          renewal_responsible_team_id,
+          churn_status,
+          churn_date,
+          churn_responsible_team_id
+        `);
 
       if (clientsError) throw clientsError;
 
@@ -560,6 +620,32 @@ export function useOperationalSalesMetrics() {
       const clientTeamMap = new Map(clients?.map(c => [c.id, c.team_id]) || []);
       const clientNameMap = new Map(clients?.map(c => [c.id, c.client_name]) || []);
       const teamNameMap = new Map(teams?.map(t => [t.id, t.name]) || []);
+
+      const renewalEvents = (clients || [])
+        .filter((client) => client.renewal_status === 'RENEWED' && client.renewal_date)
+        .map((client) => {
+          const teamId = client.renewal_responsible_team_id || client.team_id;
+          return {
+            clientId: client.id,
+            clientName: client.client_name,
+            teamId,
+            teamName: teamNameMap.get(teamId || '') || 'Sem equipe',
+            created_at: client.renewal_date as string,
+          };
+        });
+
+      const lossEvents = (clients || [])
+        .filter((client) => client.churn_status === 'CONFIRMED' && client.churn_date)
+        .map((client) => {
+          const teamId = client.churn_responsible_team_id || client.team_id;
+          return {
+            clientId: client.id,
+            clientName: client.client_name,
+            teamId,
+            teamName: teamNameMap.get(teamId || '') || 'Sem equipe',
+            created_at: client.churn_date as string,
+          };
+        });
 
       // Aggregate sales by team
       const teamSales: Record<string, { teamName: string; totalValue: number; salesCount: number }> = {};
@@ -590,11 +676,15 @@ export function useOperationalSalesMetrics() {
         })),
         totalSalesValue,
         totalSalesCount,
+        totalRenewalsCount: renewalEvents.length,
+        totalLossesCount: lossEvents.length,
         salesEvents: salesEvents?.map(e => ({
           ...e,
           clientName: clientNameMap.get(e.client_id) || 'Cliente',
           teamName: teamNameMap.get(clientTeamMap.get(e.client_id) || '') || 'Sem equipe',
         })) || [],
+        renewalEvents,
+        lossEvents,
       };
     },
   });

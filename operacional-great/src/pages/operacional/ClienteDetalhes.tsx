@@ -253,8 +253,32 @@ export default function ClienteDetalhes() {
           file_size: file.size,
           uploaded_by_user_id: user.id,
         });
+
+        const { data: existingCreative } = await supabase
+          .from('ad_creatives')
+          .select('id')
+          .eq('client_id', clientId)
+          .eq('image_url', urlData.publicUrl)
+          .maybeSingle();
+
+        if (!existingCreative) {
+          const { error: creativeError } = await supabase.from('ad_creatives').insert({
+            client_name: client.client_name,
+            client_id: clientId,
+            image_url: urlData.publicUrl,
+            image_urls: [urlData.publicUrl],
+            created_by_user_id: user.id,
+            created_by_name: user.name,
+            status: 'PARA_SUBIR',
+          });
+
+          if (creativeError) throw creativeError;
+        }
       }
       queryClient.invalidateQueries({ queryKey: ['client-files', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-ad-creatives', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['ad-creatives'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-creatives-list'] });
       toast.success('Arquivo(s) enviado(s)');
     } catch {
       toast.error('Erro ao enviar arquivo');

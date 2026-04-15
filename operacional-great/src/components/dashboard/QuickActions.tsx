@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Plus, CheckCircle, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserPreference } from '@/hooks/useUserPreference';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 import {
   Dialog,
   DialogContent,
@@ -32,19 +32,18 @@ export function QuickActions({ className }: QuickActionsProps) {
   const { user, getModule } = useAuth();
   const currentModule = getModule();
   const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
-  const [isCheckedIn, setIsCheckedIn] = useState(() => {
-    const today = new Date().toDateString();
-    const lastCheckIn = safeGetItem('great_last_checkin');
-    return lastCheckIn === today;
-  });
+  const today = new Date().toDateString();
+  const { value: lastCheckIn, setValue: setLastCheckIn } = useUserPreference<string | null>(
+    'great_last_checkin',
+    null,
+  );
+  const isCheckedIn = lastCheckIn === today;
 
-  const handleCheckIn = () => {
-    const today = new Date().toDateString();
-    safeSetItem('great_last_checkin', today);
-    setIsCheckedIn(true);
+  const handleCheckIn = async () => {
+    await setLastCheckIn(today);
     setIsCheckInDialogOpen(false);
     toast.success('Check-in realizado com sucesso!', {
-      description: `Você fez check-in às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
+      description: `VocÃª fez check-in Ã s ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
     });
   };
 
@@ -61,17 +60,17 @@ export function QuickActions({ className }: QuickActionsProps) {
       id: 'create-task',
       label: 'Criar tarefa',
       icon: ClipboardList,
-      onClick: () => toast.info('Em breve!', { description: 'Funcionalidade de criação de tarefas em desenvolvimento.' }),
+      onClick: () => toast.info('Em breve!', { description: 'Funcionalidade de criaÃ§Ã£o de tarefas em desenvolvimento.' }),
       module: 'OPERACIONAL',
       roles: ['GESTOR', 'COORDENADOR_RED'],
     },
     {
       id: 'checkin',
-      label: isCheckedIn ? 'Check-in feito ✓' : 'Fazer check-in',
+      label: isCheckedIn ? 'Check-in feito âœ“' : 'Fazer check-in',
       icon: CheckCircle,
       onClick: () => {
         if (isCheckedIn) {
-          toast.info('Você já fez check-in hoje!');
+          toast.info('VocÃª jÃ¡ fez check-in hoje!');
         } else {
           setIsCheckInDialogOpen(true);
         }
@@ -113,7 +112,7 @@ export function QuickActions({ className }: QuickActionsProps) {
           <DialogHeader>
             <DialogTitle>Confirmar Check-in</DialogTitle>
             <DialogDescription>
-              Você está prestes a registrar seu check-in de hoje, {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.
+              VocÃª estÃ¡ prestes a registrar seu check-in de hoje, {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">

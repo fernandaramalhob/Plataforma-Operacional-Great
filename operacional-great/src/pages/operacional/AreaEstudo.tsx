@@ -86,12 +86,12 @@ export default function AreaEstudo() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["study-resources"] });
-      toast.success(editingResource ? "Conteúdo atualizado!" : "Conteúdo adicionado!");
+      toast.success(editingResource ? "ConteÃºdo atualizado!" : "ConteÃºdo adicionado!");
       setIsAddOpen(false);
       setEditingResource(null);
       setForm({ category_id: "", title: "", description: "", source_url: "" });
     },
-    onError: () => toast.error("Erro ao salvar conteúdo"),
+    onError: () => toast.error("Erro ao salvar conteÃºdo"),
   });
 
   const deleteMutation = useMutation({
@@ -101,7 +101,7 @@ export default function AreaEstudo() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["study-resources"] });
-      toast.success("Conteúdo removido!");
+      toast.success("ConteÃºdo removido!");
     },
   });
 
@@ -121,27 +121,27 @@ export default function AreaEstudo() {
   };
 
   return (
-    <div className="grid min-h-[calc(100vh-8.5rem)] grid-cols-1 overflow-hidden rounded-[28px] border border-border bg-card shadow-card lg:grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="border-b border-border bg-surface-1 lg:border-b-0 lg:border-r">
-        <div className="border-b border-border p-4">
+    <div className="grid min-h-[calc(100vh-8.5rem)] grid-cols-1 overflow-hidden rounded-[32px] border border-primary/10 bg-card shadow-[0_20px_50px_rgba(225,6,0,0.08)] lg:grid-cols-[280px_minmax(0,1fr)]">
+      <aside className="border-b border-primary/10 bg-[linear-gradient(180deg,rgba(255,248,248,1),rgba(255,255,255,1))] lg:border-b-0 lg:border-r">
+        <div className="border-b border-primary/10 p-5">
           <h2 className="flex items-center gap-2 font-semibold text-foreground">
             <BookOpen className="h-5 w-5 text-primary" />
-            Áreas de estudo
+            Ãreas de estudo
           </h2>
         </div>
         <ScrollArea className="h-[220px] lg:h-[calc(100vh-17rem)]">
           <div className="space-y-1 p-2">
             <button
               onClick={() => setSelectedCategory("all")}
-              className={cn("w-full rounded-xl px-3 py-2 text-left text-sm", selectedCategory === "all" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-surface-2")}
+                className={cn("w-full rounded-xl px-3 py-2 text-left text-sm transition-colors", selectedCategory === "all" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-primary/5 hover:text-foreground")}
             >
-              Todos os conteúdos
+              Todos os conteÃºdos
             </button>
             {categories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
-                className={cn("w-full rounded-xl px-3 py-2 text-left text-sm", selectedCategory === category.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-surface-2")}
+                className={cn("w-full rounded-xl px-3 py-2 text-left text-sm transition-colors", selectedCategory === category.id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-primary/5 hover:text-foreground")}
               >
                 {category.name}
               </button>
@@ -150,17 +150,17 @@ export default function AreaEstudo() {
         </ScrollArea>
       </aside>
 
-      <section className="min-w-0 bg-background">
-        <div className="border-b border-border px-5 py-5 md:px-6">
+      <section className="min-w-0 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(255,250,250,0.96))]">
+        <div className="border-b border-primary/10 px-5 py-5 md:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">Área de Estudos</h1>
-              <p className="text-sm text-muted-foreground">Conteúdos do setor operacional.</p>
+              <h1 className="text-2xl font-semibold text-foreground">Ãrea de Estudos</h1>
+              <p className="text-sm text-muted-foreground">ConteÃºdos do setor operacional.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex rounded-2xl border border-border bg-card p-1">
-                <span className="rounded-xl bg-primary/10 px-4 py-2 text-sm font-medium text-primary">Conteúdos</span>
-                <Link to="/operacional/great-study-ai" className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-muted-foreground hover:bg-surface-2 hover:text-foreground">
+              <div className="inline-flex rounded-2xl border border-primary/10 bg-card p-1 shadow-sm">
+                <span className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">ConteÃºdos</span>
+                <Link to="/operacional/great-study-ai" className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-primary/5 hover:text-foreground">
                   <Bot className="h-4 w-4 text-primary" />
                   Great Study AI
                 </Link>
@@ -173,18 +173,18 @@ export default function AreaEstudo() {
                       setForm({ category_id: "", title: "", description: "", source_url: "" });
                     }}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Adicionar conteúdo
+                      Adicionar conteÃºdo
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-lg">
                     <DialogHeader>
-                      <DialogTitle>{editingResource ? "Editar conteúdo" : "Adicionar conteúdo"}</DialogTitle>
+                      <DialogTitle>{editingResource ? "Editar conteÃºdo" : "Adicionar conteÃºdo"}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 pt-4">
                       <div>
-                        <Label>Área</Label>
+                        <Label>Ãrea</Label>
                         <Select value={form.category_id} onValueChange={(value) => setForm((prev) => ({ ...prev, category_id: value }))}>
-                          <SelectTrigger><SelectValue placeholder="Selecione uma área" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Selecione uma Ã¡rea" /></SelectTrigger>
                           <SelectContent>
                             {categories.map((category) => (
                               <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
@@ -193,11 +193,11 @@ export default function AreaEstudo() {
                         </Select>
                       </div>
                       <div>
-                        <Label>Título</Label>
+                        <Label>TÃ­tulo</Label>
                         <Input value={form.title} onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))} />
                       </div>
                       <div>
-                        <Label>Descrição</Label>
+                        <Label>DescriÃ§Ã£o</Label>
                         <Textarea value={form.description} onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))} />
                       </div>
                       <div>
@@ -215,7 +215,7 @@ export default function AreaEstudo() {
           </div>
           <div className="relative mt-4 max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por título..." className="pl-9" />
+            <Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por tÃ­tulo..." className="pl-9" />
           </div>
         </div>
 
@@ -226,16 +226,16 @@ export default function AreaEstudo() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : filteredResources.length === 0 ? (
-              <div className="col-span-full rounded-[24px] border border-dashed border-border bg-card p-10 text-center">
+              <div className="col-span-full rounded-[24px] border border-dashed border-primary/15 bg-card p-10 text-center">
                 <BookOpen className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
-                <h3 className="mb-2 text-lg font-medium text-foreground">Nenhum conteúdo encontrado</h3>
+                <h3 className="mb-2 text-lg font-medium text-foreground">Nenhum conteÃºdo encontrado</h3>
                 <p className="text-sm text-muted-foreground">Use a busca ou cadastre um novo material.</p>
               </div>
             ) : (
               filteredResources.map((resource) => {
                 const category = categories.find((item) => item.id === resource.category_id);
                 return (
-                  <Card key={resource.id} className="border-border transition-colors hover:border-primary/30">
+                  <Card key={resource.id} className="border-primary/10 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(255,247,247,0.96))] transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_16px_30px_rgba(225,6,0,0.08)]">
                     <CardHeader>
                       <div className="flex items-center justify-between gap-3">
                         <span className="rounded-full px-2 py-1 text-xs" style={{ backgroundColor: category?.color ? `${category.color}20` : "hsl(var(--primary) / 0.1)", color: category?.color || "hsl(var(--primary))" }}>

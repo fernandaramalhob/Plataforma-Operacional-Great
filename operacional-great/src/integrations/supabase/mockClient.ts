@@ -2,6 +2,7 @@
 // Used when VITE_SUPABASE_PUBLISHABLE_KEY=mock_key
 
 const DB_PREFIX = 'mock_db_';
+const STORAGE_PREFIX = 'mock_storage_';
 
 function getTable(table: string): any[] {
   const stored = localStorage.getItem(`${DB_PREFIX}${table}`);
@@ -15,6 +16,24 @@ function saveTable(table: string, data: any[]): void {
 function seedIfEmpty(table: string, rows: any[]): void {
   const existing = getTable(table);
   if (existing.length === 0) saveTable(table, rows);
+}
+
+function getStorageBucket(bucket: string): Record<string, string> {
+  const stored = localStorage.getItem(`${STORAGE_PREFIX}${bucket}`);
+  return stored ? JSON.parse(stored) : {};
+}
+
+function saveStorageBucket(bucket: string, data: Record<string, string>): void {
+  localStorage.setItem(`${STORAGE_PREFIX}${bucket}`, JSON.stringify(data));
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 // Seed default data
@@ -54,6 +73,10 @@ function seedDefaultData() {
   seedIfEmpty('exec_cards', []);
   seedIfEmpty('meetings', []);
   seedIfEmpty('profiles', []);
+  seedIfEmpty('study_categories', []);
+  seedIfEmpty('study_resources', []);
+  seedIfEmpty('crm_events', []);
+  seedIfEmpty('client_activity_tracking', []);
 }
 
 seedDefaultData();
@@ -312,6 +335,31 @@ class MockChannel {
   unsubscribe(): void {}
 }
 
+class MockStorageBucket {
+  constructor(private bucket: string) {}
+
+  async upload(path: string, file: File) {
+    const bucketData = getStorageBucket(this.bucket);
+    bucketData[path] = await readFileAsDataUrl(file);
+    saveStorageBucket(this.bucket, bucketData);
+    return { data: { path }, error: null };
+  }
+
+  getPublicUrl(path: string) {
+    const bucketData = getStorageBucket(this.bucket);
+    return { data: { publicUrl: bucketData[path] || '' } };
+  }
+
+  async remove(paths: string[]) {
+    const bucketData = getStorageBucket(this.bucket);
+    paths.forEach((path) => {
+      delete bucketData[path];
+    });
+    saveStorageBucket(this.bucket, bucketData);
+    return { data: null, error: null };
+  }
+}
+
 // Mock Client
 
 export class MockSupabaseClient {
@@ -325,8 +373,17 @@ export class MockSupabaseClient {
 
   removeChannel(_channel: any): void {}
 
+  storage = {
+    from: (bucket: string) => new MockStorageBucket(bucket),
+  };
+
   auth = {
     getSession: async () => ({ data: { session: null }, error: null }),
+    getUser: async () => {
+      const rawUser = localStorage.getItem('great_user');
+      const user = rawUser ? JSON.parse(rawUser) : null;
+      return { data: { user }, error: null };
+    },
     onAuthStateChange: (_event: any, _callback: any) => ({
       data: { subscription: { unsubscribe: () => {} } },
     }),
