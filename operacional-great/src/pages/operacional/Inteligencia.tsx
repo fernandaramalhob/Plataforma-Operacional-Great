@@ -1,148 +1,199 @@
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { subDays, startOfMonth, startOfWeek } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { useOperationalSalesMetrics } from '@/hooks/useCRMData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useState } from 'react';
 import {
-  TrendingUp,
-  TrendingDown,
-  Users,
-  Clock,
-  AlertTriangle,
-  CheckCircle,
-  Target,
-  BarChart3,
-  Activity,
-  RefreshCw,
   Award,
-  DollarSign,
-  ShoppingCart,
+  CalendarClock,
+  Crown,
+  Medal,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+  Users,
 } from 'lucide-react';
-import { useOperationalSalesMetrics } from '@/hooks/useCRMData';
+
+type PeriodFilter = 'week' | 'month' | 'year';
+
+type SalesEvent = {
+  id: string;
+  created_at: string;
+  sale_value: number | null;
+  teamName: string;
+  clientName: string;
+};
+
+type TeamRanking = {
+  teamName: string;
+  totalValue: number;
+  salesCount: number;
+  averageTicket: number;
+};
+
+function formatCurrency(value: number) {
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function getPeriodStart(period: PeriodFilter) {
+  const now = new Date();
+  if (period === 'week') return startOfWeek(now, { weekStartsOn: 1, locale: ptBR });
+  if (period === 'month') return startOfMonth(now);
+  return new Date(now.getFullYear(), 0, 1);
+}
+
+function getMonthName(monthIndex: number) {
+  return new Date(2026, monthIndex, 1).toLocaleDateString('pt-BR', { month: 'long' });
+}
 
 export default function Inteligencia() {
-  const [periodFilter, setPeriodFilter] = useState('month');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('week');
+  const { data: salesMetrics, isLoading: loadingSales } = useOperationalSalesMetrics();
 
-  // Fetch operational clients for metrics
-  const { data: clients, isLoading: loadingClients } = useQuery({
-    queryKey: ['operational-clients-intel'],
+  const { data: teams = [], isLoading: loadingTeams } = useQuery({
+    queryKey: ['teams-ranking'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('operational_clients')
-        .select('*');
-      
+      const { data, error } = await supabase.from('teams').select('id, name').order('name');
       if (error) throw error;
       return data;
     },
   });
 
-  // Fetch work items for throughput
-  const { data: workItems, isLoading: loadingWorkItems } = useQuery({
-    queryKey: ['work-items-intel'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('work_items')
-        .select('*');
-      
-      if (error) throw error;
-      return data;
-    },
+  const salesEvents = (salesMetrics?.salesEvents || []) as SalesEvent[];
+  const currentYear = new Date().getFullYear();
+
+  const filteredSales = useMemo(() => {
+    const startDate = getPeriodStart(periodFilter);
+    return salesEvents.filter((event) => new Date(event.created_at) >= startDate);
+  }, [periodFilter, salesEvents]);
+
+  const ranking = useMemo<TeamRanking[]>(() => {
+    const accumulator = new Map<string, TeamRanking>();
+
+    filteredSales.forEach((event) => {
+      const current = accumulator.get(event.teamName) || {
+        teamName: event.teamName,
+        totalValue: 0,
+        salesCount: 0,
+        averageTicket: 0,
+      };
+
+      current.totalValue += event.sale_value || 0;
+      current.salesCount += 1;
+      current.averageTicket = current.salesCount > 0 ? current.totalValue / current.salesCount : 0;
+      accumulator.set(event.teamName, current);
+    });
+
+    teams.forEach((team) => {
+      if (!accumulator.has(team.name)) {
+        accumulator.set(team.name, {
+          teamName: team.name,
+          totalValue: 0,
+          salesCount: 0,
+          averageTicket: 0,
+        });
+      }
+    });
+
+    return Array.from(accumulator.values()).sort((a, b) => {
+      if (b.totalValue !== a.totalValue) return b.totalValue - a.totalValue;
+      return b.salesCount - a.salesCount;
+    });
+  }, [filteredSales, teams]);
+
+  const annualRanking = useMemo<TeamRanking[]>(() => {
+    const yearlySales = salesEvents.filter(
+      (event) => new Date(event.created_at).getFullYear() === currentYear,
+    );
+
+    const accumulator = new Map<string, TeamRanking>();
+
+    yearlySales.forEach((event) => {
+      const current = accumulator.get(event.teamName) || {
+        teamName: event.teamName,
+        totalValue: 0,
+        salesCount: 0,
+        averageTicket: 0,
+      };
+
+      current.totalValue += event.sale_value || 0;
+      current.salesCount += 1;
+      current.averageTicket = current.salesCount > 0 ? current.totalValue / current.salesCount : 0;
+      accumulator.set(event.teamName, current);
+    });
+
+    teams.forEach((team) => {
+      if (!accumulator.has(team.name)) {
+        accumulator.set(team.name, {
+          teamName: team.name,
+          totalValue: 0,
+          salesCount: 0,
+          averageTicket: 0,
+        });
+      }
+    });
+
+    return Array.from(accumulator.values()).sort((a, b) => {
+      if (b.totalValue !== a.totalValue) return b.totalValue - a.totalValue;
+      return b.salesCount - a.salesCount;
+    });
+  }, [currentYear, salesEvents, teams]);
+
+  const monthlyBreakdown = useMemo(() => {
+    return Array.from({ length: 12 }, (_, monthIndex) => {
+      const monthSales = salesEvents.filter((event) => {
+        const date = new Date(event.created_at);
+        return date.getFullYear() === currentYear && date.getMonth() === monthIndex;
+      });
+
+      const total = monthSales.reduce((sum, event) => sum + (event.sale_value || 0), 0);
+      const count = monthSales.length;
+
+      return {
+        monthIndex,
+        label: getMonthName(monthIndex),
+        total,
+        count,
+      };
+    });
+  }, [currentYear, salesEvents]);
+
+  const bestMonth = monthlyBreakdown.reduce((best, current) =>
+    current.total > best.total ? current : best,
+  );
+
+  const worstMonth = monthlyBreakdown.reduce((worst, current) =>
+    current.total < worst.total ? current : worst,
+  );
+
+  const last30Days = salesEvents.filter((event) => new Date(event.created_at) >= subDays(new Date(), 30));
+  const previous30Days = salesEvents.filter((event) => {
+    const createdAt = new Date(event.created_at);
+    return createdAt < subDays(new Date(), 30) && createdAt >= subDays(new Date(), 60);
   });
 
-  // Fetch teams
-  const { data: teams = [] } = useQuery({
-    queryKey: ['teams-intel'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('teams')
-        .select('*');
-      
-      if (error) throw error;
-      return data;
-    },
-  });
+  const last30Total = last30Days.reduce((sum, event) => sum + (event.sale_value || 0), 0);
+  const previous30Total = previous30Days.reduce((sum, event) => sum + (event.sale_value || 0), 0);
+  const growth =
+    previous30Total > 0 ? Math.round(((last30Total - previous30Total) / previous30Total) * 100) : 0;
 
-  // Fetch operational sales metrics
-  const { data: salesMetrics } = useOperationalSalesMetrics();
-
-  // Calculate metrics
-  const activeClients = clients?.filter(c => c.status_operacional === 'ATIVO').length || 0;
-  const newClients = clients?.filter(c => c.status_operacional === 'NOVO_CLIENTE').length || 0;
-  const onboardingClients = clients?.filter(c => c.onboarding_stage && c.onboarding_stage !== 'CONCLUIDO').length || 0;
-  const pausedClients = clients?.filter(c => c.status_operacional === 'PAUSADO').length || 0;
-  const endedClients = clients?.filter(c => c.status_operacional === 'ENCERRADO').length || 0;
-
-  // Churn and Renewal metrics
-  const lostClients = clients?.filter(c => c.churn_status === 'CONFIRMED') || [];
-  const renewedClients = clients?.filter(c => c.renewal_status === 'RENEWED') || [];
-
-  const completedTasks = workItems?.filter(w => w.status === 'DONE' || w.status === 'CONCLUIDO').length || 0;
-  const blockedTasks = workItems?.filter(w => w.status === 'BLOCKED' || w.status === 'BLOQUEADO').length || 0;
-  const inProgressTasks = workItems?.filter(w => w.status === 'DOING' || w.status === 'EM_ANDAMENTO').length || 0;
-  const totalTasks = workItems?.length || 0;
-
-  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-  // Calculate team stats with sales
-  const teamStats = teams.map(team => {
-    const teamLostClients = lostClients.filter(c => c.churn_responsible_team_id === team.id);
-    const teamRenewedClients = renewedClients.filter(c => c.renewal_responsible_team_id === team.id);
-    const teamTasks = workItems?.filter(w => w.team_id === team.id) || [];
-    const teamCompletedTasks = teamTasks.filter(w => w.status === 'DONE' || w.status === 'CONCLUIDO');
-    const teamSalesData = salesMetrics?.teamSales.find(s => s.teamId === team.id);
-    
-    return {
-      id: team.id,
-      name: team.name,
-      losses: teamLostClients.length,
-      renewals: teamRenewedClients.length,
-      tasksCompleted: teamCompletedTasks.length,
-      totalTasks: teamTasks.length,
-      completionRate: teamTasks.length > 0 ? Math.round((teamCompletedTasks.length / teamTasks.length) * 100) : 0,
-      salesValue: teamSalesData?.totalValue || 0,
-      salesCount: teamSalesData?.salesCount || 0,
-    };
-  });
-
-  // Calculate sector stats (by stage)
-  const sectorStats = {
-    trafego: {
-      losses: lostClients.filter(c => c.stage_trafego === 'BLOQUEADO').length,
-      clients: clients?.filter(c => c.stage_trafego && c.stage_trafego !== 'NAO_INICIADO').length || 0,
-    },
-    atendimento: {
-      losses: lostClients.filter(c => c.stage_atendimento === 'BLOQUEADO').length,
-      clients: clients?.filter(c => c.stage_atendimento && c.stage_atendimento !== 'NAO_INICIADO').length || 0,
-    },
-    marketing: {
-      losses: lostClients.filter(c => c.stage_marketing === 'BLOQUEADO').length,
-      clients: clients?.filter(c => c.stage_marketing && c.stage_marketing !== 'NAO_INICIADO').length || 0,
-    },
-  };
-
-  // Top performing team
-  const topTeamByRenewals = [...teamStats].sort((a, b) => b.renewals - a.renewals)[0];
-  const topTeamByTasks = [...teamStats].sort((a, b) => b.completionRate - a.completionRate)[0];
-  const worstTeamByLosses = [...teamStats].sort((a, b) => b.losses - a.losses)[0];
-
-  const isLoading = loadingClients || loadingWorkItems;
+  const leader = ranking[0];
+  const annualLeader = annualRanking[0];
+  const isLoading = loadingSales || loadingTeams;
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-10 w-48" />
-        <div className="grid grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-32" />
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-10 w-56" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => (
+            <Skeleton key={item} className="h-32" />
           ))}
         </div>
       </div>
@@ -150,391 +201,228 @@ export default function Inteligencia() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Inteligência Operacional</h1>
+          <h1 className="text-2xl font-bold text-foreground">Ranking entre Equipes</h1>
           <p className="text-sm text-muted-foreground">
-            Métricas de performance, perdas, renovações e análise por equipe
+            Veja quem está liderando nas vendas operacionais por semana, mês e ano.
           </p>
         </div>
 
-        <Select value={periodFilter} onValueChange={setPeriodFilter}>
-          <SelectTrigger className="w-40">
+        <Select value={periodFilter} onValueChange={(value) => setPeriodFilter(value as PeriodFilter)}>
+          <SelectTrigger className="w-full lg:w-56">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="week">Esta Semana</SelectItem>
-            <SelectItem value="month">Este Mês</SelectItem>
-            <SelectItem value="quarter">Trimestre</SelectItem>
+            <SelectItem value="week">Semanal</SelectItem>
+            <SelectItem value="month">Mensal</SelectItem>
+            <SelectItem value="year">Anual</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Main KPIs */}
-      <div className="grid grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Ativos</span>
-              <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
-                <CheckCircle className="h-4 w-4 text-success" />
+      <div className="grid gap-4 lg:grid-cols-4">
+        <Card className="lg:col-span-2 border-primary/20 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Crown className="h-5 w-5 text-primary" />
+              Equipe que está ganhando
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {leader ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{leader.teamName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Liderando o ranking {periodFilter === 'week' ? 'semanal' : periodFilter === 'month' ? 'mensal' : 'anual'}
+                    </p>
+                  </div>
+                  <Badge className="bg-primary text-primary-foreground">1º lugar</Badge>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-lg border border-border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">Vendas</p>
+                    <p className="text-xl font-semibold">{leader.salesCount}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">Faturamento</p>
+                    <p className="text-xl font-semibold">{formatCurrency(leader.totalValue)}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">Ticket medio</p>
+                    <p className="text-xl font-semibold">{formatCurrency(leader.averageTicket)}</p>
+                  </div>
+                </div>
               </div>
-            </div>
-            <p className="text-3xl font-bold">{activeClients}</p>
-            <div className="flex items-center gap-1 mt-1">
-              <TrendingUp className="h-3 w-3 text-success" />
-              <span className="text-xs text-success">+{newClients} novos</span>
-            </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Ainda nao ha vendas no periodo selecionado.</p>
+            )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Renovações</span>
-              <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
-                <RefreshCw className="h-4 w-4 text-success" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-success">{renewedClients.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Contratos renovados</p>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-5 w-5 text-success" />
+              Ultimos 30 dias
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(last30Total)}</p>
+            <p className="text-sm text-muted-foreground">{last30Days.length} vendas no periodo</p>
+            <Badge variant="outline" className={growth >= 0 ? 'text-success border-success/30' : 'text-destructive border-destructive/30'}>
+              {growth >= 0 ? '+' : ''}
+              {growth}% vs 30 dias anteriores
+            </Badge>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Perdas</span>
-              <div className="h-8 w-8 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <TrendingDown className="h-4 w-4 text-destructive" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-destructive">{lostClients.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Cancelamentos</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Onboarding</span>
-              <div className="h-8 w-8 rounded-lg bg-warning/10 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-warning" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold">{onboardingClients}</p>
-            <p className="text-xs text-muted-foreground mt-1">Em processo</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Taxa Retenção</span>
-              <div className="h-8 w-8 rounded-lg bg-info/10 flex items-center justify-center">
-                <Target className="h-4 w-4 text-info" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold">
-              {activeClients > 0 ? Math.round(((activeClients - lostClients.length) / activeClients) * 100) : 100}%
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Trophy className="h-5 w-5 text-warning" />
+              Lider anual
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-lg font-bold text-foreground">{annualLeader?.teamName || 'Sem lider'}</p>
+            <p className="text-sm text-muted-foreground">
+              {annualLeader ? formatCurrency(annualLeader.totalValue) : 'Sem vendas no ano'}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Clientes mantidos</p>
+            <p className="text-xs text-muted-foreground">
+              {annualLeader?.salesCount || 0} vendas em {currentYear}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Team Performance */}
-      <div className="grid grid-cols-3 gap-6">
-        {/* Team Rankings */}
-        <Card className="col-span-2">
+      <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Award className="h-5 w-5" />
-              Desempenho por Equipe
+              Ranking do periodo
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {teamStats.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Nenhuma equipe cadastrada</p>
-                </div>
-              ) : (
-                teamStats.map((team) => (
-                  <div key={team.id} className="p-4 rounded-lg border border-border bg-surface">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-foreground">{team.name}</h4>
-                      <div className="flex items-center gap-2">
-                        {team.salesValue > 0 && (
-                          <Badge className="bg-success/10 text-success border-success/20">
-                            R$ {team.salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className={team.completionRate >= 70 ? 'border-success/30 text-success' : 'border-warning/30 text-warning'}>
-                          {team.completionRate}% tarefas
-                        </Badge>
-                      </div>
+            <div className="space-y-3">
+              {ranking.map((team, index) => (
+                <div key={team.teamName} className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary">
+                      {index === 0 ? <Crown className="h-5 w-5" /> : index + 1}
                     </div>
-                    
-                    <div className="grid grid-cols-5 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Tarefas</p>
-                        <p className="font-bold">{team.tasksCompleted}/{team.totalTasks}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Renovações</p>
-                        <p className="font-bold text-success">{team.renewals}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Perdas</p>
-                        <p className="font-bold text-destructive">{team.losses}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Vendas Op.</p>
-                        <p className="font-bold text-success">{team.salesCount}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Progresso</p>
-                        <Progress value={team.completionRate} className="mt-1.5" />
-                      </div>
+                    <div>
+                      <p className="font-semibold text-foreground">{team.teamName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {team.salesCount} vendas • ticket medio {formatCurrency(team.averageTicket)}
+                      </p>
                     </div>
                   </div>
-                ))
-              )}
+                  <div className="text-right">
+                    <p className="font-semibold text-foreground">{formatCurrency(team.totalValue)}</p>
+                    {index === 0 && (
+                      <Badge className="mt-1 bg-primary text-primary-foreground">Na frente</Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Highlights */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Activity className="h-5 w-5" />
-              Destaques
+              <Users className="h-5 w-5" />
+              Resumo do ano
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {topTeamByRenewals && topTeamByRenewals.renewals > 0 && (
-                <div className="p-3 rounded-lg bg-success/10 border border-success/20">
-                  <p className="text-xs text-success font-medium mb-1">🏆 Mais Renovações</p>
-                  <p className="font-semibold text-foreground">{topTeamByRenewals.name}</p>
-                  <p className="text-sm text-muted-foreground">{topTeamByRenewals.renewals} renovações</p>
-                </div>
-              )}
+          <CardContent className="space-y-4">
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <p className="text-xs text-muted-foreground">Melhor mes</p>
+              <p className="text-lg font-semibold text-foreground capitalize">{bestMonth.label}</p>
+              <p className="text-sm text-muted-foreground">
+                {formatCurrency(bestMonth.total)} • {bestMonth.count} vendas
+              </p>
+            </div>
 
-              {topTeamByTasks && topTeamByTasks.totalTasks > 0 && (
-                <div className="p-3 rounded-lg bg-info/10 border border-info/20">
-                  <p className="text-xs text-info font-medium mb-1">⚡ Mais Produtiva</p>
-                  <p className="font-semibold text-foreground">{topTeamByTasks.name}</p>
-                  <p className="text-sm text-muted-foreground">{topTeamByTasks.completionRate}% conclusão</p>
-                </div>
-              )}
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <p className="text-xs text-muted-foreground">Mes com menor venda</p>
+              <p className="text-lg font-semibold text-foreground capitalize">{worstMonth.label}</p>
+              <p className="text-sm text-muted-foreground">
+                {formatCurrency(worstMonth.total)} • {worstMonth.count} vendas
+              </p>
+            </div>
 
-              {worstTeamByLosses && worstTeamByLosses.losses > 0 && (
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                  <p className="text-xs text-destructive font-medium mb-1">⚠️ Mais Perdas</p>
-                  <p className="font-semibold text-foreground">{worstTeamByLosses.name}</p>
-                  <p className="text-sm text-muted-foreground">{worstTeamByLosses.losses} perdas</p>
-                </div>
-              )}
-
-              {(!topTeamByRenewals || topTeamByRenewals.renewals === 0) && 
-               (!topTeamByTasks || topTeamByTasks.totalTasks === 0) && 
-               (!worstTeamByLosses || worstTeamByLosses.losses === 0) && (
-                <div className="text-center py-6 text-muted-foreground">
-                  <CheckCircle className="h-8 w-8 mx-auto mb-2 text-success" />
-                  <p className="text-sm">Dados ainda sendo coletados</p>
-                </div>
-              )}
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <p className="text-xs text-muted-foreground">Retrospectiva</p>
+              <p className="text-sm text-foreground">
+                O ano soma {formatCurrency(salesMetrics?.totalSalesValue || 0)} em vendas operacionais,
+                com destaque para {annualLeader?.teamName || 'nenhuma equipe lider'}.
+              </p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Sector Analysis */}
-      <div className="grid grid-cols-3 gap-6">
-        {/* Sector Losses */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <BarChart3 className="h-5 w-5" />
-              Perdas por Setor
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-blue-500" />
-                  <span className="text-sm">Tráfego</span>
-                </div>
-                <Badge variant="outline">{sectorStats.trafego.losses} perdas</Badge>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-green-500" />
-                  <span className="text-sm">Atendimento</span>
-                </div>
-                <Badge variant="outline">{sectorStats.atendimento.losses} perdas</Badge>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-purple-500" />
-                  <span className="text-sm">Marketing</span>
-                </div>
-                <Badge variant="outline">{sectorStats.marketing.losses} perdas</Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Throughput */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Target className="h-5 w-5" />
-              Throughput
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Tarefas concluídas</span>
-                <span className="font-bold text-lg">{completedTasks}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Em andamento</span>
-                <span className="font-bold text-lg">{inProgressTasks}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Bloqueadas</span>
-                <span className="font-bold text-lg text-destructive">{blockedTasks}</span>
-              </div>
-              <div className="pt-3 border-t">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarClock className="h-5 w-5" />
+            Retrospectiva mensal do ano
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {monthlyBreakdown.map((month) => (
+              <div key={month.monthIndex} className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Taxa de conclusão</span>
-                  <Badge variant={completionRate >= 70 ? 'default' : 'destructive'}>
-                    {completionRate}%
-                  </Badge>
+                  <p className="font-semibold text-foreground capitalize">{month.label}</p>
+                  {month.total === bestMonth.total && month.total > 0 && (
+                    <Medal className="h-4 w-4 text-warning" />
+                  )}
+                  {month.total === worstMonth.total && month.total === 0 && (
+                    <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                  )}
                 </div>
+                <p className="mt-3 text-lg font-bold text-foreground">{formatCurrency(month.total)}</p>
+                <p className="text-sm text-muted-foreground">{month.count} vendas</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Loss Reasons Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="h-5 w-5" />
-              Motivos de Perda
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {lostClients.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <CheckCircle className="h-8 w-8 mx-auto mb-2 text-success" />
-                <p className="text-sm">Nenhuma perda registrada</p>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {lostClients.map((client) => (
-                  <div key={client.id} className="p-2 rounded-lg bg-destructive/5 border border-destructive/20">
-                    <p className="text-sm font-medium text-foreground">{client.client_name}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {client.churn_reason || 'Motivo não informado'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Operational Sales Section */}
-      <div className="grid grid-cols-3 gap-6">
-        {/* Sales by Team */}
-        <Card className="col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ShoppingCart className="h-5 w-5" />
-              Vendas Operacionais por Equipe
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {(!salesMetrics?.teamSales || salesMetrics.teamSales.length === 0) ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <DollarSign className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>Nenhuma venda operacional registrada</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {salesMetrics.teamSales
-                  .sort((a, b) => b.totalValue - a.totalValue)
-                  .map((team) => (
-                    <div key={team.teamId} className="p-4 rounded-lg border border-border bg-surface">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold text-foreground">{team.teamName}</h4>
-                        <Badge className="bg-success text-white">
-                          R$ {team.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>{team.salesCount} {team.salesCount === 1 ? 'venda' : 'vendas'}</span>
-                        <span>•</span>
-                        <span>Ticket médio: R$ {(team.totalValue / team.salesCount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Total Sales Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <DollarSign className="h-5 w-5" />
-              Resumo Vendas Operacionais
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-success/10 border border-success/20">
-                <p className="text-xs text-muted-foreground mb-1">Total de Vendas</p>
-                <p className="text-2xl font-bold text-success">
-                  R$ {(salesMetrics?.totalSalesValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-              
-              <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2">
-                <span className="text-sm text-muted-foreground">Quantidade de vendas</span>
-                <span className="font-bold">{salesMetrics?.totalSalesCount || 0}</span>
-              </div>
-              
-              <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2">
-                <span className="text-sm text-muted-foreground">Ticket médio</span>
-                <span className="font-bold">
-                  R$ {salesMetrics?.totalSalesCount ? 
-                    ((salesMetrics.totalSalesValue / salesMetrics.totalSalesCount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })) 
-                    : '0,00'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2">
-                <span className="text-sm text-muted-foreground">Equipes vendendo</span>
-                <span className="font-bold">{salesMetrics?.teamSales.length || 0}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Target className="h-5 w-5" />
+            Leitura rapida
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <p className="text-xs text-muted-foreground">Equipe em destaque agora</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">{leader?.teamName || 'Sem vendas'}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <p className="text-xs text-muted-foreground">Faturamento do ano</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {formatCurrency(salesMetrics?.totalSalesValue || 0)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <p className="text-xs text-muted-foreground">Total de vendas do ano</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {salesMetrics?.totalSalesCount || 0}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

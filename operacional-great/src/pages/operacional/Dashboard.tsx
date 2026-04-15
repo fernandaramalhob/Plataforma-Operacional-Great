@@ -31,6 +31,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -54,6 +55,10 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useQuery, useMutation } from '@tanstack/react-query';
 
+function toIsoFromLocalInput(value: string) {
+  return value ? new Date(value).toISOString() : '';
+}
+
 function formatTimeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
   if (seconds < 60) return 'agora';
@@ -76,6 +81,7 @@ export default function OperacionalDashboard() {
   const { user, isAdmin } = useAuth();
   const { operationalClients, getClientsByStatus, getTeamStats } = useOperational();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   
   const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
   const [isCheckOutDialogOpen, setIsCheckOutDialogOpen] = useState(false);
@@ -207,12 +213,17 @@ export default function OperacionalDashboard() {
     mutationFn: async (meetingData: typeof newMeetingForm) => {
       if (!user) throw new Error('Usuário não autenticado');
 
+      const datetimeStartIso = toIsoFromLocalInput(meetingData.datetime_start);
+      const datetimeEndIso = meetingData.datetime_end
+        ? toIsoFromLocalInput(meetingData.datetime_end)
+        : new Date(new Date(meetingData.datetime_start).getTime() + 60 * 60 * 1000).toISOString();
+
       const { data, error } = await supabase
         .from('meetings')
         .insert({
           title: meetingData.title,
-          datetime_start: meetingData.datetime_start,
-          datetime_end: meetingData.datetime_end || new Date(new Date(meetingData.datetime_start).getTime() + 60 * 60 * 1000).toISOString(),
+          datetime_start: datetimeStartIso,
+          datetime_end: datetimeEndIso,
           agenda: meetingData.agenda || null,
           created_by_user_id: user.id,
           scope: 'GERAL',
@@ -941,9 +952,10 @@ export default function OperacionalDashboard() {
                   <div
                     key={meeting.id}
                     data-cy="proxima-reuniao-item"
+                    onClick={() => navigate('/operacional/reunioes')}
                     className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer ${
-                      isOnboarding 
-                        ? 'bg-primary/5 border border-primary/20 hover:bg-primary/10' 
+                      isOnboarding
+                        ? 'bg-primary/5 border border-primary/20 hover:bg-primary/10'
                         : 'bg-surface-2 hover:bg-surface-3'
                     }`}
                   >
@@ -1577,4 +1589,3 @@ export default function OperacionalDashboard() {
     </div>
   );
 }
-

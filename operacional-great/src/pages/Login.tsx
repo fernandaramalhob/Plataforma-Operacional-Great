@@ -18,7 +18,7 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   
-  const { login, signUp, isAuthenticated, isLoading, getModule, user, selectedModule, hasDualAccess } = useAuth();
+  const { login, signUp, isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
 
   const storageAvailable = useMemo(() => canUseLocalStorage(), []);
@@ -26,36 +26,9 @@ export default function Login() {
   // Redirect authenticated users
   useEffect(() => {
     if (isAuthenticated && user && !isLoading) {
-      // Users with dual access (both commercial and operational roles) should choose module
-      const hasMultipleModuleAccess = user.role === 'ADMIN' || user.role === 'EQUIPE_TECH' || hasDualAccess;
-
-      if (hasMultipleModuleAccess) {
-        if (!selectedModule) {
-          navigate('/select-module');
-          return;
-        }
-
-        if (selectedModule === 'COMERCIAL') {
-          navigate('/comercial/dashboard');
-        } else if (selectedModule === 'CEO') {
-          navigate('/ceo/dashboard');
-        } else if (selectedModule === 'TECH') {
-          navigate('/tech/erp');
-        } else {
-          navigate('/operacional/dashboard');
-        }
-      } else {
-        const module = getModule();
-        if (module === 'COMERCIAL') {
-          navigate('/comercial/dashboard');
-        } else if (module === 'TECH') {
-          navigate('/tech/erp');
-        } else {
-          navigate('/operacional/dashboard');
-        }
-      }
+      navigate('/operacional/dashboard');
     }
-  }, [isAuthenticated, user, isLoading, navigate, getModule, selectedModule, hasDualAccess]);
+  }, [isAuthenticated, user, isLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

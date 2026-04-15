@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   CommandDialog,
   CommandEmpty,
@@ -10,35 +10,28 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from '@/components/ui/command';
-import { useCommandPalette } from '@/hooks/useCommandPalette';
-import { useAuth } from '@/contexts/AuthContext';
-import { Logo } from '@/components/brand/Logo';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/command";
+import { useCommandPalette } from "@/hooks/useCommandPalette";
+import { Logo } from "@/components/brand/Logo";
+import { Badge } from "@/components/ui/badge";
 import {
-  LayoutDashboard,
-  Users,
-  ClipboardList,
-  UserPlus,
-  ListPlus,
-  CheckCircle,
-  Search,
-  Briefcase,
-  Target,
-  BarChart3,
-  Settings,
+  BookOpen,
+  Bot,
+  CalendarDays,
   CheckSquare,
+  ClipboardList,
+  Crown,
+  LayoutDashboard,
   Loader2,
-} from 'lucide-react';
+  Search,
+  Users,
+} from "lucide-react";
 
 interface CommandAction {
   id: string;
   label: string;
   icon: React.ElementType;
   action: () => void;
-  keywords?: string[];
-  module?: 'COMERCIAL' | 'OPERACIONAL' | 'ALL';
-  roles?: string[];
 }
 
 interface ExecCardResult {
@@ -52,23 +45,18 @@ interface ExecCardResult {
 
 export function CommandPalette() {
   const { isOpen, close } = useCommandPalette();
-  const { user, getModule } = useAuth();
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
 
-  const currentModule = getModule();
-
-  // Search exec_cards when user types
   const { data: cardResults = [], isLoading: isSearchingCards } = useQuery({
-    queryKey: ['command-palette-cards', search],
+    queryKey: ["command-palette-cards", search],
     queryFn: async () => {
       if (!search || search.length < 2) return [];
-      
+
       const query = search.toLowerCase();
-      
-      // Search cards by title or client name
+
       const { data: cards, error } = await supabase
-        .from('exec_cards')
+        .from("exec_cards")
         .select(`
           id,
           title,
@@ -83,13 +71,12 @@ export function CommandPalette() {
         .limit(10);
 
       if (error) {
-        console.error('Error searching cards:', error);
+        console.error("Error searching cards:", error);
         return [];
       }
 
-      // Also search by client name
       const { data: clientCards, error: clientError } = await supabase
-        .from('exec_cards')
+        .from("exec_cards")
         .select(`
           id,
           title,
@@ -100,162 +87,98 @@ export function CommandPalette() {
           exec_boards!inner(name),
           operational_clients!inner(client_name)
         `)
-        .ilike('operational_clients.client_name', `%${query}%`)
+        .ilike("operational_clients.client_name", `%${query}%`)
         .limit(10);
 
       if (clientError) {
-        console.error('Error searching cards by client:', clientError);
+        console.error("Error searching cards by client:", clientError);
       }
 
-      // Merge results and remove duplicates
       const allCards = [...(cards || []), ...(clientCards || [])];
-      const uniqueCards = allCards.filter((card, index, self) => 
-        index === self.findIndex(c => c.id === card.id)
+      const uniqueCards = allCards.filter(
+        (card, index, self) => index === self.findIndex((current) => current.id === card.id),
       );
 
-      return uniqueCards.map(card => ({
+      return uniqueCards.map((card) => ({
         id: card.id,
         title: card.title,
-        column_name: (card.exec_columns as any)?.name || 'Sem coluna',
-        board_name: (card.exec_boards as any)?.name || 'Sem quadro',
+        column_name: (card.exec_columns as any)?.name || "Sem coluna",
+        board_name: (card.exec_boards as any)?.name || "Sem quadro",
         board_id: card.board_id,
         client_name: (card.operational_clients as any)?.client_name,
       })) as ExecCardResult[];
     },
     enabled: isOpen && search.length >= 2,
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 1000 * 30,
   });
 
-  const actions: CommandAction[] = useMemo(() => [
-    // Navigation
-    {
-      id: 'nav-dashboard',
-      label: 'Ir para Dashboard',
-      icon: LayoutDashboard,
-      action: () => navigate(currentModule === 'COMERCIAL' ? '/comercial/dashboard' : '/operacional/dashboard'),
-      keywords: ['home', 'inicio', 'painel'],
-      module: 'ALL',
-    },
-    {
-      id: 'nav-pipeline',
-      label: 'Ir para Pipeline',
-      icon: Briefcase,
-      action: () => navigate('/comercial/pipeline'),
-      keywords: ['vendas', 'negociação'],
-      module: 'COMERCIAL',
-    },
-    {
-      id: 'nav-metas',
-      label: 'Ir para Metas',
-      icon: Target,
-      action: () => navigate('/comercial/metas'),
-      keywords: ['objetivos', 'goals'],
-      module: 'COMERCIAL',
-    },
-    {
-      id: 'nav-clientes',
-      label: 'Ir para Clientes',
-      icon: Users,
-      action: () => navigate('/operacional/crm'),
-      keywords: ['customers', 'accounts'],
-      module: 'OPERACIONAL',
-    },
-    {
-      id: 'nav-execucao',
-      label: 'Ir para Execução (ClickUp)',
-      icon: CheckSquare,
-      action: () => navigate('/operacional/execucao'),
-      keywords: ['tarefas', 'kanban', 'clickup', 'cards'],
-      module: 'OPERACIONAL',
-    },
-    {
-      id: 'nav-tarefas',
-      label: 'Ir para Tarefas',
-      icon: ClipboardList,
-      action: () => navigate('/operacional/meu-dia'),
-      keywords: ['tasks', 'kanban', 'backlog'],
-      module: 'OPERACIONAL',
-    },
-    {
-      id: 'nav-performance',
-      label: 'Ir para Performance',
-      icon: BarChart3,
-      action: () => navigate('/operacional/dashboard'),
-      keywords: ['metrics', 'checkin'],
-      module: 'OPERACIONAL',
-    },
-
-    // Quick Actions
-    {
-      id: 'action-create-client',
-      label: 'Criar novo cliente',
-      icon: UserPlus,
-      action: () => {
-        close();
-        // TODO: Open create client modal
+  const actions: CommandAction[] = useMemo(
+    () => [
+      {
+        id: "nav-dashboard",
+        label: "Ir para Dashboard",
+        icon: LayoutDashboard,
+        action: () => navigate("/operacional/dashboard"),
       },
-      keywords: ['novo', 'adicionar', 'new'],
-      module: 'COMERCIAL',
-    },
-    {
-      id: 'action-create-task',
-      label: 'Criar nova tarefa',
-      icon: ListPlus,
-      action: () => {
-        close();
-        navigate('/operacional/meu-dia');
+      {
+        id: "nav-clientes",
+        label: "Ir para CRM Operacional",
+        icon: Users,
+        action: () => navigate("/operacional/crm"),
       },
-      keywords: ['novo', 'adicionar', 'task'],
-      module: 'OPERACIONAL',
-    },
-    {
-      id: 'action-checkin',
-      label: 'Fazer check-in de performance',
-      icon: CheckCircle,
-      action: () => {
-        close();
-        navigate('/operacional/dashboard');
+      {
+        id: "nav-execucao",
+        label: "Ir para Execucao",
+        icon: CheckSquare,
+        action: () => navigate("/operacional/execucao"),
       },
-      keywords: ['performance', 'daily', 'registro'],
-      module: 'OPERACIONAL',
-    },
-  ], [currentModule, navigate, close]);
-
-  const filteredActions = useMemo(() => {
-    return actions.filter(action => {
-      // Module filter
-      if (action.module !== 'ALL' && action.module !== currentModule) {
-        return false;
-      }
-
-      // Role filter
-      if (action.roles && user && !action.roles.includes(user.role)) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [actions, currentModule, user]);
-
-  const navigationActions = filteredActions.filter(a => a.id.startsWith('nav-'));
-  const quickActions = filteredActions.filter(a => a.id.startsWith('action-'));
+      {
+        id: "nav-meu-dia",
+        label: "Ir para Meu Dia",
+        icon: ClipboardList,
+        action: () => navigate("/operacional/meu-dia"),
+      },
+      {
+        id: "nav-reunioes",
+        label: "Ir para Reunioes",
+        icon: CalendarDays,
+        action: () => navigate("/operacional/reunioes"),
+      },
+      {
+        id: "nav-ranking",
+        label: "Ir para Ranking das Equipes",
+        icon: Crown,
+        action: () => navigate("/operacional/inteligencia"),
+      },
+      {
+        id: "nav-estudos",
+        label: "Ir para Area de Estudos",
+        icon: BookOpen,
+        action: () => navigate("/operacional/area-estudo"),
+      },
+      {
+        id: "nav-study-ai",
+        label: "Abrir Great Study AI",
+        icon: Bot,
+        action: () => navigate("/operacional/great-study-ai"),
+      },
+    ],
+    [navigate],
+  );
 
   const handleCardSelect = (card: ExecCardResult) => {
-    // Navigate to execução page with card ID to open the card modal
     navigate(`/operacional/execucao?cardId=${card.id}&boardId=${card.board_id}`);
     close();
   };
-
-  const hasResults = cardResults.length > 0 || quickActions.length > 0 || navigationActions.length > 0;
 
   return (
     <CommandDialog open={isOpen} onOpenChange={(open) => !open && close()}>
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
         <Logo variant="mark" size="sm" />
-        <span className="text-sm text-muted-foreground">Command Palette</span>
+        <span className="text-sm text-muted-foreground">Busca operacional</span>
       </div>
       <CommandInput
-        placeholder="Buscar clientes, tarefas, ações..."
+        placeholder="Buscar clientes, cards, reunioes e paginas..."
         value={search}
         onValueChange={setSearch}
       />
@@ -276,13 +199,12 @@ export function CommandPalette() {
           </div>
         </CommandEmpty>
 
-        {/* Cards from ClickUp */}
         {cardResults.length > 0 && (
-          <CommandGroup heading="Cards do ClickUp">
-            {cardResults.map(card => (
+          <CommandGroup heading="Cards da execucao">
+            {cardResults.map((card) => (
               <CommandItem
                 key={card.id}
-                value={`card-${card.id}-${card.title}-${card.client_name || ''}`}
+                value={`card-${card.id}-${card.title}-${card.client_name || ""}`}
                 onSelect={() => handleCardSelect(card)}
                 className="flex items-center gap-3 px-4 py-3 cursor-pointer"
               >
@@ -304,51 +226,23 @@ export function CommandPalette() {
           </CommandGroup>
         )}
 
-        {cardResults.length > 0 && (quickActions.length > 0 || navigationActions.length > 0) && (
-          <CommandSeparator />
-        )}
+        {cardResults.length > 0 && actions.length > 0 && <CommandSeparator />}
 
-        {quickActions.length > 0 && (
-          <CommandGroup heading="Ações Rápidas">
-            {quickActions.map(action => (
-              <CommandItem
-                key={action.id}
-                onSelect={() => {
-                  action.action();
-                  close();
-                }}
-                className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                  <action.icon className="h-4 w-4 text-primary" />
-                </div>
-                <span>{action.label}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
-
-        {quickActions.length > 0 && navigationActions.length > 0 && (
-          <CommandSeparator />
-        )}
-
-        {navigationActions.length > 0 && (
-          <CommandGroup heading="Navegação">
-            {navigationActions.map(action => (
-              <CommandItem
-                key={action.id}
-                onSelect={() => {
-                  action.action();
-                  close();
-                }}
-                className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-              >
-                <action.icon className="h-4 w-4 text-muted-foreground" />
-                <span>{action.label}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
+        <CommandGroup heading="Navegacao">
+          {actions.map((action) => (
+            <CommandItem
+              key={action.id}
+              onSelect={() => {
+                action.action();
+                close();
+              }}
+              className="flex items-center gap-3 px-4 py-3 cursor-pointer"
+            >
+              <action.icon className="h-4 w-4 text-muted-foreground" />
+              <span>{action.label}</span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
       </CommandList>
     </CommandDialog>
   );

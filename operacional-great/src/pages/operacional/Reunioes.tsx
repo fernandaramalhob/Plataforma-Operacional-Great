@@ -67,6 +67,10 @@ function toDatetimeLocal(datetimeStr: string): string {
   return local.slice(0, 16); // "YYYY-MM-DDTHH:mm"
 }
 
+function toIsoFromLocalInput(value: string): string {
+  return new Date(value).toISOString();
+}
+
 export default function Reunioes() {
   const { data: meetings, isLoading } = useMeetings();
   const { data: upcomingMeetings } = useUpcomingMeetings(10);
@@ -101,8 +105,8 @@ export default function Reunioes() {
     try {
       const { error } = await supabase.from('meetings').insert({
         title: formData.title,
-        datetime_start: formData.datetime_start,
-        datetime_end: formData.datetime_end,
+        datetime_start: toIsoFromLocalInput(formData.datetime_start),
+        datetime_end: toIsoFromLocalInput(formData.datetime_end),
         agenda: formData.agenda || null,
         scope: formData.scope,
         created_by_user_id: authUser.id,
@@ -140,8 +144,8 @@ export default function Reunioes() {
     try {
       const { error } = await supabase.from('meetings').update({
         title: editForm.title,
-        datetime_start: editForm.datetime_start,
-        datetime_end: editForm.datetime_end,
+        datetime_start: toIsoFromLocalInput(editForm.datetime_start),
+        datetime_end: toIsoFromLocalInput(editForm.datetime_end),
         agenda: editForm.agenda || null,
         scope: editForm.scope,
       }).eq('id', editMeeting.id);

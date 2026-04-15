@@ -107,7 +107,10 @@ export function useUpcomingMeetings(limit = 5) {
         .limit(limit);
 
       if (error) throw error;
-      return data as Meeting[];
+      return (data as Meeting[]).filter((meeting) => {
+        const meetingDate = new Date(meeting.datetime_start);
+        return !Number.isNaN(meetingDate.getTime()) && meetingDate >= new Date(now);
+      });
     },
   });
 }

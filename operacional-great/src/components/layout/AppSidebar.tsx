@@ -1,29 +1,33 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { Logo } from '@/components/brand/Logo';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { Logo } from "@/components/brand/Logo";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+} from "@/components/ui/collapsible";
 import {
-  LayoutDashboard,
+  BookOpen,
+  Bot,
+  Briefcase,
+  CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
-  Briefcase,
-  UserCircle,
+  ClipboardList,
+  Crown,
+  Layers,
+  LayoutDashboard,
   LogOut,
+  Megaphone,
+  Palette,
   Shield,
   Sun,
-  Layers,
-  Palette,
-  BookOpen,
-  Megaphone,
-} from 'lucide-react';
+  UserCircle,
+} from "lucide-react";
 
 interface SubNavItem {
   label: string;
@@ -37,26 +41,81 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   iconColor?: string;
-  roles?: string[];
   subItems?: SubNavItem[];
 }
 
 const operacionalNav: NavItem[] = [
-  { label: 'Meu Dia', href: '/operacional/meu-dia', icon: Sun, iconColor: 'text-amber-400' },
-  { label: 'Dashboard', href: '/operacional/dashboard', icon: LayoutDashboard, iconColor: 'text-blue-500' },
-  { label: 'CRM Operacional', href: '/operacional/crm', icon: Briefcase, iconColor: 'text-violet-500' },
+  { label: "Meu Dia", href: "/operacional/meu-dia", icon: Sun, iconColor: "text-amber-400" },
   {
-    label: 'Execução',
-    href: '/operacional/execucao',
-    icon: Layers,
-    iconColor: 'text-indigo-500',
-    subItems: [
-      { label: 'Criativos', href: '/operacional/execucao/criativos', icon: Palette, iconColor: 'text-pink-500' },
-      { label: 'ClickUp', href: '/operacional/execucao', icon: Layers, iconColor: 'text-indigo-500' },
-    ]
+    label: "Dashboard",
+    href: "/operacional/dashboard",
+    icon: LayoutDashboard,
+    iconColor: "text-blue-500",
   },
-  { label: 'Mural de Avisos', href: '/operacional/mural-avisos', icon: Megaphone, iconColor: 'text-orange-500' },
-  { label: 'Área de Estudos', href: '/operacional/area-estudo', icon: BookOpen, iconColor: 'text-emerald-500' },
+  {
+    label: "CRM Operacional",
+    href: "/operacional/crm",
+    icon: Briefcase,
+    iconColor: "text-violet-500",
+  },
+  {
+    label: "Execucao",
+    href: "/operacional/execucao",
+    icon: Layers,
+    iconColor: "text-indigo-500",
+    subItems: [
+      {
+        label: "ClickUp",
+        href: "/operacional/execucao",
+        icon: ClipboardList,
+        iconColor: "text-indigo-500",
+      },
+      {
+        label: "Criativos",
+        href: "/operacional/execucao/criativos",
+        icon: Palette,
+        iconColor: "text-pink-500",
+      },
+    ],
+  },
+  {
+    label: "Reunioes",
+    href: "/operacional/reunioes",
+    icon: CalendarDays,
+    iconColor: "text-cyan-500",
+  },
+  {
+    label: "Area de Estudos",
+    href: "/operacional/area-estudo",
+    icon: BookOpen,
+    iconColor: "text-emerald-500",
+    subItems: [
+      {
+        label: "Conteudos",
+        href: "/operacional/area-estudo",
+        icon: BookOpen,
+        iconColor: "text-emerald-500",
+      },
+      {
+        label: "Great Study AI",
+        href: "/operacional/great-study-ai",
+        icon: Bot,
+        iconColor: "text-primary",
+      },
+    ],
+  },
+  {
+    label: "Ranking",
+    href: "/operacional/inteligencia",
+    icon: Crown,
+    iconColor: "text-warning",
+  },
+  {
+    label: "Mural de Avisos",
+    href: "/operacional/mural-avisos",
+    icon: Megaphone,
+    iconColor: "text-rose-500",
+  },
 ];
 
 export function AppSidebar() {
@@ -65,16 +124,8 @@ export function AppSidebar() {
   const { user, logout, isAdmin } = useAuth();
   const location = useLocation();
 
-  const filteredNavItems = operacionalNav.filter(item => {
-    if (!item.roles) return true;
-    if (isAdmin) return true;
-    return user && item.roles.includes(user.role);
-  });
-
-  const isSubItemActive = (item: NavItem) => {
-    if (!item.subItems) return false;
-    return item.subItems.some(sub => location.pathname === sub.href);
-  };
+  const isSubItemActive = (item: NavItem) =>
+    item.subItems?.some((sub) => location.pathname === sub.href) ?? false;
 
   const isMenuOpen = (item: NavItem) => {
     if (openSubMenus[item.label] !== undefined) {
@@ -84,38 +135,35 @@ export function AppSidebar() {
   };
 
   const toggleSubMenu = (label: string) => {
-    setOpenSubMenus(prev => ({
+    setOpenSubMenus((prev) => ({
       ...prev,
-      [label]: !prev[label]
+      [label]: !prev[label],
     }));
   };
 
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen border-r transition-all duration-300 flex flex-col',
-        'bg-sidebar-background border-sidebar-border',
-        collapsed ? 'w-[72px]' : 'w-[260px]'
+        "fixed left-0 top-0 z-40 h-screen border-r transition-all duration-300 flex flex-col",
+        "bg-sidebar-background border-sidebar-border",
+        collapsed ? "w-[72px]" : "w-[260px]",
       )}
     >
       <div
         className={cn(
-          'h-16 flex items-center border-b border-sidebar-border px-4',
-          collapsed ? 'justify-center' : 'justify-between'
+          "h-16 flex items-center border-b border-sidebar-border px-4",
+          collapsed ? "justify-center" : "justify-between",
         )}
       >
-        {collapsed ? (
-          <Logo variant="mark" size="md" />
-        ) : (
-          <Logo variant="full" size="md" />
-        )}
+        {collapsed ? <Logo variant="mark" size="md" /> : <Logo variant="full" size="md" />}
         <Button
           variant="ghost"
           size="icon-sm"
           onClick={() => setCollapsed(!collapsed)}
           className={cn(
-            'text-muted-foreground hover:text-foreground',
-            collapsed && 'absolute -right-3 border rounded-full bg-sidebar-background border-sidebar-border'
+            "text-muted-foreground hover:text-foreground",
+            collapsed &&
+              "absolute -right-3 border rounded-full bg-sidebar-background border-sidebar-border",
           )}
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -123,9 +171,9 @@ export function AppSidebar() {
       </div>
 
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto custom-scrollbar">
-        {filteredNavItems.map((item) => {
+        {operacionalNav.map((item) => {
           const isActive = location.pathname === item.href && !item.subItems;
-          const hasSubItems = item.subItems && item.subItems.length > 0;
+          const hasSubItems = (item.subItems?.length ?? 0) > 0;
           const isOpen = isMenuOpen(item);
           const Icon = item.icon;
 
@@ -139,15 +187,15 @@ export function AppSidebar() {
                 <CollapsibleTrigger asChild>
                   <button
                     className={cn(
-                      'relative flex items-center gap-3 px-3 py-2.5 rounded-button transition-all duration-200 group w-full',
+                      "relative flex items-center gap-3 px-3 py-2.5 rounded-button transition-all duration-200 group w-full",
                       isSubItemActive(item)
-                        ? 'bg-primary/5 text-primary'
-                        : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
+                        ? "bg-primary/5 text-primary"
+                        : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
                     )}
                   >
-                    <Icon className={cn('h-5 w-5 shrink-0', item.iconColor)} />
+                    <Icon className={cn("h-5 w-5 shrink-0", item.iconColor)} />
                     <span className="text-sm truncate flex-1 text-left">{item.label}</span>
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pl-4 mt-1 space-y-1">
@@ -160,16 +208,18 @@ export function AppSidebar() {
                         key={subItem.href}
                         to={subItem.href}
                         className={cn(
-                          'relative flex items-center gap-3 px-3 py-2 rounded-button transition-all duration-200',
+                          "relative flex items-center gap-3 px-3 py-2 rounded-button transition-all duration-200",
                           isSubActive
-                            ? 'bg-primary/10 text-primary font-semibold'
-                            : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
+                            ? "bg-primary/10 text-primary font-semibold"
+                            : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
                         )}
                       >
                         {isSubActive && (
                           <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full" />
                         )}
-                        {SubIcon && <SubIcon className={cn('h-4 w-4 shrink-0', subItem.iconColor)} />}
+                        {SubIcon && (
+                          <SubIcon className={cn("h-4 w-4 shrink-0", subItem.iconColor)} />
+                        )}
                         <span className="text-sm truncate">{subItem.label}</span>
                       </Link>
                     );
@@ -184,30 +234,23 @@ export function AppSidebar() {
               key={item.href}
               to={item.href}
               className={cn(
-                'relative flex items-center gap-3 px-3 py-2.5 rounded-button transition-all duration-200 group',
+                "relative flex items-center gap-3 px-3 py-2.5 rounded-button transition-all duration-200 group",
                 isActive
-                  ? 'bg-primary/10 text-primary font-semibold'
-                  : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
               )}
             >
               {isActive && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-primary rounded-r-full" />
               )}
-              <Icon className={cn('h-5 w-5 shrink-0', item.iconColor, collapsed && 'mx-auto')} />
-              {!collapsed && (
-                <span className="text-sm truncate">{item.label}</span>
-              )}
+              <Icon className={cn("h-5 w-5 shrink-0", item.iconColor, collapsed && "mx-auto")} />
+              {!collapsed && <span className="text-sm truncate">{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      <div
-        className={cn(
-          'border-t border-border p-3',
-          collapsed ? 'flex flex-col items-center gap-2' : ''
-        )}
-      >
+      <div className={cn("border-t border-border p-3", collapsed ? "flex flex-col items-center gap-2" : "")}>
         {!collapsed && user && (
           <div className="flex items-center gap-3 px-3 py-2 mb-2">
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -218,11 +261,9 @@ export function AppSidebar() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
-                {user.name}
-              </p>
+              <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
               <p className="text-xs text-muted-foreground truncate capitalize">
-                {user.role === 'ADMIN' ? 'Administrador' : user.role.replace('_', ' ').toLowerCase()}
+                {user.role === "ADMIN" ? "Administrador" : user.role.replace("_", " ").toLowerCase()}
               </p>
             </div>
           </div>
@@ -230,11 +271,11 @@ export function AppSidebar() {
 
         <Button
           variant="ghost"
-          size={collapsed ? 'icon' : 'sm'}
+          size={collapsed ? "icon" : "sm"}
           onClick={logout}
           className={cn(
-            'w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10',
-            collapsed ? 'justify-center' : 'justify-start gap-2 h-9'
+            "w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+            collapsed ? "justify-center" : "justify-start gap-2 h-9",
           )}
         >
           <LogOut className="h-4 w-4" />
