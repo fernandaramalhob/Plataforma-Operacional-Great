@@ -1,6 +1,5 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import { hasSupabaseConfig } from "./integrations/supabase/env";
 
 const rootElement = document.getElementById("root");
 let root: ReturnType<typeof createRoot> | null = null;
@@ -140,11 +139,6 @@ VITE_SUPABASE_PUBLISHABLE_KEY=...
 }
 
 async function bootstrap() {
-  if (!hasSupabaseConfig) {
-    renderConfigError();
-    return;
-  }
-
   window.addEventListener("error", (event) => {
     renderFatalError(event.error ?? event.message);
   });
