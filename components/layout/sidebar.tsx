@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
 import { usePathname } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import {
   History,
   LayoutDashboard,
@@ -56,7 +56,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     setIsSigningOut(true)
 
     try {
-      window.location.assign("/api/logout")
+      await signOut({
+        callbackUrl: "/login",
+        redirect: true,
+      })
     } finally {
       setIsSigningOut(false)
     }

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import {
   Camera,
   CheckCircle,
@@ -98,7 +98,10 @@ export default function ProfilePage() {
     setIsSigningOut(true)
 
     try {
-      window.location.assign("/api/logout")
+      await signOut({
+        callbackUrl: "/login",
+        redirect: true,
+      })
     } finally {
       setIsSigningOut(false)
     }
