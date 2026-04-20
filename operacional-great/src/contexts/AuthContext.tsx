@@ -195,6 +195,19 @@ const INITIAL_TEAMS: Team[] = [
   { id: 'team-2', name: 'Tropa de Elite', createdAt: new Date() },
 ];
 
+function mergeSeedUsers(storedUsers: (User & { password: string })[]) {
+  const usersByEmail = new Map(storedUsers.map((user) => [user.email.toLowerCase(), user]));
+
+  INITIAL_USERS.forEach((seedUser) => {
+    const key = seedUser.email.toLowerCase();
+    if (!usersByEmail.has(key)) {
+      usersByEmail.set(key, seedUser);
+    }
+  });
+
+  return Array.from(usersByEmail.values());
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     const stored = safeGetItem('great_user');
@@ -212,7 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const stored = safeGetItem('great_users');
     if (stored) {
       try {
-        return JSON.parse(stored);
+        return mergeSeedUsers(JSON.parse(stored));
       } catch {
         return INITIAL_USERS;
       }

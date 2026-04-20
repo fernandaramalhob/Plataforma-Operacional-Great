@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -116,7 +116,6 @@ export function AppSidebar({ mobileOpen = false, onClose }: AppSidebarProps) {
   const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({});
   const { user, logout, isAdmin } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const moduleKey = location.pathname.split('/')[1] || 'operacional';
   const navItems = navByModule[moduleKey] ?? navByModule.operacional;
@@ -264,10 +263,11 @@ export function AppSidebar({ mobileOpen = false, onClose }: AppSidebarProps) {
             ) : null}
 
             <Button
+              type="button"
               variant="ghost"
               onClick={async () => {
-                await logout();
-                navigate('/login', { replace: true });
+                void logout();
+                window.location.replace('/login');
               }}
               className="sidebar-logout mt-3 h-11 w-full justify-start gap-3 rounded-2xl px-4 text-sm font-semibold text-white/90 hover:text-white"
             >
