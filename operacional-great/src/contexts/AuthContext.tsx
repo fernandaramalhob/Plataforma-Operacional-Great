@@ -51,6 +51,15 @@ const INITIAL_USERS: (User & { password: string })[] = [
     createdAt: new Date(),
   },
   {
+    id: 'brayton-1',
+    name: 'Brayton Maycon',
+    email: 'braytonmaycon5@gmail.com',
+    password: 'Brayton1243',
+    role: 'GESTOR',
+    active: true,
+    createdAt: new Date(),
+  },
+  {
     id: 'cled-1',
     name: TEAM_USERS.CLED.name,
     email: TEAM_USERS.CLED.email,
