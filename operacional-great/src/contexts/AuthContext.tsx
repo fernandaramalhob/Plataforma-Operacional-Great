@@ -270,6 +270,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.storageArea !== window.localStorage) {
+        return;
+      }
+
+      if (event.key === 'great_user') {
+        if (!event.newValue) {
+          setUser(null);
+          return;
+        }
+
+        try {
+          setUser(JSON.parse(event.newValue));
+        } catch {
+          setUser(null);
+        }
+      }
+
+      if (event.key === 'great_selected_module') {
+        setSelectedModule((event.newValue as Module | null) ?? null);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  useEffect(() => {
     safeSetItem('great_users', JSON.stringify(users));
   }, [users]);
 
@@ -379,6 +407,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSelectedModule(null);
     safeRemoveItem('great_user');
     safeRemoveItem('great_selected_module');
+    safeRemoveItem('great_last_route');
     window.location.replace('/login');
   }, [user]);
 

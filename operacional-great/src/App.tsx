@@ -10,6 +10,7 @@ import { OperationalProvider } from "@/contexts/OperationalContext";
 
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import Logout from "./pages/Logout";
 import NotFound from "./pages/NotFound";
 import OperacionalDashboard from "./pages/operacional/Dashboard";
 import OperacionalMeuDia from "./pages/operacional/MeuDia";
@@ -80,6 +81,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/logout" element={<Logout />} />
 
       <Route
         path="/operacional"
