@@ -265,9 +265,8 @@ export function AppSidebar({ mobileOpen = false, onClose }: AppSidebarProps) {
             <Button
               type="button"
               variant="ghost"
-              onClick={async () => {
+              onClick={() => {
                 void logout();
-                window.location.replace('/login');
               }}
               className="sidebar-logout mt-3 h-11 w-full justify-start gap-3 rounded-2xl px-4 text-sm font-semibold text-white/90 hover:text-white"
             >

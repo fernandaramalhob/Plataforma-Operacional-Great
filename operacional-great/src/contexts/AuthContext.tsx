@@ -196,13 +196,18 @@ const INITIAL_TEAMS: Team[] = [
 ];
 
 function mergeSeedUsers(storedUsers: (User & { password: string })[]) {
-  const usersByEmail = new Map(storedUsers.map((user) => [user.email.toLowerCase(), user]));
+  const usersByEmail = new Map<string, User & { password: string }>();
+
+  storedUsers.forEach((user) => {
+    const key = user.email.trim().toLowerCase();
+    if (key) {
+      usersByEmail.set(key, user);
+    }
+  });
 
   INITIAL_USERS.forEach((seedUser) => {
-    const key = seedUser.email.toLowerCase();
-    if (!usersByEmail.has(key)) {
-      usersByEmail.set(key, seedUser);
-    }
+    const key = seedUser.email.trim().toLowerCase();
+    usersByEmail.set(key, seedUser);
   });
 
   return Array.from(usersByEmail.values());
@@ -374,6 +379,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSelectedModule(null);
     safeRemoveItem('great_user');
     safeRemoveItem('great_selected_module');
+    window.location.replace('/login');
   }, [user]);
 
   const selectModule = useCallback((module: Module) => {
