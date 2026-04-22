@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -22,7 +23,7 @@ model User {
 }
 
 model Client {
-  id               String           @id @default(uuid())
+  id               String                 @id @default(uuid())
   name             String
   company          String?
   email            String?
@@ -31,10 +32,10 @@ model Client {
   whatsappGroupId  String?
   adAccountId      String?
   adAccountName    String?
-  status           ClientStatus     @default(ACTIVE)
-  createdAt        DateTime         @default(now())
+  status           ClientStatus           @default(ACTIVE)
+  createdAt        DateTime               @default(now())
   managerId        String?
-  manager          User?            @relation(fields: [managerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  manager          User?                  @relation(fields: [managerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   campaigns        ClientCampaign[]
   reports          Report[]
   reportSchedule   ReportSchedule?
@@ -65,5 +66,111 @@ model ReportSchedule {
   active          Boolean                 @default(true)
   nextRunAt       DateTime
   lastRunAt       DateTime?
-  last
+  lastError       String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@index([active, nextRunAt])
+}
+
+model ClientCampaign {
+  id             String  @id @default(uuid())
+  clientId       String
+  client         Client  @relation(fields: [clientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  campaignIdMeta String
+  campaignName   String
+  isActive       Boolean @default(true)
+
+  @@unique([clientId, campaignIdMeta])
+  @@index([clientId, isActive])
+}
+
+model Report {
+  id               String                 @id @default(uuid())
+  clientId         String
+  client           Client                 @relation(fields: [clientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  referenceWeek    DateTime
+  generatedAt      DateTime               @default(now())
+  status           ReportStatus           @default(PENDING)
+  payloadJson      Json?
+  sendLogs         SendLog[]
+  weeklyDispatches WeeklyReportDispatch[]
+
+  @@index([clientId, generatedAt])
+  @@index([status, generatedAt])
+  @@index([referenceWeek])
+}
+
+model SendLog {
+  id            String        @id @default(uuid())
+  reportId      String
+  report        Report        @relation(fields: [reportId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  channel       String
+  status        SendLogStatus @default(PENDING)
+  sentAt        DateTime?
+  errorMessage  String?
+  attemptNumber Int           @default(1)
+
+  @@unique([reportId, attemptNumber])
+  @@index([reportId, status])
+  @@index([sentAt])
+}
+
+model WeeklyReportDispatch {
+  id                  String                     @id @default(uuid())
+  clientId            String
+  client              Client                     @relation(fields: [clientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  reportId            String?
+  report              Report?                    @relation(fields: [reportId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  reportWeekKey       String
+  filtersSince        String
+  filtersUntil        String
+  timeZone            String
+  status              WeeklyReportDispatchStatus @default(PROCESSING)
+  sentAt              DateTime?
+  errorMessage        String?
+  attemptCount        Int                        @default(0)
+  lastAttemptAt       DateTime?
+  processingToken     String?
+  processingStartedAt DateTime?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  @@unique([clientId, reportWeekKey])
+  @@index([reportWeekKey, status])
+  @@index([status, updatedAt])
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ReportStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum SendLogStatus {
+  PENDING
+  OK
+  FAILED
+}
+
+enum ReportScheduleFrequency {
+  ONCE
+  WEEKLY
+}
+
+enum WeeklyReportDispatchStatus {
+  PROCESSING
+  SENT
+  FAILED
+  SKIPPED
 }
