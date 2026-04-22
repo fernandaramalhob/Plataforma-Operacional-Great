@@ -26,6 +26,7 @@ import type {
   MetaTokenSaveResponse,
   MetaTokenStatus,
   MetaTokenStatusResponse,
+  MetaTokenPreset,
   MetaUser,
 } from "@/types/meta.types"
 import type { EvolutionSettingsResponse } from "@/types/evolution.types"
@@ -40,6 +41,11 @@ const META_TOKEN_SUGGESTIONS_BY_EMAIL: Record<string, string> = {
 const META_CONNECTED_NAME_BY_EMAIL: Record<string, string> = {
   "braytonmaycon5@gmail.com": "Brayton Maycon",
   "pedrojuan.mwdigital@gmail.com": "Lucas D. Oliveira",
+}
+
+const META_TOKEN_PRESET_LABELS: Record<MetaTokenPreset, string> = {
+  ISAQUE: "Isaque",
+  BRAYTON: "Bryton",
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -126,6 +132,7 @@ export default function SettingsPage() {
   const [imported, setImported] = useState<string[]>([])
   const [sessionUser, setSessionUser] = useState<MetaSessionUser | null>(null)
   const [savedTokenMasked, setSavedTokenMasked] = useState<string | null>(null)
+  const [selectedTokenPreset, setSelectedTokenPreset] = useState<MetaTokenPreset | null>(null)
   const [tokenStatus, setTokenStatus] = useState<MetaTokenStatus>("missing")
   const [statusDetail, setStatusDetail] = useState("")
   const [tokenExpiresAt, setTokenExpiresAt] = useState<string | null>(null)
@@ -136,6 +143,12 @@ export default function SettingsPage() {
   const tokenSuggestion = sessionUser?.email
     ? META_TOKEN_SUGGESTIONS_BY_EMAIL[sessionUser.email] ?? DEFAULT_META_TOKEN_SUGGESTION
     : DEFAULT_META_TOKEN_SUGGESTION
+  const presetButtonClass = (preset: MetaTokenPreset) =>
+    `rounded-2xl border px-4 py-3 text-left transition ${
+      selectedTokenPreset === preset
+        ? "border-[#C1121F] bg-[#fff3f4] text-[#C1121F] shadow-sm"
+        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+    }`
 
   const loadAccounts = useCallback(async () => {
     const data = await fetchJsonOrThrow<MetaAccount[]>(
@@ -175,6 +188,11 @@ export default function SettingsPage() {
       setSessionUser(readSessionUser(successPayload.sessionUser))
       setSavedTokenMasked(
         typeof successPayload.tokenMasked === "string" ? successPayload.tokenMasked : null
+      )
+      setSelectedTokenPreset(
+        successPayload.selectedPreset === "ISAQUE" || successPayload.selectedPreset === "BRAYTON"
+          ? successPayload.selectedPreset
+          : null
       )
       setTokenStatus(
         isTokenStatus(successPayload.tokenStatus) ? successPayload.tokenStatus : "missing"
@@ -297,6 +315,42 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleSelectPreset(preset: MetaTokenPreset) {
+    setIsValidating(true)
+    setResult(null)
+    setErrorMsg("")
+    setAccounts([])
+
+    try {
+      const res = await fetch("/api/settings/meta-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preset }),
+      })
+      const data = await readJsonResponse<MetaTokenSaveResponse>(res)
+
+      if (!res.ok) {
+        setResult("error")
+        setErrorMsg(
+          res.status === 401
+            ? "Sessão expirada ou inexistente. Faça login novamente."
+            : getApiErrorMessage(data, `Erro ${res.status}`)
+        )
+        return
+      }
+
+      setResult("success")
+      if (isObject(data)) setMetaUser(readMetaUser((data as MetaTokenSaveResponse).metaUser))
+      setToken("")
+      await loadMetaStatus()
+    } catch (error) {
+      setResult("error")
+      setErrorMsg(error instanceof Error ? error.message : "Erro ao salvar o preset da META")
+    } finally {
+      setIsValidating(false)
+    }
+  }
+
   const overviewCard = "rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.35)]"
 
   return (
@@ -328,6 +382,11 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{savedTokenMasked ?? "Nenhum token salvo"}</p>
+                  {selectedTokenPreset ? (
+                    <p className="mt-1 text-xs font-medium text-[#C1121F]">
+                      Preset ativo: {META_TOKEN_PRESET_LABELS[selectedTokenPreset]}
+                    </p>
+                  ) : null}
                   {statusDetail ? <p className="mt-1 text-xs text-gray-400">{statusDetail}</p> : null}
                   {tokenExpiresAt ? <p className="mt-1 text-xs text-gray-400">Expira em {formatExpiry(tokenExpiresAt)}</p> : null}
                 </div>
@@ -360,11 +419,56 @@ export default function SettingsPage() {
               </p>
             </div>
 
+            <div className="mb-6 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Escolher token da conta</p>
+                  <p className="text-xs text-gray-500">
+                    Defina se esta conta vai usar o token de Isaque ou de Bryton.
+                  </p>
+                </div>
+                {selectedTokenPreset ? (
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#C1121F] shadow-sm">
+                    Token atual: {META_TOKEN_PRESET_LABELS[selectedTokenPreset]}
+                  </span>
+                ) : null}
+              </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => void handleSelectPreset("ISAQUE")}
+                  className={presetButtonClass("ISAQUE")}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-inherit opacity-60">
+                    Preset
+                  </p>
+                  <p className="mt-1 text-base font-semibold">Isaque</p>
+                  <p className="mt-1 text-xs text-inherit opacity-70">
+                    Usa META_ACCESS_TOKEN_ISAQUE em todas as contas desta sessão.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void handleSelectPreset("BRAYTON")}
+                  className={presetButtonClass("BRAYTON")}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-inherit opacity-60">
+                    Preset
+                  </p>
+                  <p className="mt-1 text-base font-semibold">Bryton</p>
+                  <p className="mt-1 text-xs text-inherit opacity-70">
+                    Usa META_ACCESS_TOKEN_BRAYTON em todas as contas desta sessão.
+                  </p>
+                </button>
+              </div>
+            </div>
+
             <MetaTokenInput
               value={token}
               showToken={showToken}
               isSubmitting={isValidating}
-              disabled={!sessionUser}
               hasSavedToken={Boolean(savedTokenMasked)}
               placeholder={tokenSuggestion}
               onChange={setToken}

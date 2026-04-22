@@ -374,19 +374,6 @@ export async function resolveMetaTokenFromOwners(
   owners: MetaTokenOwner[],
   options?: { forceRemote?: boolean }
 ) {
-  const environmentHealth = await getStoredMetaTokenHealth({
-    storedToken: null,
-    storedExpiresAt: null,
-    forceRemote: options?.forceRemote,
-  })
-
-  if (environmentHealth.ok && environmentHealth.token) {
-    return {
-      ownerId: null,
-      health: environmentHealth,
-    }
-  }
-
   const ownersWithTokens = owners.filter(
     (owner) =>
       typeof owner.metaAccessToken === "string" && owner.metaAccessToken.trim()
@@ -443,6 +430,19 @@ export async function resolveMetaTokenFromOwners(
 
     lastCheckedOwner = owner
     lastHealth = health
+  }
+
+  const environmentHealth = await getStoredMetaTokenHealth({
+    storedToken: null,
+    storedExpiresAt: null,
+    forceRemote: options?.forceRemote,
+  })
+
+  if (environmentHealth.ok && environmentHealth.token) {
+    return {
+      ownerId: null,
+      health: environmentHealth,
+    }
   }
 
   return {

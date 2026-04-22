@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { Bell, CalendarDays, CheckCheck, ChevronDown } from "lucide-react"
 import Link from "next/link"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 
 interface HeaderProps {
@@ -65,11 +65,24 @@ function parseInputDate(value: string | null) {
   return parsed
 }
 
+function readRangeFromLocation(search: string, fallback = getDefaultRange()) {
+  const params = new URLSearchParams(search)
+  const selectedStart = parseInputDate(params.get("startDate")) ?? fallback.weekStart
+  const selectedEnd = parseInputDate(params.get("endDate")) ?? fallback.weekEnd
+
+  if (selectedStart.getTime() > selectedEnd.getTime()) {
+    return fallback
+  }
+
+  return { weekStart: selectedStart, weekEnd: selectedEnd }
+}
+
+const DEFAULT_RANGE = getDefaultRange()
+
 export function Header({ title }: HeaderProps) {
   const { data: session } = useSession()
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const [isDateFilterOpen, setIsDateFilterOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState([
@@ -81,28 +94,38 @@ export function Header({ title }: HeaderProps) {
     },
   ])
 
+  const [currentRange, setCurrentRange] = useState(() =>
+    typeof window === "undefined"
+      ? DEFAULT_RANGE
+      : readRangeFromLocation(window.location.search, DEFAULT_RANGE)
+  )
+  const [draftStart, setDraftStart] = useState(formatInputDate(currentRange.weekStart))
+  const [draftEnd, setDraftEnd] = useState(formatInputDate(currentRange.weekEnd))
+  const hasDraftError = draftStart > draftEnd
+
+  useEffect(() => {
+    const syncRangeFromLocation = () => {
+      setCurrentRange(readRangeFromLocation(window.location.search, DEFAULT_RANGE))
+    }
+
+    syncRangeFromLocation()
+    window.addEventListener("popstate", syncRangeFromLocation)
+
+    return () => {
+      window.removeEventListener("popstate", syncRangeFromLocation)
+    }
+  }, [pathname])
+
   const isDashboardHome = pathname === "/dashboard"
   const unreadCount = notifications.filter((notification) => !notification.read).length
 
-  const initials = session?.user?.name
-    ?.split(" ")
-    .map((namePart) => namePart[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() ?? "GG"
-
-  const defaultRange = getDefaultRange()
-  const selectedStart =
-    parseInputDate(searchParams.get("startDate")) ?? defaultRange.weekStart
-  const selectedEnd =
-    parseInputDate(searchParams.get("endDate")) ?? defaultRange.weekEnd
-  const hasInvalidQueryRange = selectedStart.getTime() > selectedEnd.getTime()
-  const currentStart = hasInvalidQueryRange ? defaultRange.weekStart : selectedStart
-  const currentEnd = hasInvalidQueryRange ? defaultRange.weekEnd : selectedEnd
-
-  const [draftStart, setDraftStart] = useState(formatInputDate(currentStart))
-  const [draftEnd, setDraftEnd] = useState(formatInputDate(currentEnd))
-  const hasDraftError = draftStart > draftEnd
+  const initials =
+    session?.user?.name
+      ?.split(" ")
+      .map((namePart) => namePart[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() ?? "GG"
 
   function toggleDateFilter() {
     setIsNotificationsOpen(false)
@@ -112,8 +135,8 @@ export function Header({ title }: HeaderProps) {
       return
     }
 
-    setDraftStart(formatInputDate(currentStart))
-    setDraftEnd(formatInputDate(currentEnd))
+    setDraftStart(formatInputDate(currentRange.weekStart))
+    setDraftEnd(formatInputDate(currentRange.weekEnd))
     setIsDateFilterOpen(true)
   }
 
@@ -122,23 +145,24 @@ export function Header({ title }: HeaderProps) {
       return
     }
 
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams()
     params.set("startDate", draftStart)
     params.set("endDate", draftEnd)
 
+    const selectedStart = parseInputDate(draftStart) ?? DEFAULT_RANGE.weekStart
+    const selectedEnd = parseInputDate(draftEnd) ?? DEFAULT_RANGE.weekEnd
+
+    setCurrentRange({
+      weekStart: selectedStart,
+      weekEnd: selectedEnd,
+    })
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
     setIsDateFilterOpen(false)
   }
 
   function resetDateFilter() {
-    const params = new URLSearchParams(searchParams.toString())
-    params.delete("startDate")
-    params.delete("endDate")
-
-    const nextQuery = params.toString()
-    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
-      scroll: false,
-    })
+    setCurrentRange(DEFAULT_RANGE)
+    router.replace(pathname, { scroll: false })
     setIsDateFilterOpen(false)
   }
 
@@ -189,7 +213,8 @@ export function Header({ title }: HeaderProps) {
                   >
                     <CalendarDays className="h-3.5 w-3.5 text-[color:var(--color-app-text-faint)]" />
                     <span>
-                      Período: {formatDate(currentStart)} - {formatDate(currentEnd)}
+                      Período: {formatDate(currentRange.weekStart)} -{" "}
+                      {formatDate(currentRange.weekEnd)}
                     </span>
                     <ChevronDown
                       className={`h-3.5 w-3.5 text-[color:var(--color-app-text-faint)] transition ${
@@ -362,9 +387,7 @@ export function Header({ title }: HeaderProps) {
 
               <Link href="/dashboard/profile">
                 <div className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#C1121F] transition hover:opacity-90">
-                  <span className="text-sm font-semibold text-white">
-                    {initials}
-                  </span>
+                  <span className="text-sm font-semibold text-white">{initials}</span>
                 </div>
               </Link>
             </div>

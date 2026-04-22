@@ -22,7 +22,7 @@ import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { withTimeout } from "@/lib/async"
 import { loginSchema } from "@/lib/validations/auth.schema"
 
-type LoginForm = z.infer<typeof loginSchema>
+type LoginFormData = z.infer<typeof loginSchema>
 
 const DEFAULT_REDIRECT_PATH = "/dashboard"
 
@@ -38,10 +38,7 @@ function normalizeCallbackUrl(rawCallbackUrl: string) {
   try {
     const parsed = new URL(rawCallbackUrl)
 
-    if (
-      typeof window !== "undefined"
-      && parsed.origin === window.location.origin
-    ) {
+    if (typeof window !== "undefined" && parsed.origin === window.location.origin) {
       return `${parsed.pathname}${parsed.search}${parsed.hash}`
     }
   } catch {
@@ -81,23 +78,17 @@ export default function LoginForm({ initialCallbackUrl }: LoginFormProps) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginForm>({
+  } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   })
 
-  async function onSubmit(data: LoginForm) {
+  async function onSubmit(data: LoginFormData) {
     let shouldResetLoading = true
-
-    console.info("[auth/login] submit.clicked", {
-      callbackUrl,
-    })
 
     setIsLoading(true)
     setError("")
 
     try {
-      console.info("[auth/login] submit.started")
-
       const result = await withTimeout(
         signIn("credentials", {
           email: data.email,
@@ -108,13 +99,6 @@ export default function LoginForm({ initialCallbackUrl }: LoginFormProps) {
         15_000,
         "A autenticação demorou mais do que o esperado. Tente novamente."
       )
-
-      console.info("[auth/login] sign-in.response", {
-        ok: result?.ok ?? false,
-        status: result?.status ?? null,
-        error: result?.error ?? null,
-        url: result?.url ?? null,
-      })
 
       if (!result) {
         throw new Error("Não houve resposta da autenticação.")
@@ -131,12 +115,6 @@ export default function LoginForm({ initialCallbackUrl }: LoginFormProps) {
         "O login foi aceito, mas a sessão não ficou disponível a tempo."
       )
 
-      console.info("[auth/login] session.checked", {
-        hasUser: Boolean(session?.user?.email),
-        userId: session?.user?.id ?? null,
-        role: session?.user?.role ?? null,
-      })
-
       if (!session?.user?.email) {
         throw new Error(
           "A autenticação foi concluída, mas a sessão não ficou disponível. Verifique NEXTAUTH_URL e NEXTAUTH_SECRET na Vercel."
@@ -144,10 +122,6 @@ export default function LoginForm({ initialCallbackUrl }: LoginFormProps) {
       }
 
       const destination = normalizeCallbackUrl(result.url ?? callbackUrl)
-      console.info("[auth/login] redirect.started", {
-        destination,
-      })
-
       shouldResetLoading = false
       window.location.assign(destination)
     } catch (submitError) {
@@ -156,48 +130,59 @@ export default function LoginForm({ initialCallbackUrl }: LoginFormProps) {
           ? submitError.message
           : "Ocorreu um erro inesperado ao entrar."
 
-      console.error("[auth/login] submit.failed", {
-        message,
-      })
       setError(message)
     } finally {
       if (shouldResetLoading) {
-        console.info("[auth/login] submit.finished-without-redirect")
         setIsLoading(false)
       }
     }
   }
 
+  const featureCards = [
+    {
+      icon: BarChart3,
+      label: "Visão operacional",
+      value: "Métricas em destaque",
+    },
+    {
+      icon: ShieldCheck,
+      label: "Acesso protegido",
+      value: "Login e sessão seguros",
+    },
+    {
+      icon: Clock3,
+      label: "Fluxo rápido",
+      value: "Entrada sem atrito",
+    },
+  ]
+
   return (
-    <main className="relative isolate min-h-screen overflow-hidden bg-[var(--color-app-background)] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <div className="pointer-events-none absolute left-[-8rem] top-[-8rem] h-[26rem] w-[26rem] rounded-full bg-[rgba(193,18,31,0.14)] blur-3xl" />
-      <div className="pointer-events-none absolute right-[-8rem] top-[18%] h-[24rem] w-[24rem] rounded-full bg-[rgba(59,130,246,0.12)] blur-3xl" />
-      <div className="pointer-events-none absolute bottom-[-10rem] left-[22%] h-[22rem] w-[22rem] rounded-full bg-[rgba(15,23,42,0.08)] blur-3xl" />
+    <main className="relative isolate min-h-screen overflow-hidden bg-[#f4f5f8] px-4 py-4 text-slate-900 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(193,18,31,0.08),transparent_34%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.07),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(15,23,42,0.05),transparent_30%)]" />
 
       <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
         <ThemeToggle />
       </div>
 
-      <div className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-7xl items-stretch gap-6 lg:grid-cols-[1.08fr_0.92fr]">
-        <section className="relative overflow-hidden rounded-[34px] border border-white/10 bg-[linear-gradient(145deg,rgba(8,11,18,0.98)_0%,rgba(15,23,42,0.96)_46%,rgba(30,41,59,0.92)_100%)] p-8 text-white shadow-[0_32px_90px_-48px_rgba(15,23,42,0.8)] sm:p-10">
-          <div className="pointer-events-none absolute -right-16 top-10 h-44 w-44 rounded-full bg-[rgba(193,18,31,0.18)] blur-3xl" />
-          <div className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-[rgba(59,130,246,0.12)] blur-3xl" />
+      <div className="relative mx-auto grid min-h-[calc(100vh-2rem)] max-w-[1720px] gap-6 lg:grid-cols-[1.12fr_0.88fr]">
+        <section className="relative overflow-hidden rounded-[44px] bg-[linear-gradient(145deg,#080c18_0%,#121a2d_52%,#20263f_100%)] px-8 py-8 text-white shadow-[0_32px_80px_-36px_rgba(15,23,42,0.72)] sm:px-10 sm:py-10 lg:px-12 lg:py-12">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.07),transparent_18%),radial-gradient(circle_at_bottom_right,rgba(193,18,31,0.18),transparent_26%)]" />
 
-          <div className="relative flex h-full flex-col justify-between gap-8">
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
-                <Sparkles className="h-3.5 w-3.5 text-[#f1b5ba]" />
+          <div className="relative flex h-full min-h-[calc(100vh-4rem)] flex-col justify-between gap-8">
+            <div className="space-y-10">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-[0.82rem] font-semibold uppercase tracking-[0.22em] text-white/80">
+                <Sparkles className="h-4 w-4 text-[#f4b6be]" />
                 GreatGo
               </div>
 
-              <div className="max-w-xl space-y-5">
-                  <p className="text-sm font-semibold uppercase tracking-[0.32em] text-white/40">
+              <div className="max-w-3xl space-y-6">
+                <p className="text-sm font-semibold uppercase tracking-[0.42em] text-white/45">
                   Operação comercial
                 </p>
-                <h1 className="text-4xl font-semibold leading-tight tracking-[-0.04em] sm:text-5xl">
+                <h1 className="max-w-3xl text-[clamp(3.2rem,5.8vw,6.4rem)] font-semibold leading-[0.9] tracking-[-0.06em] text-white">
                   Um painel mais claro para acompanhar clientes, mídia e relatórios.
                 </h1>
-                <p className="max-w-lg text-base leading-7 text-white/70 sm:text-lg">
+                <p className="max-w-2xl text-[1.15rem] leading-8 text-white/70">
                   A interface foi redesenhada para parecer mais atual, com contraste mais forte,
                   profundidade e foco no que importa: entrar rápido, operar rápido e visualizar
                   tudo sem ruído.
@@ -205,58 +190,44 @@ export default function LoginForm({ initialCallbackUrl }: LoginFormProps) {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                {
-                  icon: BarChart3,
-                  label: "Visão operacional",
-                  value: "Métricas em destaque",
-                },
-                {
-                  icon: ShieldCheck,
-                  label: "Acesso protegido",
-                  value: "Login e sessão seguros",
-                },
-                {
-                  icon: Clock3,
-                  label: "Fluxo rápido",
-                  value: "Entrada sem atrito",
-                },
-              ].map(({ icon: Icon, label, value }) => (
+            <div className="grid gap-4 sm:grid-cols-3">
+              {featureCards.map(({ icon: Icon, label, value }) => (
                 <div
                   key={label}
-                  className="rounded-3xl border border-white/10 bg-white/[0.06] px-4 py-4 backdrop-blur-sm"
+                  className="rounded-[28px] border border-white/10 bg-white/[0.06] px-5 py-5 backdrop-blur-sm"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
-                      <Icon className="h-4 w-4" />
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-white">
+                      <Icon className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/40">
+                      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-white/40">
                         {label}
                       </p>
-                      <p className="mt-1 text-sm font-medium text-white/80">{value}</p>
+                      <p className="mt-2 text-[1.02rem] font-medium leading-6 text-white/80">
+                        {value}
+                      </p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.08] px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/40">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-[30px] border border-white/10 bg-white/[0.08] px-6 py-5">
+                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.26em] text-white/40">
                   Plataforma
                 </p>
-                <p className="mt-2 text-lg font-semibold text-white">
+                <p className="mt-3 max-w-md text-[1.08rem] font-semibold leading-7 text-white">
                   Gestão, relatórios e operação em um só lugar.
                 </p>
               </div>
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.08] px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/40">
+              <div className="rounded-[30px] border border-white/10 bg-white/[0.08] px-6 py-5">
+                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.26em] text-white/40">
                   Status
                 </p>
-                <div className="mt-2 flex items-center gap-2 text-sm font-medium text-white/80">
-                  <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_6px_rgba(74,222,128,0.12)]" />
+                <div className="mt-3 flex items-center gap-3 text-[1.02rem] font-semibold text-white">
+                  <div className="h-3.5 w-3.5 rounded-full bg-emerald-400 shadow-[0_0_0_8px_rgba(74,222,128,0.14)]" />
                   Ambiente pronto para acesso de equipe
                 </div>
               </div>
@@ -265,92 +236,87 @@ export default function LoginForm({ initialCallbackUrl }: LoginFormProps) {
         </section>
 
         <section className="relative flex items-stretch">
-          <div className="relative flex w-full flex-col justify-center rounded-[34px] border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-elevated)] p-6 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.62)] backdrop-blur-xl sm:p-8">
+          <div className="relative flex w-full flex-col justify-center rounded-[44px] border border-[#d9e0ec] bg-[linear-gradient(180deg,#ffffff_0%,#ffffff_56%,#fefefe_100%)] px-6 py-6 shadow-[0_28px_90px_-52px_rgba(15,23,42,0.35)] sm:px-8 sm:py-8 lg:px-10 lg:py-10">
             <div className="mb-8 flex items-start justify-between gap-6">
               <div className="space-y-3">
-                <p className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--color-app-text-soft)]">
-                  <ShieldCheck className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+                <p className="inline-flex items-center gap-2 rounded-full border border-[#dbe2ef] bg-[#fbfcfe] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.26em] text-[#5f6f8f]">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#C1121F]" />
                   Acesso interno
                 </p>
                 <div>
-                  <h2 className="text-3xl font-semibold tracking-[-0.04em] text-[color:var(--color-app-text)] sm:text-4xl">
+                  <h2 className="max-w-xl text-[clamp(2.8rem,4.4vw,5rem)] font-semibold leading-[0.96] tracking-[-0.07em] text-slate-900">
                     Entrar na plataforma
                   </h2>
-                  <p className="mt-3 max-w-lg text-sm leading-6 text-[color:var(--color-app-text-soft)] sm:text-base">
+                  <p className="mt-4 max-w-xl text-[1.1rem] leading-8 text-slate-500">
                     Use sua conta cadastrada para acessar o painel operacional, clientes e
                     integrações.
                   </p>
                 </div>
               </div>
 
-              <div className="hidden rounded-[28px] border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] px-4 py-3 text-right sm:block">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--color-app-text-faint)]">
+              <div className="hidden rounded-[28px] border border-[#dbe2ef] bg-[#f8fafc] px-6 py-5 text-right sm:block">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#91a0bb]">
                   Ambiente
                 </p>
-                <p className="mt-1 text-sm font-semibold text-[color:var(--color-app-text)]">
-                  GreatGo internal
+                <p className="mt-2 text-lg font-semibold text-slate-800">
+                  GreatGo
+                  <br />
+                  internal
                 </p>
               </div>
             </div>
 
-            {error && (
+            {error ? (
               <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 shadow-[0_14px_30px_-24px_rgba(193,18,31,0.55)]">
                 {error}
               </div>
-            )}
+            ) : null}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  E-mail
-                </label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">E-mail</label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     {...register("email")}
                     type="email"
                     placeholder="seuemail@empresa.com"
-                    className="w-full rounded-2xl border border-gray-200 bg-white py-3.5 pl-10 pr-4 text-sm text-gray-900 shadow-[0_10px_22px_-18px_rgba(15,23,42,0.35)] transition placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+                    className="w-full rounded-2xl border border-[#d9e0ec] bg-white py-3.5 pl-11 pr-4 text-[0.98rem] text-slate-900 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.3)] transition placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
                   />
                 </div>
-                {errors.email && (
+                {errors.email ? (
                   <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
-                )}
+                ) : null}
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Senha
-                </label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Senha</label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     {...register("password")}
                     type={showPassword ? "text" : "password"}
                     placeholder="********"
-                    className="w-full rounded-2xl border border-gray-200 bg-white py-3.5 pl-10 pr-10 text-sm text-gray-900 shadow-[0_10px_22px_-18px_rgba(15,23,42,0.35)] transition placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
+                    className="w-full rounded-2xl border border-[#d9e0ec] bg-white py-3.5 pl-11 pr-12 text-[0.98rem] text-slate-900 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.3)] transition placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+                    onClick={() => setShowPassword((current) => !current)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {errors.password && (
+                {errors.password ? (
                   <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
-                )}
+                ) : null}
               </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#C1121F] px-4 py-3.5 font-semibold text-white shadow-[0_18px_30px_-22px_rgba(193,18,31,0.7)] transition hover:bg-[#A50F1A] disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#C1121F] px-4 py-4 text-[1.05rem] font-semibold text-white shadow-[0_18px_36px_-22px_rgba(193,18,31,0.72)] transition hover:bg-[#a50f1a] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isLoading ? (
                   <>
@@ -366,28 +332,28 @@ export default function LoginForm({ initialCallbackUrl }: LoginFormProps) {
               </button>
             </form>
 
-            <div className="mt-8 grid gap-3 border-t border-[color:var(--color-app-border)] pt-6 sm:grid-cols-3">
-              <div className="rounded-2xl bg-[var(--color-app-surface-muted)] px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--color-app-text-faint)]">
+            <div className="mt-8 grid gap-3 border-t border-[#dbe2ef] pt-6 sm:grid-cols-3">
+              <div className="rounded-2xl bg-[#f7f9fc] px-4 py-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#91a0bb]">
                   Segurança
                 </p>
-                <p className="mt-2 text-sm text-[color:var(--color-app-text-muted)]">
+                <p className="mt-2 text-sm leading-6 text-slate-600">
                   Sessão com NextAuth e token JWT
                 </p>
               </div>
-              <div className="rounded-2xl bg-[var(--color-app-surface-muted)] px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--color-app-text-faint)]">
+              <div className="rounded-2xl bg-[#f7f9fc] px-4 py-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#91a0bb]">
                   Acesso
                 </p>
-                <p className="mt-2 text-sm text-[color:var(--color-app-text-muted)]">
+                <p className="mt-2 text-sm leading-6 text-slate-600">
                   Perfis admin e gestor centralizados
                 </p>
               </div>
-              <div className="rounded-2xl bg-[var(--color-app-surface-muted)] px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--color-app-text-faint)]">
+              <div className="rounded-2xl bg-[#f7f9fc] px-4 py-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#91a0bb]">
                   Experiência
                 </p>
-                <p className="mt-2 text-sm text-[color:var(--color-app-text-muted)]">
+                <p className="mt-2 text-sm leading-6 text-slate-600">
                   Interface atualizada com foco na operação
                 </p>
               </div>

@@ -4,6 +4,10 @@ import {
   getStoredMetaTokenHealth,
   inspectMetaTokenValue,
 } from "@/lib/meta-token-status"
+import {
+  getMetaAccessTokenFromEnv,
+  type MetaTokenPreset,
+} from "@/lib/meta-token"
 import { logError } from "@/lib/safe-logger"
 import { metaTokenSchema } from "@/lib/validations/meta.schema"
 import type { ApiErrorResponse } from "@/types/api.types"
@@ -62,7 +66,20 @@ export async function POST(request: Request) {
       )
     }
 
-    const validation = await inspectMetaTokenValue(parsedBody.data.token)
+    const payload = parsedBody.data as { token?: string; preset?: MetaTokenPreset }
+    const token =
+      "preset" in payload
+        ? getMetaAccessTokenFromEnv(payload.preset)
+        : payload.token
+
+    if (!token) {
+      return NextResponse.json<ApiErrorResponse>(
+        { error: "Token META obrigatorio" },
+        { status: 400 }
+      )
+    }
+
+    const validation = await inspectMetaTokenValue(token)
 
     if (!validation.ok) {
       return NextResponse.json<MetaTokenValidationResponse>(

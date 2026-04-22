@@ -27,8 +27,11 @@ export type MetaAccount = {
   account_status: number | null
 }
 
+export type MetaTokenPreset = "ISAQUE" | "BRAYTON"
+
 export type MetaTokenRequest = {
-  token: string
+  token?: string
+  preset?: MetaTokenPreset
 }
 
 export type MetaTokenValidationResponse = {
@@ -44,6 +47,7 @@ export type MetaTokenStatusResponse = {
   hasSavedToken: boolean
   tokenStatus: MetaTokenStatus
   tokenMasked?: string | null
+  selectedPreset?: MetaTokenPreset | null
   metaUser?: MetaUser | null
   detail?: string | null
   expiresAt?: string | null
@@ -53,6 +57,7 @@ export type MetaTokenSaveResponse = {
   success: true
   tokenStatus: MetaTokenStatus
   tokenMasked: string
+  selectedPreset?: MetaTokenPreset | null
   metaUser: MetaUser | null
   expiresAt: string | null
   detail: string | null

@@ -8,13 +8,28 @@ function trimString(value: unknown) {
 }
 
 export const metaTokenSchema = z
-  .object({
-    token: z.preprocess(
-      trimString,
-      z.string().min(1, "Token META obrigatorio")
-    ),
-  })
-  .strict()
+  .union([
+    z
+      .object({
+        token: z.preprocess(
+          trimString,
+          z.string().min(1, "Token META obrigatorio")
+        ),
+      })
+      .strict(),
+    z
+      .object({
+        preset: z.enum(["ISAQUE", "BRAYTON"]),
+      })
+      .strict(),
+  ])
+  .refine((value) => {
+    if ("token" in value) {
+      return Boolean(value.token.trim())
+    }
+
+    return true
+  }, "Token META obrigatorio")
 
 export const importClientSchema = z
   .object({

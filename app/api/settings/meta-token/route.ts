@@ -16,6 +16,13 @@ import type {
   MetaTokenSaveResponse,
   MetaTokenStatusResponse,
 } from "@/types/meta.types"
+import {
+  createMetaTokenPresetToken,
+  getMetaAccessTokenFromEnv,
+  getMetaTokenPresetFromStoredToken,
+  getMetaTokenPresetLabel,
+  type MetaTokenPreset,
+} from "@/lib/meta-token"
 
 type AuthenticatedContext = {
   session: Awaited<ReturnType<typeof getServerSession>>
@@ -38,6 +45,31 @@ function maskToken(token: string) {
   }
 
   return `${token.slice(0, 8)}...${token.slice(-6)}`
+}
+
+function isMetaTokenPreset(value: unknown): value is MetaTokenPreset {
+  return value === "ISAQUE" || value === "BRAYTON"
+}
+
+async function inspectSelectedPresetToken(preset: MetaTokenPreset) {
+  const token = getMetaAccessTokenFromEnv(preset)
+
+  if (!token) {
+    throw new Error(
+      `Token META ${getMetaTokenPresetLabel(preset)} nao configurado no ambiente.`
+    )
+  }
+
+  const validation = await inspectMetaTokenValue(token)
+
+  if (!validation.ok) {
+    throw new Error(validation.detail ?? "Token META invalido")
+  }
+
+  return {
+    token,
+    validation,
+  }
 }
 
 async function getAuthenticatedContext() {
@@ -104,6 +136,7 @@ export async function GET() {
           },
           hasSavedToken: false,
           tokenStatus: "unknown" satisfies MetaTokenStatus,
+          selectedPreset: null,
           detail: dbError,
           expiresAt: null,
         },
@@ -141,6 +174,8 @@ export async function GET() {
       }
     }
 
+    const selectedPreset = getMetaTokenPresetFromStoredToken(user?.metaAccessToken ?? null)
+
     return NextResponse.json<MetaTokenStatusResponse>({
       sessionUser: {
         id: session.user.id,
@@ -150,6 +185,7 @@ export async function GET() {
       },
       hasSavedToken: validation.status !== "missing",
       tokenMasked: validation.token ? maskToken(validation.token) : null,
+      selectedPreset,
       tokenStatus: validation.status,
       metaUser: validation.ok ? validation.metaUser : null,
       detail: validation.detail,
@@ -196,7 +232,61 @@ export async function POST(request: Request) {
       )
     }
 
-    const sanitizedToken = parsedBody.data.token
+    const payload = parsedBody.data as { token?: string; preset?: MetaTokenPreset }
+
+    if (payload.preset) {
+      const preset = payload.preset
+      let presetValidation
+
+      try {
+        presetValidation = await inspectSelectedPresetToken(preset)
+      } catch (error) {
+        return NextResponse.json<ApiErrorResponse>(
+          {
+            error: error instanceof Error ? error.message : "Token META invalido",
+          },
+          { status: 400 }
+        )
+      }
+      const presetToken = createMetaTokenPresetToken(preset)
+
+      if (user?.id) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            metaAccessToken: presetToken,
+            metaTokenExpiresAt: presetValidation.validation.expiresAt,
+          },
+        })
+      } else {
+        await prisma.user.upsert({
+          where: { email },
+          update: {
+            metaAccessToken: presetToken,
+            metaTokenExpiresAt: presetValidation.validation.expiresAt,
+          },
+          create: {
+            email,
+            passwordHash: user?.passwordHash ?? "",
+            role: user?.role ?? "MANAGER",
+            metaAccessToken: presetToken,
+            metaTokenExpiresAt: presetValidation.validation.expiresAt,
+          },
+        })
+      }
+
+      return NextResponse.json<MetaTokenSaveResponse>({
+        success: true,
+        tokenStatus: presetValidation.validation.status,
+        tokenMasked: maskToken(presetValidation.token),
+        selectedPreset: preset,
+        metaUser: presetValidation.validation.metaUser,
+        expiresAt: presetValidation.validation.expiresAt?.toISOString() ?? null,
+        detail: presetValidation.validation.detail,
+      })
+    }
+
+    const sanitizedToken = payload.token?.trim() ?? ""
     const validation = await inspectMetaTokenValue(sanitizedToken)
 
     if (!validation.ok) {
@@ -241,6 +331,7 @@ export async function POST(request: Request) {
       success: true,
       tokenStatus: validation.status,
       tokenMasked: maskToken(sanitizedToken),
+      selectedPreset: null,
       metaUser: validation.metaUser,
       expiresAt: validation.expiresAt?.toISOString() ?? null,
       detail: validation.detail,

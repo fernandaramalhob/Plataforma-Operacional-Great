@@ -7,8 +7,10 @@ import {
 
 const META_TOKEN_PREFIX = "enc:v1"
 const META_TOKEN_IV_LENGTH = 12
+const META_TOKEN_PRESET_PREFIX = "preset:v1"
 
 export type MetaTokenSource = "environment" | "database"
+export type MetaTokenPreset = "ISAQUE" | "BRAYTON"
 
 type ParsedEncryptedMetaToken = {
   ivBase64: string
@@ -53,6 +55,70 @@ function parseEncryptedMetaToken(storedToken: string): ParsedEncryptedMetaToken 
     authTagBase64,
     encryptedBase64,
   }
+}
+
+function parseMetaTokenPreset(storedToken: string): MetaTokenPreset | null {
+  if (!storedToken.startsWith(`${META_TOKEN_PRESET_PREFIX}:`)) {
+    return null
+  }
+
+  const preset = storedToken.slice(`${META_TOKEN_PRESET_PREFIX}:`.length).trim()
+
+  if (preset === "ISAQUE" || preset === "BRAYTON") {
+    return preset
+  }
+
+  return null
+}
+
+export function getMetaTokenPresetFromStoredToken(storedToken: string | null) {
+  if (!storedToken) {
+    return null
+  }
+
+  return parseMetaTokenPreset(storedToken.trim())
+}
+
+function buildPresetToken(preset: MetaTokenPreset) {
+  return `${META_TOKEN_PRESET_PREFIX}:${preset}`
+}
+
+function getPresetTokenFromEnv(preset: MetaTokenPreset) {
+  if (preset === "ISAQUE") {
+    return process.env.META_ACCESS_TOKEN_ISAQUE?.trim() ?? null
+  }
+
+  if (preset === "BRAYTON") {
+    return process.env.META_ACCESS_TOKEN_BRAYTON?.trim() ?? null
+  }
+
+  return null
+}
+
+export function getMetaTokenPresetLabel(preset: MetaTokenPreset) {
+  return preset === "ISAQUE" ? "Isaque" : "Bryton"
+}
+
+export function isMetaTokenPresetToken(value: string) {
+  return parseMetaTokenPreset(value) !== null
+}
+
+export function createMetaTokenPresetToken(preset: MetaTokenPreset) {
+  return buildPresetToken(preset)
+}
+
+export function getMetaAccessTokenFromEnv(preset?: MetaTokenPreset | null) {
+  if (preset) {
+    return getPresetTokenFromEnv(preset)
+  }
+
+  const envToken = process.env.META_ACCESS_TOKEN?.trim()
+
+  if (!envToken) {
+    return null
+  }
+
+  return resolveMetaToken(envToken).token
 }
 
 export function encryptMetaToken(token: string) {
@@ -116,6 +182,22 @@ export function decryptMetaToken(storedToken: string) {
 export function resolveMetaToken(storedToken: string) {
   const sanitizedStoredToken = storedToken.trim()
 
+  const preset = parseMetaTokenPreset(sanitizedStoredToken)
+  if (preset) {
+    const token = getPresetTokenFromEnv(preset)
+
+    if (!token) {
+      throw new Error(
+        `Token META ${getMetaTokenPresetLabel(preset)} nao configurado no ambiente.`
+      )
+    }
+
+    return {
+      token,
+      encryptedToken: null,
+    }
+  }
+
   if (isEncryptedMetaToken(sanitizedStoredToken)) {
     return {
       token: decryptMetaToken(sanitizedStoredToken),
@@ -129,16 +211,6 @@ export function resolveMetaToken(storedToken: string) {
   }
 }
 
-export function getMetaAccessTokenFromEnv() {
-  const envToken = process.env.META_ACCESS_TOKEN?.trim()
-
-  if (!envToken) {
-    return null
-  }
-
-  return resolveMetaToken(envToken).token
-}
-
 export function getMetaTokenFromCandidates(
   ...storedTokens: Array<string | null | undefined>
 ) {
@@ -148,17 +220,6 @@ export function getMetaTokenFromCandidates(
 export function resolveMetaTokenCandidate(
   ...storedTokens: Array<string | null | undefined>
 ) {
-  const environmentToken = getMetaAccessTokenFromEnv()
-
-  if (environmentToken) {
-    return {
-      token: environmentToken,
-      encryptedToken: null,
-      index: -1,
-      source: "environment" as const,
-    }
-  }
-
   for (let index = 0; index < storedTokens.length; index += 1) {
     const storedToken = storedTokens[index]
 
@@ -168,6 +229,17 @@ export function resolveMetaTokenCandidate(
         index,
         source: "database" as const,
       }
+    }
+  }
+
+  const environmentToken = getMetaAccessTokenFromEnv()
+
+  if (environmentToken) {
+    return {
+      token: environmentToken,
+      encryptedToken: null,
+      index: -1,
+      source: "environment" as const,
     }
   }
 
