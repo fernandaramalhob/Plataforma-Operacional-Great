@@ -573,6 +573,7 @@ export default function ReportsPage() {
               <button
                 type="button"
                 onClick={() => setActiveListTab("clients")}
+                data-cy="reports-tab-clients"
                 className={`rounded-2xl px-4 py-2.5 text-sm font-medium transition ${
                   activeListTab === "clients"
                     ? "bg-[#C1121F] text-white shadow-[0_16px_30px_-22px_rgba(193,18,31,0.9)]"
@@ -584,6 +585,7 @@ export default function ReportsPage() {
               <button
                 type="button"
                 onClick={() => setActiveListTab("schedules")}
+                data-cy="reports-tab-schedules"
                 className={`rounded-2xl px-4 py-2.5 text-sm font-medium transition ${
                   activeListTab === "schedules"
                     ? "bg-[#C1121F] text-white shadow-[0_16px_30px_-22px_rgba(193,18,31,0.9)]"
@@ -595,6 +597,7 @@ export default function ReportsPage() {
               <button
                 type="button"
                 onClick={() => void resetWorkspace()}
+                data-cy="reports-reset-workspace"
                 className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
               >
                 Reiniciar painel
@@ -684,6 +687,7 @@ export default function ReportsPage() {
                         </button>
                         <button
                           type="button"
+                          data-cy={`report-client-${client.id}`}
                           onClick={() => {
                             setSelectedClient(client)
                             clearCurrentReport()
@@ -942,6 +946,7 @@ export default function ReportsPage() {
 
           <button
             onClick={() => void fetchReport()}
+            data-cy="reports-apply-filters"
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#C1121F] py-3 text-sm font-semibold text-white shadow-[0_18px_40px_-24px_rgba(193,18,31,0.9)] transition hover:bg-[#A50F1A]"
           >
             {loadingReport ? (
@@ -1049,6 +1054,7 @@ export default function ReportsPage() {
                 ) : null}
                 <button
                   onClick={() => setScheduleModalOpen(true)}
+                  data-cy="reports-open-schedule"
                   className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 transition hover:bg-gray-50"
                 >
                   <Calendar className="h-4 w-4" />
@@ -1056,6 +1062,7 @@ export default function ReportsPage() {
                 </button>
                 <button
                   onClick={() => void handleSendReport()}
+                  data-cy="reports-send-whatsapp"
                   disabled={!currentReportId || isSending}
                   className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 transition hover:bg-gray-50 disabled:opacity-60"
                 >
@@ -1064,6 +1071,7 @@ export default function ReportsPage() {
                 </button>
                 <button
                   onClick={() => void handleGeneratePdf()}
+                  data-cy="reports-save-pdf"
                   disabled={isExporting}
                   className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
                 >

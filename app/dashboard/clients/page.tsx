@@ -158,7 +158,7 @@ export default function ClientsPage() {
         title="Clientes"
         subtitle={`${clients.length} clientes encontrados`}
       />
-      <div className="px-8 pb-8 pt-10">
+      <div className="px-8 pb-8 pt-24">
         <div className="mb-6 flex justify-end">
           <Link
             href="/dashboard/clients/new"

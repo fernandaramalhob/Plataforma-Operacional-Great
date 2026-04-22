@@ -317,6 +317,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
           </div>
           <button
             onClick={props.onClose}
+            data-cy="reports-schedule-close"
             className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
           >
             <X className="h-4 w-4" />
@@ -366,15 +367,16 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setForm((current) => ({ ...current, frequency: "WEEKLY" }))}
-              className={`rounded-2xl border px-4 py-4 text-left transition ${
-                form.frequency === "WEEKLY"
-                  ? "border-[#C1121F] bg-[#FFF4F5]"
-                  : "border-slate-200 hover:bg-slate-50"
-              }`}
-            >
+                <button
+                  type="button"
+                  data-cy="reports-schedule-weekly"
+                  onClick={() => setForm((current) => ({ ...current, frequency: "WEEKLY" }))}
+                  className={`rounded-2xl border px-4 py-4 text-left transition ${
+                    form.frequency === "WEEKLY"
+                      ? "border-[#C1121F] bg-[#FFF4F5]"
+                      : "border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
               <div className="flex items-center gap-3">
                 <Repeat className="h-5 w-5 text-[#C1121F]" />
                 <div>
@@ -386,15 +388,16 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
               </div>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setForm((current) => ({ ...current, frequency: "ONCE" }))}
-              className={`rounded-2xl border px-4 py-4 text-left transition ${
-                form.frequency === "ONCE"
-                  ? "border-[#C1121F] bg-[#FFF4F5]"
-                  : "border-slate-200 hover:bg-slate-50"
-              }`}
-            >
+                <button
+                  type="button"
+                  data-cy="reports-schedule-once"
+                  onClick={() => setForm((current) => ({ ...current, frequency: "ONCE" }))}
+                  className={`rounded-2xl border px-4 py-4 text-left transition ${
+                    form.frequency === "ONCE"
+                      ? "border-[#C1121F] bg-[#FFF4F5]"
+                      : "border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
               <div className="flex items-center gap-3">
                 <Calendar className="h-5 w-5 text-[#C1121F]" />
                 <div>
@@ -431,9 +434,10 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
             ) : (
               <label className="space-y-2 text-sm text-slate-700">
                 <span className="font-medium">Data do envio</span>
-                <input
-                  type="date"
-                  value={form.scheduledDate}
+              <input
+                type="date"
+                data-cy="reports-schedule-date"
+                value={form.scheduledDate}
                   onChange={(event) =>
                     setForm((current) => ({
                       ...current,
@@ -452,6 +456,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
               </span>
               <input
                 type="time"
+                data-cy="reports-schedule-time"
                 value={timeValue}
                 onChange={(event) => {
                   const [hour, minute] = event.target.value.split(":")
@@ -470,6 +475,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
             <label className="space-y-2 text-sm text-slate-700">
               <span className="font-medium">Formato do envio</span>
               <select
+                data-cy="reports-schedule-send-mode"
                 value={form.sendMode}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -524,6 +530,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
                 ) : (
                   <>
                     <select
+                      data-cy="reports-schedule-group-select"
                       value={selectedGroupValue}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -597,6 +604,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
               <button
                 type="button"
                 onClick={() => void handleDisable()}
+                data-cy="reports-schedule-disable"
                 disabled={disabling}
                 className="rounded-2xl border border-rose-200 px-4 py-3 text-sm font-medium text-rose-600 transition hover:bg-rose-50 disabled:opacity-60"
               >
@@ -608,6 +616,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
             <button
               type="button"
               onClick={props.onClose}
+              data-cy="reports-schedule-cancel"
               className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
             >
               Cancelar
@@ -615,6 +624,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
             <button
               type="button"
               onClick={() => void handleSave()}
+              data-cy="reports-schedule-confirm"
               disabled={saving}
               className="rounded-2xl bg-[#C1121F] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
             >

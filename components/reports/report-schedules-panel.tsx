@@ -175,6 +175,7 @@ export function ReportSchedulesPanel({
           <button
             type="button"
             onClick={() => void fetchSchedules({ silent: true })}
+            data-cy="report-schedules-refresh"
             disabled={refreshing}
             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
           >
@@ -326,6 +327,7 @@ export function ReportSchedulesPanel({
                       <button
                         type="button"
                         onClick={() => client && onSelectClient(client)}
+                        data-cy="report-schedule-open-client"
                         disabled={!client}
                         className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
                       >
@@ -334,6 +336,7 @@ export function ReportSchedulesPanel({
                       <button
                         type="button"
                         onClick={() => setEditingItem(item)}
+                        data-cy="report-schedule-edit"
                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
                         <Pencil className="h-4 w-4" />
@@ -342,6 +345,7 @@ export function ReportSchedulesPanel({
                       <button
                         type="button"
                         onClick={() => void handleDelete(item)}
+                        data-cy="report-schedule-delete"
                         disabled={deletingClientId === item.clientId}
                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-60"
                       >

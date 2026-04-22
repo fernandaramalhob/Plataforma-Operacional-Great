@@ -11,25 +11,29 @@ declare global {
 }
 
 /**
- * Faz login via UI e armazena a sessão em cache para evitar re-login a cada teste.
- * As credenciais podem ser sobrescritas via cypress.env.json:
- *   { "email": "admin@greatgo.com", "password": "suasenha" }
+ * Faz login de teste sem depender de request HTTP no bootstrap.
+ * O token é gerado no Node do Cypress e o cookie é gravado direto no browser.
  */
 Cypress.Commands.add("login", (email?: string, password?: string) => {
   const userEmail = email ?? Cypress.env("email") ?? "admin@greatgo.com"
   const userPassword = password ?? Cypress.env("password") ?? "admin123"
 
-  cy.session(
-    [userEmail, userPassword],
-    () => {
-      cy.visit("/login")
-      cy.get('input[type="email"]').type(userEmail)
-      cy.get('input[type="password"]').type(userPassword)
-      cy.get('button[type="submit"]').click()
-      cy.url().should("include", "/dashboard")
-    },
-    {
-      cacheAcrossSpecs: true,
-    }
-  )
+  cy.task("buildNextAuthSession", {
+    email: userEmail,
+    password: userPassword,
+  })
+    .then((result) => {
+      const token = (result as { token?: string } | undefined)?.token ?? ""
+
+      expect(token).to.be.a("string").and.not.be.empty
+
+      cy.setCookie("next-auth.session-token", token, {
+        path: "/",
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+      })
+    })
+
+  cy.getCookie("next-auth.session-token").should("exist")
 })

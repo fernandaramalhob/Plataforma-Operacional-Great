@@ -7,9 +7,12 @@ describe('GreatGo - Site', () => {
   it('página de login deve exibir os elementos principais', () => {
     cy.visit('/login')
 
-    cy.get('img[alt="Logo GreatGo"]').should('be.visible')
-    cy.contains('h1', 'GreatGo').should('be.visible')
-    cy.contains('Operação de relatórios para META Ads').should('be.visible')
+    cy.contains('GreatGo').should('be.visible')
+    cy.contains('h1', 'Um painel mais claro para acompanhar clientes, mídia e relatórios.')
+      .should('be.visible')
+    cy.contains('h2', 'Entrar na plataforma').should('be.visible')
+    cy.contains('Use sua conta cadastrada para acessar o painel operacional, clientes e integrações.')
+      .should('be.visible')
 
     cy.get('input[type="email"]').should('be.visible')
     cy.get('input[type="password"]').should('be.visible')

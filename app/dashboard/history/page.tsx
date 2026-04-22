@@ -148,7 +148,7 @@ export default function HistoryPage() {
         title="Histórico de Relatórios"
         subtitle={`${totalEnviados} relatórios enviados · últimos 30 dias`}
       />
-      <div className="px-8 pb-8 pt-10">
+      <div className="px-8 pb-8 pt-24">
         {actionFeedback ? (
           <div className="mb-4 rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
             {actionFeedback}

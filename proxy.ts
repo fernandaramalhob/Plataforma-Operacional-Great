@@ -14,7 +14,7 @@ const PUBLIC_API_PATHS = new Set([
   "/api/auth/verify-request",
 ])
 
-const PUBLIC_API_PREFIXES = ["/api/auth/callback/", "/api/cron/"]
+const PUBLIC_API_PREFIXES = ["/api/auth/callback/", "/api/cron/", "/api/test/"]
 
 function isPublicApiPath(pathname: string) {
   return (

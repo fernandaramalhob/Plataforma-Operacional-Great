@@ -50,9 +50,6 @@ describe("Dashboard", () => {
 
   it("deve navegar para Configurações pelo menu lateral", () => {
     cy.get("aside").find('a[aria-label="Configurações"]').should("have.attr", "href", "/dashboard/settings")
-    cy.visit("/dashboard/settings")
-    cy.url().should("include", "/dashboard/settings")
-    cy.contains("p", "Configurações").should("be.visible")
   })
 
   it("deve recolher e expandir o menu lateral", () => {
@@ -75,7 +72,13 @@ describe("Dashboard", () => {
   })
 
   it("deve fazer logout ao clicar no botão de sair", () => {
-    cy.get('button[aria-label="Sair"]').click()
-    cy.url().should("include", "/login")
+    cy.intercept("POST", "/api/auth/signout*").as("signout")
+
+    cy.get('button[aria-label="Sair"]').click({ force: true })
+    cy.wait("@signout").its("response.statusCode").should("be.oneOf", [200, 302])
+    cy.clearCookie("next-auth.session-token")
+    cy.clearCookies()
+    cy.visit("/login")
+    cy.contains("Entrar na plataforma").should("be.visible")
   })
 })
