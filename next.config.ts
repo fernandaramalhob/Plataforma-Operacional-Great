@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
-  distDir: ".next-local",
+  distDir: process.env.NODE_ENV === "development" ? ".next-local" : ".next",
 }
 
 export default nextConfig
