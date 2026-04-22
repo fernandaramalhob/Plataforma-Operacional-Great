@@ -19,7 +19,7 @@ describe('Dashboard – KPIs e Equipes', () => {
   })
 
   it('os cards exibem valores numéricos válidos', () => {
-    const assertNumber = (selector) => {
+    const assertNumber = (selector: string) => {
       cy.get(`[data-cy="${selector}"]`)
         .invoke('text')
         .then((text) => {
@@ -153,7 +153,7 @@ describe('Dashboard – KPIs e Equipes', () => {
 
 })
 
-function assertValidNumber(text) {
+function assertValidNumber(text: string) {
   const v = Number(text.replace(/[^\d-]/g, ''))
   expect(isNaN(v)).to.equal(false)
 }

@@ -40,7 +40,7 @@ export function ClientForm({
       const response = await fetchJsonOrThrow<EvolutionSettingsResponse>(
         "/api/settings/evolution",
         { cache: "no-store" },
-        "Nao foi possivel carregar os grupos da Evolution"
+        "Não foi possível carregar os grupos da Evolution"
       )
 
       setGroupsResponse(response)
@@ -48,7 +48,7 @@ export function ClientForm({
       setGroupsError(
         error instanceof Error
           ? error.message
-          : "Nao foi possivel carregar os grupos da Evolution"
+          : "Não foi possível carregar os grupos da Evolution"
       )
       setGroupsResponse(null)
     } finally {
@@ -105,7 +105,7 @@ export function ClientForm({
             />
           </div>
           <p className="mt-2 text-xs text-gray-400">
-            Use entre 10 e 15 digitos, com ou sem mascara.
+            Use entre 10 e 15 dígitos, com ou sem máscara.
           </p>
         </div>
 
@@ -132,25 +132,25 @@ export function ClientForm({
             </div>
 
             {isLoadingGroups ? (
-              <p className="text-xs text-gray-400">Carregando grupos das instancias...</p>
+              <p className="text-xs text-gray-400">Carregando grupos das instâncias...</p>
             ) : groupsError ? (
               <p className="text-xs text-red-500">{groupsError}</p>
             ) : !groupsResponse?.configured ? (
               <p className="text-xs text-gray-500">
-                Evolution nao configurada neste ambiente.
+                Evolution não configurada neste ambiente.
               </p>
             ) : !groupsResponse.connected ? (
               <p className="text-xs text-red-500">
-                {groupsResponse.detail ?? "Nao foi possivel consultar os grupos."}
+                {groupsResponse.detail ?? "Não foi possível consultar os grupos."}
               </p>
             ) : availableGroups.length === 0 ? (
               <p className="text-xs text-gray-500">
-                Nenhum grupo encontrado nas instancias consultadas.
+                Nenhum grupo encontrado nas instâncias consultadas.
               </p>
             ) : (
               <>
                 <p className="mb-2 text-xs text-gray-500">
-                  {groupsResponse.instances.length} instancia(s) detectada(s) nesta integracao.
+                  {groupsResponse.instances.length} instância(s) detectada(s) nesta integração.
                 </p>
                 <select
                   value={
@@ -189,7 +189,7 @@ export function ClientForm({
 
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
-            Observacoes
+            Observações
           </label>
           <textarea
             name="notes"

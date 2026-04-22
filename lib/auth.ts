@@ -1,9 +1,9 @@
 import CredentialsProvider from "next-auth/providers/credentials"
 import type { NextAuthOptions } from "next-auth"
 import {
-  ensureAdminUser,
-  isAdminEmail,
-} from "@/lib/admin-user"
+  ensureBootstrapLoginAccount,
+  getBootstrapLoginAccount,
+} from "@/lib/auth-accounts"
 import { withTimeout } from "@/lib/async"
 import { prisma } from "@/lib/prisma"
 import { verifyPassword } from "@/lib/password"
@@ -22,31 +22,10 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
 }
 
-async function authorizeWithCredentials(email: string, password: string) {
+async function findUserByNormalizedEmail(email: string) {
   const normalizedEmail = normalizeEmail(email)
-  const isBootstrapAdminLogin = isAdminEmail(normalizedEmail)
 
-  logInfo("auth.authorize.start", {
-    email: normalizedEmail,
-    isBootstrapAdminLogin,
-  })
-
-  if (isBootstrapAdminLogin) {
-    logInfo("auth.authorize.bootstrap-admin.start", {
-      email: normalizedEmail,
-    })
-    await withTimeout(
-      ensureAdminUser(),
-      8_000,
-      "Tempo esgotado ao preparar o usuário administrador."
-    )
-    logInfo("auth.authorize.bootstrap-admin.done", {
-      email: normalizedEmail,
-    })
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
+  const users = await prisma.user.findMany({
     select: {
       id: true,
       email: true,
@@ -55,6 +34,40 @@ async function authorizeWithCredentials(email: string, password: string) {
       passwordHash: true,
     },
   })
+
+  return (
+    users.find(
+      (user) => normalizeEmail(user.email) === normalizedEmail
+    ) ?? null
+  )
+}
+
+async function authorizeWithCredentials(email: string, password: string) {
+  const normalizedEmail = normalizeEmail(email)
+  const bootstrapAccount = getBootstrapLoginAccount(normalizedEmail)
+
+  logInfo("auth.authorize.start", {
+    email: normalizedEmail,
+    bootstrapAccount: bootstrapAccount?.id ?? null,
+  })
+
+  if (bootstrapAccount) {
+    logInfo("auth.authorize.bootstrap-account.start", {
+      email: normalizedEmail,
+      accountId: bootstrapAccount.id,
+    })
+    await withTimeout(
+      ensureBootstrapLoginAccount(normalizedEmail),
+      8_000,
+      "Tempo esgotado ao preparar a conta de acesso."
+    )
+    logInfo("auth.authorize.bootstrap-account.done", {
+      email: normalizedEmail,
+      accountId: bootstrapAccount.id,
+    })
+  }
+
+  const user = await findUserByNormalizedEmail(normalizedEmail)
 
   if (!user) {
     logWarn("auth.authorize.user-not-found", {
@@ -177,7 +190,9 @@ export const authOptions: NextAuthOptions = {
       try {
         const targetUrl = new URL(url)
         if (targetUrl.origin === baseUrl) {
-          logInfo("auth.redirect.same-origin", { destination: targetUrl.toString() })
+          logInfo("auth.redirect.same-origin", {
+            destination: targetUrl.toString(),
+          })
           return targetUrl.toString()
         }
       } catch {

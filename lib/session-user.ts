@@ -7,6 +7,30 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
 }
 
+type UserWithEmail<T extends Prisma.UserSelect> = Prisma.UserGetPayload<{
+  select: T & { email: true }
+}>
+
+async function findUserByNormalizedEmail<T extends Prisma.UserSelect>(
+  email: string,
+  select: T
+): Promise<UserWithEmail<T> | null> {
+  const normalizedEmail = normalizeEmail(email)
+
+  const users = (await prisma.user.findMany({
+    select: {
+      ...(select as Prisma.UserSelect),
+      email: true,
+    },
+  })) as Array<UserWithEmail<T>>
+
+  return (
+    users.find(
+      (user) => normalizeEmail((user as { email: string }).email) === normalizedEmail
+    ) ?? null
+  )
+}
+
 export async function findUserForSession<T extends Prisma.UserSelect>(params: {
   sessionUser: Session["user"] | undefined
   select: T
@@ -41,10 +65,7 @@ export async function findUserForSession<T extends Prisma.UserSelect>(params: {
     return null
   }
 
-  return prisma.user.findUnique({
-    where: { email: sessionUserEmail },
-    select: params.select,
-  })
+  return findUserByNormalizedEmail(sessionUserEmail, params.select)
 }
 
 export async function getSessionUser<T extends Prisma.UserSelect>(select: T) {

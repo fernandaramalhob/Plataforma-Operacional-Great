@@ -2,6 +2,13 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
+import {
+  CheckCircle,
+  Clock,
+  Download,
+  Loader2,
+  XCircle,
+} from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { FilterSearchInput, FilterSelect } from "@/components/ui/filter-controls"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -11,35 +18,6 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import { fetchJsonOrThrow } from "@/lib/api-client"
 import type { ClientLookupOption } from "@/types/client.types"
 import type { HistoryRow, ReportSendResponse } from "@/types/report.types"
-import {
-  Download,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Loader2,
-} from "lucide-react"
-
-const colors = [
-  "bg-red-500",
-  "bg-red-600",
-  "bg-rose-500",
-  "bg-rose-600",
-  "bg-pink-600",
-  "bg-[#C1121F]",
-]
-
-function getColor(name: string): string {
-  return colors[name.charCodeAt(0) % colors.length]
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase()
-}
 
 function statusLabel(status: string): string {
   if (status === "SENT") return "Enviado"
@@ -284,9 +262,6 @@ export default function HistoryPage() {
                     Cliente
                   </th>
                   <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Período de ref.
-                  </th>
-                  <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Status
                   </th>
                   <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -312,24 +287,12 @@ export default function HistoryPage() {
                       <p className="text-xs text-gray-400">{row.time}</p>
                     </td>
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${getColor(row.client)}`}
-                        >
-                          <span className="text-xs font-semibold text-white">
-                            {getInitials(row.client)}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">
-                            {row.client}
-                          </p>
-                          <p className="text-xs text-gray-400">{row.company}</p>
-                        </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {row.client}
+                        </p>
+                        <p className="text-xs text-gray-400">{row.company}</p>
                       </div>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-gray-600">
-                      {row.referenceWeek}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1.5">
@@ -346,6 +309,9 @@ export default function HistoryPage() {
                           {statusLabel(row.status)}
                         </StatusBadge>
                       </div>
+                      {row.referenceWeek ? (
+                        <p className="mt-1 text-xs text-gray-400">{row.referenceWeek}</p>
+                      ) : null}
                       {row.errorMessage ? (
                         <p className="mt-1 max-w-[200px] truncate text-xs text-red-400">
                           {row.errorMessage}
@@ -358,8 +324,7 @@ export default function HistoryPage() {
                           row.attempts >= 3 ? "text-red-500" : "text-gray-600"
                         }`}
                       >
-                        {row.attempts}{" "}
-                        {row.attempts === 1 ? "tentativa" : "tentativas"}
+                        {row.attempts} {row.attempts === 1 ? "tentativa" : "tentativas"}
                       </span>
                     </td>
                     <td className="px-5 py-4">
