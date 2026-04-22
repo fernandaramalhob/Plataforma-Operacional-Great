@@ -19,6 +19,7 @@ type SendPersistedReportOptions = {
   pdfBase64?: string | null
   pdfFileName?: string | null
   groupId?: string | null
+  instance?: string | null
   pdfStrategy?: "auto" | "preview" | "standard"
 }
 
@@ -133,6 +134,7 @@ export async function sendPersistedReportNow(
         number: targetGroupId,
         fileName,
         contentBase64: pdfBuffer.toString("base64"),
+        instance: options?.instance ?? null,
       })
     }
 
@@ -140,6 +142,7 @@ export async function sendPersistedReportNow(
       await sendWhatsAppText({
         number: targetGroupId,
         text: message,
+        instance: options?.instance ?? null,
       })
     }
 

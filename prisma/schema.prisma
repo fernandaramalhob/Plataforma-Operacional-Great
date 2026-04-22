@@ -17,6 +17,7 @@ model User {
   role               Role             @default(MANAGER)
   metaAccessToken    String?
   metaTokenExpiresAt DateTime?
+  evolutionInstance  String?
   createdAt          DateTime         @default(now())
   clients            Client[]
   reportSchedules    ReportSchedule[] @relation("ReportScheduleCreator")

@@ -11,6 +11,7 @@ import {
   serializeStoredReportPayload,
 } from "@/lib/report-domain"
 import { sendPersistedReportNow } from "@/lib/report-delivery"
+import { resolveUserEvolutionInstance } from "@/lib/evolution-preference"
 import { recordReportAlert } from "@/lib/report-monitoring"
 import { getRedisConnection, isRedisConfigured } from "@/lib/redis"
 import { generateLiveReportPayload } from "@/lib/report-service"
@@ -469,10 +470,15 @@ async function processSendJob(params: {
   }
 
   try {
+    const preferredInstance = await resolveUserEvolutionInstance(
+      params.pendingJob.requestedByUserId
+    )
+
     await sendPersistedReportNow(params.reportId, {
       mode: params.pendingJob.sendOptions?.mode,
       message: params.pendingJob.sendOptions?.message,
       groupId: params.pendingJob.sendOptions?.groupId,
+      instance: preferredInstance,
       pdfStrategy: "standard",
     })
 

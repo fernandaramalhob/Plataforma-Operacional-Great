@@ -16,6 +16,7 @@ type AuthUser = {
   email: string
   name: string
   role: Role
+  evolutionInstance: string | null
 }
 
 function normalizeEmail(email: string) {
@@ -32,6 +33,7 @@ async function findUserByNormalizedEmail(email: string) {
       name: true,
       role: true,
       passwordHash: true,
+      evolutionInstance: true,
     },
   })
 
@@ -97,6 +99,7 @@ async function authorizeWithCredentials(email: string, password: string) {
     email: user.email,
     name: user.name ?? user.email,
     role: user.role,
+    evolutionInstance: user.evolutionInstance,
   } satisfies AuthUser
 }
 
