@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { GeistMono } from "geist/font/mono"
 import { GeistSans } from "geist/font/sans"
-import Providers from "@/components/providers"
+import { ThemeProvider } from "@/components/theme/theme-provider"
 import "./globals.css"
 
 const themeInitScript = `
@@ -49,9 +49,9 @@ export default function RootLayout({
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${GeistSans.variable} ${GeistMono.variable} font-sans antialiased`}>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        <Providers>
+        <ThemeProvider>
           {children}
-        </Providers>
+        </ThemeProvider>
       </body>
     </html>
   )

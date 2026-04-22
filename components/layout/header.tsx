@@ -156,12 +156,18 @@ export function Header({ title }: HeaderProps) {
   return (
     <header className="sticky top-0 z-20 px-8 pt-5">
       <div className="mx-auto max-w-[1480px]">
-        <div className="rounded-[28px] border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-elevated)] px-5 py-3.5 shadow-[var(--color-dashboard-shadow)] backdrop-blur-sm">
-          <div className="grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <div className="flex items-center">
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[color:var(--color-app-text-faint)]">
-                {title ?? "Dashboard"}
-              </p>
+        <div className="rounded-[30px] border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-elevated)] px-6 py-4 shadow-[0_22px_44px_-34px_rgba(15,23,42,0.38)] backdrop-blur-xl">
+          <div className="grid min-h-11 grid-cols-[1.15fr_auto_1fr] items-center gap-4">
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-1.5 rounded-full bg-gradient-to-b from-[#C1121F] to-[#F59E0B]" />
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--color-app-text-faint)]">
+                  {title ?? "Dashboard"}
+                </p>
+                <p className="mt-1 text-sm text-[color:var(--color-app-text-soft)]">
+                  Operação central da plataforma
+                </p>
+              </div>
             </div>
 
             <div className="flex justify-center">
@@ -178,7 +184,7 @@ export function Header({ title }: HeaderProps) {
 
                   <button
                     type="button"
-                    className="relative z-20 flex min-w-[272px] items-center justify-center gap-2 rounded-full border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] px-4 py-2 text-xs font-medium text-[color:var(--color-app-text-muted)] transition hover:border-[color:var(--color-app-border-strong)] hover:bg-[var(--color-app-surface)]"
+                    className="relative z-20 flex min-w-[272px] items-center justify-center gap-2 rounded-full border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] px-4 py-2 text-xs font-medium text-[color:var(--color-app-text-muted)] shadow-[0_12px_28px_-24px_rgba(15,23,42,0.42)] transition hover:border-[color:var(--color-app-border-strong)] hover:bg-[var(--color-app-surface)]"
                     onClick={toggleDateFilter}
                   >
                     <CalendarDays className="h-3.5 w-3.5 text-[color:var(--color-app-text-faint)]" />

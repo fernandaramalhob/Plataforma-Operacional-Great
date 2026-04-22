@@ -382,13 +382,7 @@ export default function SettingsPage() {
             {result === "success" && !metaUser ? (
               <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
                 <CheckCircle className="h-4 w-4" />
-                {metaUser ? (
-                  <>
-                    Token válido. Conectado como <strong>{metaUser.name ?? metaUser.email ?? "usuário META"}</strong>
-                  </>
-                ) : (
-                  "Token salvo com sucesso."
-                )}
+                Token salvo com sucesso.
               </div>
             ) : null}
 

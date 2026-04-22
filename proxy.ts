@@ -30,6 +30,10 @@ function isProtectedApiPath(pathname: string) {
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
 
+  if (isPublicApiPath(pathname)) {
+    return NextResponse.next()
+  }
+
   if (!process.env.NEXTAUTH_SECRET?.trim()) {
     logWarn("auth.proxy.missing-secret", {
       pathname,

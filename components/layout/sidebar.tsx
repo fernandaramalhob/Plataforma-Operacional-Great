@@ -49,7 +49,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-[color:var(--color-app-border)] bg-[var(--color-app-surface)] transition-[width] duration-200",
+        "fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-[color:var(--color-app-border)] bg-[var(--color-app-surface-elevated)] shadow-[18px_0_40px_-32px_rgba(15,23,42,0.32)] backdrop-blur-xl transition-[width] duration-200",
         collapsed ? "w-[88px]" : "w-[280px]"
       )}
     >
@@ -69,7 +69,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             href="/dashboard"
             aria-label="Ir para o dashboard"
             className={cn(
-              "flex min-w-0 items-center gap-3 rounded-xl transition hover:opacity-90",
+              "group flex min-w-0 items-center gap-3 rounded-2xl transition hover:opacity-90",
               collapsed && "justify-center"
             )}
           >
@@ -83,14 +83,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             />
             {!collapsed && (
               <div className="min-w-0">
-                <Image
-                  src="/logo-name.png"
-                  alt="GreatGo"
-                  width={108}
-                  height={24}
-                  className="h-6 w-auto object-contain"
-                  priority
-                />
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--color-app-text-faint)]">
+                  GreatGo
+                </p>
+                <p className="text-[13px] font-medium text-[color:var(--color-app-text-muted)]">
+                  Plataforma operacional
+                </p>
               </div>
             )}
           </Link>
@@ -99,7 +97,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <button
               type="button"
               onClick={onToggle}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-[color:var(--color-app-text-soft)] transition hover:bg-[var(--color-app-surface-muted)] hover:text-[color:var(--color-app-text)]"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[color:var(--color-app-border)] bg-[var(--color-app-surface)] text-[color:var(--color-app-text-soft)] transition hover:border-[color:var(--color-app-border-strong)] hover:bg-[var(--color-app-surface-muted)] hover:text-[color:var(--color-app-text)]"
               title="Recolher menu"
               aria-label="Recolher menu"
             >
@@ -112,7 +110,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <button
             type="button"
             onClick={onToggle}
-            className="mx-auto mt-3 flex h-8 w-8 items-center justify-center rounded-lg text-[color:var(--color-app-text-faint)] transition hover:bg-[var(--color-app-surface-muted)] hover:text-[color:var(--color-app-text-soft)]"
+            className="mx-auto mt-3 flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--color-app-border)] bg-[var(--color-app-surface)] text-[color:var(--color-app-text-faint)] transition hover:bg-[var(--color-app-surface-muted)] hover:text-[color:var(--color-app-text-soft)]"
             title="Expandir menu"
             aria-label="Expandir menu"
           >
@@ -123,8 +121,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       <nav className={cn("flex-1 py-6", collapsed ? "px-2" : "px-3")}>
         {!collapsed && (
-          <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-widest text-[color:var(--color-app-text-faint)]">
-            Menu
+          <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--color-app-text-faint)]">
+            Navegação
           </p>
         )}
         <ul className="space-y-1">
@@ -139,12 +137,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   title={collapsed ? label : undefined}
                   aria-label={label}
                   className={cn(
-                    "flex rounded-xl text-sm font-medium transition-all",
+                    "flex rounded-2xl text-sm font-medium transition-all",
                     collapsed
                       ? "items-center justify-center px-0 py-3"
                       : "items-center gap-3 px-3 py-2.5",
                     isActive
-                      ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+                      ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-[0_10px_24px_-18px_rgba(193,18,31,0.7)]"
                       : "text-[color:var(--color-app-text-soft)] hover:bg-[var(--color-app-surface-muted)] hover:text-[color:var(--color-app-text)]"
                   )}
                 >
@@ -177,7 +175,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           )}
         >
           <div className={cn("flex items-center", collapsed ? "flex-col gap-2" : "gap-3")}>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#C1121F]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#C1121F] shadow-[0_10px_20px_-14px_rgba(193,18,31,0.8)]">
               <span className="text-sm font-semibold text-white">{initials}</span>
             </div>
             {!collapsed && (
@@ -194,7 +192,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-[color:var(--color-app-text-soft)] transition hover:bg-[var(--color-app-surface-muted)] hover:text-[color:var(--color-app-text)]"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[color:var(--color-app-border)] bg-[var(--color-app-surface)] text-[color:var(--color-app-text-soft)] transition hover:border-[color:var(--color-app-border-strong)] hover:bg-[var(--color-app-surface-muted)] hover:text-[color:var(--color-app-text)]"
             title="Sair"
             aria-label="Sair"
           >

@@ -1,18 +1,14 @@
-import { redirect } from "next/navigation"
-import { getServerSession } from "next-auth"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
-import { authOptions } from "@/lib/auth"
+import Providers from "@/components/providers"
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authOptions)
-
-  if (!session?.user?.email) {
-    redirect("/login")
-  }
-
-  return <DashboardShell>{children}</DashboardShell>
+  return (
+    <Providers>
+      <DashboardShell>{children}</DashboardShell>
+    </Providers>
+  )
 }

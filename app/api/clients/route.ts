@@ -24,13 +24,11 @@ function buildClientFilters(searchParams: URLSearchParams) {
         {
           name: {
             contains: search,
-            mode: "insensitive",
           },
         },
         {
           company: {
             contains: search,
-            mode: "insensitive",
           },
         },
       ],

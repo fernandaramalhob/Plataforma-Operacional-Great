@@ -84,7 +84,13 @@ html {
 }
 
 body {
+  min-height: 100vh;
   background-color: var(--color-app-background);
+  background-image:
+    radial-gradient(circle at top left, rgba(193, 18, 31, 0.08), transparent 26%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 24%),
+    radial-gradient(circle at bottom center, rgba(15, 23, 42, 0.04), transparent 32%);
+  background-attachment: fixed;
   color: var(--color-app-text);
   font-family: var(--font-geist-sans), sans-serif;
 }
@@ -411,4 +417,11 @@ html[data-theme="dark"] [class*="shadow-["] {
 html[data-theme="dark"] .shadow-sm,
 html[data-theme="dark"] .shadow-xl {
   box-shadow: 0 22px 44px -30px rgba(0, 0, 0, 0.62);
+}
+
+html[data-theme="dark"] body {
+  background-image:
+    radial-gradient(circle at top left, rgba(224, 113, 122, 0.12), transparent 26%),
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.1), transparent 22%),
+    radial-gradient(circle at bottom center, rgba(255, 255, 255, 0.04), transparent 30%);
 }
