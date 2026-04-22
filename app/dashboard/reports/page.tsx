@@ -230,6 +230,25 @@ export default function ReportsPage() {
     setSendMessage("")
   }, [])
 
+  const resetWorkspace = useCallback(() => {
+    reportPollSequenceRef.current += 1
+    setSelectedClient(null)
+    setSelectedClientIds([])
+    setSelectedCampaigns([])
+    setSearch("")
+    setActiveListTab("clients")
+    setActivePeriod("7d")
+    setObjective("ALL")
+    setScheduleModalOpen(false)
+    setBulkScheduleModalOpen(false)
+    setLoadingReport(false)
+    setLoadingReportMessage("")
+    setReportError("")
+    setActionFeedback("")
+    clearCurrentReport()
+    resetCustomization()
+  }, [clearCurrentReport, resetCustomization])
+
   useEffect(() => {
     if (!selectedClient) {
       resetCustomization()
@@ -550,7 +569,7 @@ export default function ReportsPage() {
               </div>
             ) : null}
 
-            <div className="mb-4 flex flex-wrap justify-center gap-2 rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-center gap-2 rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
               <button
                 type="button"
                 onClick={() => setActiveListTab("clients")}
@@ -572,6 +591,13 @@ export default function ReportsPage() {
                 }`}
               >
                 Agendamentos
+              </button>
+              <button
+                type="button"
+                onClick={() => void resetWorkspace()}
+                className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+              >
+                Reiniciar painel
               </button>
             </div>
 

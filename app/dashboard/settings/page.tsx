@@ -242,6 +242,12 @@ export default function SettingsPage() {
     }
   }, [])
 
+  const handleRefreshAll = useCallback(async () => {
+    setResult(null)
+    setErrorMsg("")
+    await Promise.all([loadMetaStatus(), loadEvolutionStatus()])
+  }, [loadEvolutionStatus, loadMetaStatus])
+
   useEffect(() => {
     void loadMetaStatus()
     void loadEvolutionStatus()
@@ -358,6 +364,16 @@ export default function SettingsPage() {
       <Header title="Configurações" subtitle="Gerencie as integrações da plataforma" />
       <div className="mx-auto max-w-[1480px] px-8 pb-10 pt-6">
         <div className="space-y-6">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => void handleRefreshAll()}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Atualizar tudo
+            </button>
+          </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className={overviewCard}>
