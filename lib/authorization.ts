@@ -7,7 +7,13 @@ type Role = "ADMIN" | "MANAGER"
 
 export type AuthenticatedUser = Pick<
   User,
-  "id" | "email" | "role" | "passwordHash" | "metaAccessToken" | "metaTokenExpiresAt"
+  | "id"
+  | "email"
+  | "role"
+  | "passwordHash"
+  | "metaAccessToken"
+  | "metaTokenExpiresAt"
+  | "evolutionInstance"
 >
 
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
@@ -19,6 +25,7 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
       passwordHash: true,
       metaAccessToken: true,
       metaTokenExpiresAt: true,
+      evolutionInstance: true,
     })
 
     if (!session?.user?.email) {

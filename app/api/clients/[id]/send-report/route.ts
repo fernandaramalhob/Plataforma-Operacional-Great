@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { canAccessClient, getCurrentUser } from "@/lib/authorization"
+import { normalizeEvolutionInstancePreference } from "@/lib/evolution-preference"
 import { prisma } from "@/lib/prisma"
 import { sendPersistedReportNow } from "@/lib/report-delivery"
 import {
@@ -71,6 +72,7 @@ export async function POST(
         objective,
       },
     })
+    const evolutionInstance = normalizeEvolutionInstancePreference(user.evolutionInstance)
     const savedReport = await persistGeneratedReport({
       clientId,
       payload,
@@ -84,6 +86,7 @@ export async function POST(
     await sendPersistedReportNow(savedReport.reportId, {
       mode: requestBody.mode,
       message: requestBody.message,
+      instance: evolutionInstance,
     })
 
     return NextResponse.json<ReportSendResponse>({

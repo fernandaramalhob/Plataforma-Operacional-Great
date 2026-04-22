@@ -139,6 +139,9 @@ export default function SettingsPage() {
   const [isLoadingEvolution, setIsLoadingEvolution] = useState(true)
   const [evolutionData, setEvolutionData] = useState<EvolutionSettingsResponse | null>(null)
   const [evolutionError, setEvolutionError] = useState("")
+  const [selectedEvolutionInstance, setSelectedEvolutionInstance] = useState("")
+  const [isSavingEvolutionInstance, setIsSavingEvolutionInstance] = useState(false)
+  const [evolutionSaveMessage, setEvolutionSaveMessage] = useState("")
   const [copiedGroupId, setCopiedGroupId] = useState("")
   const tokenSuggestion = sessionUser?.email
     ? META_TOKEN_SUGGESTIONS_BY_EMAIL[sessionUser.email] ?? DEFAULT_META_TOKEN_SUGGESTION
@@ -234,13 +237,52 @@ export default function SettingsPage() {
         "Não foi possível carregar a Evolution"
       )
       setEvolutionData(data)
+      const payload = data as EvolutionSettingsResponse
+      setSelectedEvolutionInstance(payload.selectedInstance ?? "")
     } catch (error) {
       setEvolutionError(error instanceof Error ? error.message : "Erro ao carregar a Evolution")
       setEvolutionData(null)
+      setSelectedEvolutionInstance("")
     } finally {
       setIsLoadingEvolution(false)
     }
   }, [])
+
+  async function handleSaveEvolutionInstance(selectedInstance: string | null) {
+    setIsSavingEvolutionInstance(true)
+    setEvolutionError("")
+    setEvolutionSaveMessage("")
+
+    try {
+      const res = await fetch("/api/settings/evolution", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          selectedInstance,
+        }),
+      })
+      const data = await readJsonResponse<EvolutionSettingsResponse>(res)
+
+      if (!res.ok) {
+        throw new Error(getApiErrorMessage(data, `Erro ${res.status}`))
+      }
+
+      const payload = data as EvolutionSettingsResponse
+      setSelectedEvolutionInstance(payload.selectedInstance ?? "")
+      setEvolutionSaveMessage(
+        payload.selectedInstance
+          ? `Instância ${payload.selectedInstance} salva para esta conta.`
+          : "A preferência foi removida. O envio volta para a instância padrão da Evolution."
+      )
+      await loadEvolutionStatus()
+    } catch (error) {
+      setEvolutionError(error instanceof Error ? error.message : "Erro ao salvar a instância da Evolution")
+    } finally {
+      setIsSavingEvolutionInstance(false)
+    }
+  }
 
   const handleRefreshAll = useCallback(async () => {
     setResult(null)
@@ -264,6 +306,11 @@ export default function SettingsPage() {
       setEvolutionError("Não foi possível copiar o ID do grupo.")
     }
   }
+
+  const connectedEvolutionInstances =
+    evolutionData?.instances.filter(
+      (instance) => instance.status === null || instance.status === "open"
+    ) ?? []
 
   async function handleValidateAndSave() {
     if (!token) return
@@ -639,6 +686,126 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
+                <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900">
+                        Escolher número de envio dos relatórios
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        A seleção fica salva nesta conta e será usada sempre que os relatórios forem enviados.
+                      </p>
+                    </div>
+                    <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#C1121F] shadow-sm">
+                      {selectedEvolutionInstance
+                        ? `Selecionada: ${selectedEvolutionInstance}`
+                        : "Usando instância padrão"}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    {connectedEvolutionInstances.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm text-gray-500 lg:col-span-2">
+                        Nenhuma instância conectada encontrada para selecionar.
+                      </div>
+                    ) : (
+                      connectedEvolutionInstances.map((instance) => {
+                        const isActive = selectedEvolutionInstance === instance.name
+                        const isPrimary = instance.isPrimary
+                        const statusLabel =
+                          instance.status === "open"
+                            ? "Conectada"
+                            : instance.status ?? "Disponível"
+
+                        return (
+                          <button
+                            key={instance.name}
+                            type="button"
+                            onClick={() =>
+                              void handleSaveEvolutionInstance(
+                                isActive ? null : instance.name
+                              )
+                            }
+                            className={`rounded-2xl border p-4 text-left transition ${
+                              isActive
+                                ? "border-[#C1121F] bg-[#fff3f4] shadow-sm"
+                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">
+                                  Instância
+                                </p>
+                                <p className="mt-1 text-base font-bold text-gray-900">
+                                  {instance.name}
+                                </p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                <span
+                                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                    isActive
+                                      ? "bg-[#C1121F] text-white"
+                                      : "bg-gray-100 text-gray-500"
+                                  }`}
+                                >
+                                  {isActive ? "Selecionada" : "Selecionar"}
+                                </span>
+                                {isPrimary ? (
+                                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-600">
+                                    Principal
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                            <div className="mt-4 flex items-center justify-between gap-3">
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                  instance.status === "open"
+                                    ? "bg-green-50 text-green-600"
+                                    : "bg-gray-100 text-gray-500"
+                                }`}
+                              >
+                                {statusLabel}
+                              </span>
+                              <span className="text-xs font-medium text-gray-400">
+                                {isActive ? "Clique para remover" : "Clique para usar"}
+                              </span>
+                            </div>
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <p className="text-sm text-gray-500">
+                      Se preferir, você pode voltar para a instância padrão da Evolution e salvar a mudança.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={isSavingEvolutionInstance}
+                      onClick={() => void handleSaveEvolutionInstance(null)}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSavingEvolutionInstance ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        "Restaurar padrão"
+                      )}
+                    </button>
+                  </div>
+
+                  {evolutionSaveMessage ? (
+                    <div className="mt-4 rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+                      {evolutionSaveMessage}
+                    </div>
+                  ) : null}
+                </div>
+
                 <div className="overflow-hidden rounded-2xl border border-slate-200">
                   <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-3">
                     <MessageCircle className="h-4 w-4 text-gray-400" />
@@ -682,3 +849,5 @@ export default function SettingsPage() {
     </>
   )
 }
+
+

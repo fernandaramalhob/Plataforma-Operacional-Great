@@ -16,6 +16,7 @@ export type EvolutionSettingsResponse = {
   configured: boolean
   connected: boolean
   instance: string | null
+  selectedInstance: string | null
   detail: string | null
   groups: EvolutionGroup[]
   instances: EvolutionInstance[]
