@@ -3,7 +3,11 @@ import { Prisma } from "@prisma/client"
 import { getCurrentUser, isAdmin } from "@/lib/authorization"
 import { listEvolutionGroups } from "@/lib/evolution-api"
 import { prisma } from "@/lib/prisma"
-import { getHistoryStatusFilter, mapReportToHistoryRow } from "@/lib/report-domain"
+import {
+  getHistoryStatusFilter,
+  mapReportToHistoryRow,
+  mapScheduleToHistoryRow,
+} from "@/lib/report-domain"
 import { logError } from "@/lib/safe-logger"
 
 export async function GET(request: Request) {
@@ -37,6 +41,20 @@ export async function GET(request: Request) {
       }
     }
 
+    const clientWhere: Prisma.ClientWhereInput = {
+      reportSchedule: {
+        isNot: null,
+      },
+    }
+
+    if (!isAdmin(user)) {
+      clientWhere.managerId = user.id
+    }
+
+    if (clientId) {
+      clientWhere.id = clientId
+    }
+
     const reports = await prisma.report.findMany({
       where,
       orderBy: { generatedAt: "desc" },
@@ -59,6 +77,26 @@ export async function GET(request: Request) {
       },
     })
 
+    const clientsWithSchedules = await prisma.client.findMany({
+      where: clientWhere,
+      select: {
+        id: true,
+        name: true,
+        company: true,
+        whatsappGroupId: true,
+        reportSchedule: true,
+        reports: {
+          orderBy: {
+            generatedAt: "desc",
+          },
+          take: 5,
+          select: {
+            generatedAt: true,
+          },
+        },
+      },
+    })
+
     let groupNameById = new Map<string, string>()
 
     try {
@@ -72,16 +110,52 @@ export async function GET(request: Request) {
       logError("history.groups", error)
     }
 
-    return NextResponse.json(
-      reports.map((report) => {
-        const row = mapReportToHistoryRow(report)
-
-        return {
-          ...row,
-          groupName: row.groupId ? groupNameById.get(row.groupId) ?? null : null,
+    const historyRows = [
+      ...reports.map((report) => ({
+        row: mapReportToHistoryRow(report),
+        sortAt: report.generatedAt,
+      })),
+      ...clientsWithSchedules.flatMap((client) => {
+        if (!client.reportSchedule) {
+          return []
         }
-      })
-    )
+
+        const hasReportAfterSchedule = client.reports.some(
+          (report) =>
+            report.generatedAt.getTime() >= client.reportSchedule!.createdAt.getTime()
+        )
+
+        if (hasReportAfterSchedule) {
+          return []
+        }
+
+        const groupId =
+          client.reportSchedule.groupId?.trim() || client.whatsappGroupId || null
+        const groupName = groupId ? groupNameById.get(groupId) ?? null : null
+
+        return [
+          {
+            row: mapScheduleToHistoryRow(
+              client.reportSchedule,
+              {
+                name: client.name,
+                company: client.company,
+                whatsappGroupId: client.whatsappGroupId,
+              },
+              groupName
+            ),
+            sortAt: client.reportSchedule.createdAt,
+          },
+        ]
+      }),
+    ]
+      .sort((left, right) => right.sortAt.getTime() - left.sortAt.getTime())
+      .map(({ row }) => ({
+        ...row,
+        groupName: row.groupId ? groupNameById.get(row.groupId) ?? row.groupName : row.groupName,
+      }))
+
+    return NextResponse.json(historyRows)
   } catch (error) {
     logError("history.get", error)
     return NextResponse.json([], { status: 200 })

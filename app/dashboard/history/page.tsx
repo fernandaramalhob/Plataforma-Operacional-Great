@@ -161,7 +161,8 @@ export default function HistoryPage() {
   const totalPendentes = filtered.filter((item) => item.status === "PENDING").length
 
   function exportCSV() {
-    const headers = [
+  const headers = [
+      "Origem",
       "Data",
       "Hora",
       "Cliente",
@@ -174,6 +175,7 @@ export default function HistoryPage() {
       "Tentativas",
     ]
     const rows = filtered.map((item) => [
+      item.source === "schedule" ? "Agendamento" : "Relatorio",
       item.date,
       item.time,
       item.client,
@@ -411,12 +413,21 @@ export default function HistoryPage() {
                     </td>
                     <td className="px-5 py-4">
                       <div>
-                        <Link
-                          href={`/dashboard/reports/${row.id}`}
-                          className="text-sm font-semibold text-gray-900 transition hover:text-[#C1121F] hover:underline"
-                        >
-                          {row.client}
-                        </Link>
+                        {row.reportId ? (
+                          <Link
+                            href={`/dashboard/reports/${row.reportId}`}
+                            className="text-sm font-semibold text-gray-900 transition hover:text-[#C1121F] hover:underline"
+                          >
+                            {row.client}
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/dashboard/clients/${row.clientId}`}
+                            className="text-sm font-semibold text-gray-900 transition hover:text-[#C1121F] hover:underline"
+                          >
+                            {row.client}
+                          </Link>
+                        )}
                         <p className="text-xs text-gray-400">{row.company}</p>
                       </div>
                     </td>
@@ -478,24 +489,33 @@ export default function HistoryPage() {
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => void handleCancelReport(row.id)}
-                          disabled={row.status !== "PENDING" || cancelingReportId === row.id}
-                          className={`inline-flex items-center gap-1 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                            row.status === "PENDING"
-                              ? "text-red-500 hover:underline"
-                              : "text-gray-400"
-                          }`}
-                        >
-                          {cancelingReportId === row.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : null}
-                          {row.status === "CANCELLED"
-                            ? "Cancelado"
-                            : cancelingReportId === row.id
-                              ? "Cancelando..."
-                              : "Cancelar envio"}
-                        </button>
+                        {row.source === "report" ? (
+                          <button
+                            onClick={() => void handleCancelReport(row.reportId ?? row.id)}
+                            disabled={
+                              row.status !== "PENDING" ||
+                              cancelingReportId === (row.reportId ?? row.id)
+                            }
+                            className={`inline-flex items-center gap-1 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                              row.status === "PENDING"
+                                ? "text-red-500 hover:underline"
+                                : "text-gray-400"
+                            }`}
+                          >
+                            {cancelingReportId === (row.reportId ?? row.id) ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : null}
+                            {row.status === "CANCELLED"
+                              ? "Cancelado"
+                              : cancelingReportId === (row.reportId ?? row.id)
+                                ? "Cancelando..."
+                                : "Cancelar envio"}
+                          </button>
+                        ) : (
+                          <span className="text-sm font-medium text-gray-400">
+                            Agendado
+                          </span>
+                        )}
                       </div>
                     </td>
                   </tr>

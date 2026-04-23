@@ -419,6 +419,8 @@ export function mapReportToHistoryRow(report: {
 
   return {
     id: report.id,
+    reportId: report.id,
+    source: "report",
     date: formatDate(report.generatedAt),
     time: formatTime(report.generatedAt),
     clientId: report.clientId,
@@ -431,6 +433,56 @@ export function mapReportToHistoryRow(report: {
     status: report.status,
     attempts,
     errorMessage: latestLog?.errorMessage ?? jobError?.message ?? null,
+    referenceWeek,
+  }
+}
+
+export function mapScheduleToHistoryRow(schedule: {
+  id: string
+  clientId: string
+  createdAt: Date
+  updatedAt: Date
+  frequency: string
+  weekday: number | null
+  scheduledDate: Date | null
+  hour: number
+  minute: number
+  timeZone: string
+  filtersSince: string
+  filtersUntil: string
+  objective: string
+  sendMode: string
+  message: string | null
+  groupId: string | null
+  active: boolean
+  nextRunAt: Date
+  lastRunAt: Date | null
+  lastError: string | null
+}, client: {
+  name: string
+  company: string | null
+  whatsappGroupId: string | null
+}, groupName: string | null): HistoryRow {
+  const scheduledAt = schedule.createdAt.toISOString()
+  const nextSendAt = schedule.nextRunAt.toISOString()
+  const referenceWeek = `${schedule.filtersSince} até ${schedule.filtersUntil}`
+
+  return {
+    id: schedule.id,
+    reportId: null,
+    source: "schedule",
+    date: formatDate(schedule.createdAt),
+    time: formatTime(schedule.createdAt),
+    clientId: schedule.clientId,
+    client: client.name,
+    company: client.company ?? "-",
+    groupId: schedule.groupId ?? client.whatsappGroupId ?? null,
+    groupName,
+    scheduledAt,
+    nextSendAt,
+    status: schedule.active ? "PENDING" : "CANCELLED",
+    attempts: 0,
+    errorMessage: schedule.lastError,
     referenceWeek,
   }
 }

@@ -298,6 +298,8 @@ export type SavedReportMessageResponse = {
 
 export type HistoryRow = {
   id: string
+  reportId: string | null
+  source: "report" | "schedule"
   date: string
   time: string
   clientId: string

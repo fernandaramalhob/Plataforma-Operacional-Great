@@ -1,7 +1,6 @@
 {
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
-  "/api/settings/meta-token/route": "app/api/settings/meta-token/route.js",
-  "/api/settings/evolution/route": "app/api/settings/evolution/route.js",
-  "/api/settings/meta-account/route": "app/api/settings/meta-account/route.js",
-  "/dashboard/settings/page": "app/dashboard/settings/page.js"
+  "/api/clients/route": "app/api/clients/route.js",
+  "/dashboard/settings/page": "app/dashboard/settings/page.js",
+  "/dashboard/reports/page": "app/dashboard/reports/page.js"
 }
