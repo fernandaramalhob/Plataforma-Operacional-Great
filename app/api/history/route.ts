@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { getCurrentUser, isAdmin } from "@/lib/authorization"
+import { listEvolutionGroups } from "@/lib/evolution-api"
 import { prisma } from "@/lib/prisma"
 import { getHistoryStatusFilter, mapReportToHistoryRow } from "@/lib/report-domain"
 import { logError } from "@/lib/safe-logger"
@@ -44,6 +45,7 @@ export async function GET(request: Request) {
           select: {
             name: true,
             company: true,
+            whatsappGroupId: true,
           },
         },
         sendLogs: {
@@ -57,7 +59,29 @@ export async function GET(request: Request) {
       },
     })
 
-    return NextResponse.json(reports.map(mapReportToHistoryRow))
+    let groupNameById = new Map<string, string>()
+
+    try {
+      const groups = await listEvolutionGroups()
+      groupNameById = new Map(
+        groups
+          .filter((group) => Boolean(group.id))
+          .map((group) => [group.id, group.subject])
+      )
+    } catch (error) {
+      logError("history.groups", error)
+    }
+
+    return NextResponse.json(
+      reports.map((report) => {
+        const row = mapReportToHistoryRow(report)
+
+        return {
+          ...row,
+          groupName: row.groupId ? groupNameById.get(row.groupId) ?? null : null,
+        }
+      })
+    )
   } catch (error) {
     logError("history.get", error)
     return NextResponse.json([], { status: 200 })

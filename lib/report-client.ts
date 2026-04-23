@@ -1,5 +1,6 @@
 import { fetchJsonOrThrow } from "@/lib/api-client"
 import type {
+  ReportCancelResponse,
   ReportSendRequest,
   QueuedReportResponse,
   ReportRequest,
@@ -94,6 +95,19 @@ export async function sendReportToWhatsApp(
       body: JSON.stringify(payload ?? {}),
     },
     "Não foi possível enviar o relatório"
+  )
+}
+
+export async function cancelQueuedReport(reportId: string) {
+  return fetchJsonOrThrow<ReportCancelResponse>(
+    `/api/reports/${reportId}/cancel`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+    "Não foi possível cancelar o envio"
   )
 }
 

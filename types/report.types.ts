@@ -200,6 +200,13 @@ export type ReportSendResponse = {
   status: ReportStatusValue
 }
 
+export type ReportCancelResponse = {
+  ok: true
+  reportId: string
+  status: ReportStatusValue
+  cancelled: true
+}
+
 export type ReportSendRequest = {
   mode?: ReportSendMode
   message?: string
@@ -284,6 +291,8 @@ export type HistoryRow = {
   clientId: string
   client: string
   company: string
+  groupId: string | null
+  groupName: string | null
   status: ReportStatusValue
   attempts: number
   errorMessage: string | null

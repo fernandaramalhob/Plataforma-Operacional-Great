@@ -16,6 +16,7 @@ import { ErrorState } from "@/components/shared/error-state"
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { fetchJsonOrThrow } from "@/lib/api-client"
+import { cancelQueuedReport } from "@/lib/report-client"
 import type { ClientLookupOption } from "@/types/client.types"
 import type { HistoryRow, ReportSendResponse } from "@/types/report.types"
 
@@ -36,6 +37,7 @@ export default function HistoryPage() {
   const [clients, setClients] = useState<ClientLookupOption[]>([])
   const [loading, setLoading] = useState(true)
   const [retryingReportId, setRetryingReportId] = useState<string | null>(null)
+  const [cancelingReportId, setCancelingReportId] = useState<string | null>(null)
   const [actionFeedback, setActionFeedback] = useState("")
   const [actionError, setActionError] = useState("")
   const [statusFilter, setStatusFilter] = useState("Todos")
@@ -99,12 +101,23 @@ export default function HistoryPage() {
   const totalPendentes = filtered.filter((item) => item.status === "PENDING").length
 
   function exportCSV() {
-    const headers = ["Data", "Hora", "Cliente", "Empresa", "Status", "Tentativas"]
+    const headers = [
+      "Data",
+      "Hora",
+      "Cliente",
+      "Empresa",
+      "Grupo ID",
+      "Grupo Nome",
+      "Status",
+      "Tentativas",
+    ]
     const rows = filtered.map((item) => [
       item.date,
       item.time,
       item.client,
       item.company,
+      item.groupId ?? "-",
+      item.groupName ?? "-",
       item.status,
       item.attempts,
     ])
@@ -139,6 +152,26 @@ export default function HistoryPage() {
       )
     } finally {
       setRetryingReportId(null)
+    }
+  }
+
+  async function handleCancelReport(reportId: string) {
+    setCancelingReportId(reportId)
+    setActionFeedback("")
+    setActionError("")
+
+    try {
+      await cancelQueuedReport(reportId)
+      setActionFeedback("Envio cancelado com sucesso.")
+      await loadHistory()
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível cancelar o envio"
+      )
+    } finally {
+      setCancelingReportId(null)
     }
   }
 
@@ -262,6 +295,9 @@ export default function HistoryPage() {
                     Cliente
                   </th>
                   <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Grupo
+                  </th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Status
                   </th>
                   <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -288,10 +324,23 @@ export default function HistoryPage() {
                     </td>
                     <td className="px-5 py-4">
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">
+                        <Link
+                          href={`/dashboard/reports/${row.id}`}
+                          className="text-sm font-semibold text-gray-900 transition hover:text-[#C1121F] hover:underline"
+                        >
                           {row.client}
-                        </p>
+                        </Link>
                         <p className="text-xs text-gray-400">{row.company}</p>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {row.groupId ?? "Grupo não informado"}
+                        </p>
+                        {row.groupName ? (
+                          <p className="mt-1 text-xs text-gray-400">{row.groupName}</p>
+                        ) : null}
                       </div>
                     </td>
                     <td className="px-5 py-4">
@@ -329,26 +378,22 @@ export default function HistoryPage() {
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={`/dashboard/reports/${row.id}`}
-                          className="text-sm font-medium text-[#C1121F] hover:underline"
+                        <button
+                          onClick={() => void handleCancelReport(row.id)}
+                          disabled={row.status !== "PENDING" || cancelingReportId === row.id}
+                          className={`inline-flex items-center gap-1 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                            row.status === "PENDING"
+                              ? "text-red-500 hover:underline"
+                              : "text-gray-400"
+                          }`}
                         >
-                          Ver
-                        </Link>
-                        {row.status === "FAILED" ? (
-                          <button
-                            onClick={() => void handleRetryReport(row.id)}
-                            disabled={retryingReportId === row.id}
-                            className="inline-flex items-center gap-1 text-sm font-medium text-orange-500 hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-60"
-                          >
-                            {retryingReportId === row.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : null}
-                            {retryingReportId === row.id
-                              ? "Reenviando..."
-                              : "Reenviar"}
-                          </button>
-                        ) : null}
+                          {cancelingReportId === row.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : null}
+                          {cancelingReportId === row.id
+                            ? "Cancelando..."
+                            : "Cancelar envio"}
+                        </button>
                       </div>
                     </td>
                   </tr>

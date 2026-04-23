@@ -350,6 +350,7 @@ export function mapReportToHistoryRow(report: {
   client: {
     name: string
     company: string | null
+    whatsappGroupId: string | null
   }
   sendLogs: SendLogLike[]
 }): HistoryRow {
@@ -370,6 +371,8 @@ export function mapReportToHistoryRow(report: {
     clientId: report.clientId,
     client: report.client.name,
     company: report.client.company ?? "-",
+    groupId: report.client.whatsappGroupId ?? null,
+    groupName: null,
     status: report.status,
     attempts,
     errorMessage: latestLog?.errorMessage ?? jobError?.message ?? null,

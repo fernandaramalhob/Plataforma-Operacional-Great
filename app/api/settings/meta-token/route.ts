@@ -5,6 +5,7 @@ import { encryptMetaToken } from "@/lib/meta-token"
 import {
   getStoredMetaTokenHealth,
   inspectMetaTokenValue,
+  type MetaTokenHealth,
   type MetaTokenStatus,
 } from "@/lib/meta-token-status"
 import { prisma } from "@/lib/prisma"
@@ -234,97 +235,108 @@ export async function POST(request: Request) {
 
     const payload = parsedBody.data as { token?: string; preset?: MetaTokenPreset }
 
-    if (payload.preset) {
-      const preset = payload.preset
-      let presetValidation
-
-      try {
-        presetValidation = await inspectSelectedPresetToken(preset)
-      } catch (error) {
-        return NextResponse.json<ApiErrorResponse>(
-          {
-            error: error instanceof Error ? error.message : "Token META invalido",
-          },
-          { status: 400 }
-        )
-      }
-      const presetToken = createMetaTokenPresetToken(preset)
+    async function persistMetaTokenState(params: {
+      token: string
+      expiresAt: Date | null
+    }) {
+      const { token, expiresAt } = params
 
       if (user?.id) {
         await prisma.user.update({
           where: { id: user.id },
           data: {
-            metaAccessToken: presetToken,
-            metaTokenExpiresAt: presetValidation.validation.expiresAt,
+            metaAccessToken: token,
+            metaTokenExpiresAt: expiresAt,
           },
         })
-      } else {
-        await prisma.user.upsert({
-          where: { email },
-          update: {
-            metaAccessToken: presetToken,
-            metaTokenExpiresAt: presetValidation.validation.expiresAt,
-          },
-          create: {
-            email,
-            passwordHash: user?.passwordHash ?? "",
-            role: user?.role ?? "MANAGER",
-            metaAccessToken: presetToken,
-            metaTokenExpiresAt: presetValidation.validation.expiresAt,
-          },
-        })
+        return
       }
 
-      return NextResponse.json<MetaTokenSaveResponse>({
-        success: true,
-        tokenStatus: presetValidation.validation.status,
-        tokenMasked: maskToken(presetValidation.token),
-        selectedPreset: preset,
-        metaUser: presetValidation.validation.metaUser,
-        expiresAt: presetValidation.validation.expiresAt?.toISOString() ?? null,
-        detail: presetValidation.validation.detail,
-      })
-    }
-
-    const sanitizedToken = payload.token?.trim() ?? ""
-    const validation = await inspectMetaTokenValue(sanitizedToken)
-
-    if (!validation.ok) {
-      return NextResponse.json<ApiErrorResponse>(
-        {
-          error: "Token META invalido",
-          detail: validation.detail,
-          tokenStatus: validation.status,
-        },
-        { status: 400 }
-      )
-    }
-
-    const encryptedToken = encryptMetaToken(sanitizedToken)
-
-    if (user?.id) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          metaAccessToken: encryptedToken,
-          metaTokenExpiresAt: validation.expiresAt,
-        },
-      })
-    } else {
       await prisma.user.upsert({
         where: { email },
         update: {
-          metaAccessToken: encryptedToken,
-          metaTokenExpiresAt: validation.expiresAt,
+          metaAccessToken: token,
+          metaTokenExpiresAt: expiresAt,
         },
         create: {
           email,
           passwordHash: user?.passwordHash ?? "",
           role: user?.role ?? "MANAGER",
-          metaAccessToken: encryptedToken,
-          metaTokenExpiresAt: validation.expiresAt,
+          metaAccessToken: token,
+          metaTokenExpiresAt: expiresAt,
         },
       })
+    }
+
+    if (payload.preset) {
+      const preset = payload.preset
+      const presetToken = createMetaTokenPresetToken(preset)
+      let tokenMasked = maskToken(presetToken)
+      let presetValidation: Omit<MetaTokenHealth, "token" | "encryptedToken" | "source"> = {
+        ok: false,
+        status: "unknown" as MetaTokenStatus,
+        detail: "Token salvo. A validacao sera revisada em seguida.",
+        expiresAt: null as Date | null,
+        metaUser: null,
+      }
+
+      await persistMetaTokenState({
+        token: presetToken,
+        expiresAt: null,
+      })
+
+      try {
+        const inspectedPreset = await inspectSelectedPresetToken(preset)
+        presetValidation = inspectedPreset.validation
+        tokenMasked = maskToken(inspectedPreset.token)
+
+        await persistMetaTokenState({
+          token: presetToken,
+          expiresAt: presetValidation.expiresAt,
+        })
+      } catch (error) {
+        logError("meta-token.post.preset-validate", error, { preset })
+      }
+
+      return NextResponse.json<MetaTokenSaveResponse>({
+        success: true,
+        tokenStatus: presetValidation.status,
+        tokenMasked,
+        selectedPreset: preset,
+        metaUser: presetValidation.metaUser,
+        expiresAt: presetValidation.expiresAt?.toISOString() ?? null,
+        detail: presetValidation.detail,
+      })
+    }
+
+    const sanitizedToken = payload.token?.trim() ?? ""
+    const encryptedToken = encryptMetaToken(sanitizedToken)
+
+    await persistMetaTokenState({
+      token: encryptedToken,
+      expiresAt: null,
+    })
+
+    let validation: Omit<MetaTokenHealth, "token" | "encryptedToken" | "source"> = {
+      ok: false,
+      status: "unknown" as MetaTokenStatus,
+      detail: "Token salvo. A validacao sera revisada em seguida.",
+      expiresAt: null as Date | null,
+      metaUser: null,
+    }
+
+    try {
+      const inspectedToken = await inspectMetaTokenValue(sanitizedToken)
+      validation = inspectedToken
+
+      if (validation.ok) {
+        await persistMetaTokenState({
+          token: encryptedToken,
+          expiresAt: validation.expiresAt,
+        })
+      }
+    } catch (error) {
+      logError("meta-token.post.validate", error)
     }
 
     return NextResponse.json<MetaTokenSaveResponse>({

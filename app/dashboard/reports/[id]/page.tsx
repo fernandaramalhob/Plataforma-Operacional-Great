@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -31,6 +31,8 @@ export default function ReportPreviewPage() {
   const reportRef = useRef<HTMLDivElement>(null)
   const pdfReportRef = useRef<HTMLDivElement>(null)
   const reportPollSequenceRef = useRef(0)
+  const initialSendModeRef = useRef<ReportSendMode>("PDF_AND_MESSAGE")
+  const initialSendMessageRef = useRef("")
   const [savedReport, setSavedReport] = useState<SavedReportResponse | null>(null)
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([])
   const [insightsEnabled, setInsightsEnabled] = useState(true)
@@ -64,17 +66,19 @@ export default function ReportPreviewPage() {
             report.payload?.campaigns.map((campaign) => campaign.id) ?? []
           )
           if (report.payload) {
-            setSendMessage(
-              buildReportSendPreview({
-                reportId: report.id,
-                payload: report.payload,
-              })
-            )
+            const previewMessage = buildReportSendPreview({
+              reportId: report.id,
+              payload: report.payload,
+            })
+
+            setSendMessage(previewMessage)
+            initialSendModeRef.current = "PDF_AND_MESSAGE"
+            initialSendMessageRef.current = previewMessage
           }
 
           if (!report.payload && report.status !== "FAILED") {
             setActionFeedback(
-              "RelatÃ³rio em processamento na fila. Atualizando automaticamente."
+              "RelatÃƒÂ³rio em processamento na fila. Atualizando automaticamente."
             )
             return
           }
@@ -92,7 +96,7 @@ export default function ReportPreviewPage() {
     reportPollSequenceRef.current = sequence
 
     if (!reportId) {
-      setError("RelatÃ³rio invÃ¡lido")
+      setError("RelatÃƒÂ³rio invÃƒÂ¡lido")
       setLoading(false)
       return
     }
@@ -111,7 +115,7 @@ export default function ReportPreviewPage() {
         setError(
           fetchError instanceof Error
             ? fetchError.message
-            : "NÃ£o foi possÃ­vel carregar o relatÃ³rio"
+            : "NÃƒÂ£o foi possÃƒÂ­vel carregar o relatÃƒÂ³rio"
         )
       })
       .finally(() => {
@@ -152,7 +156,7 @@ export default function ReportPreviewPage() {
       logError("dashboard.report-preview.page", pdfError, {
         reportId: savedReport.id,
       })
-      setError("NÃ£o foi possÃ­vel gerar o PDF do relatÃ³rio")
+      setError("NÃƒÂ£o foi possÃƒÂ­vel gerar o PDF do relatÃƒÂ³rio")
     } finally {
       setGenerating(false)
     }
@@ -164,6 +168,10 @@ export default function ReportPreviewPage() {
     if (!savedReport?.payload || !sourceElement) {
       return
     }
+
+    const wasChanged =
+      sendMode !== initialSendModeRef.current ||
+      sendMessage.trim() !== initialSendMessageRef.current.trim()
 
     setSending(true)
     setError("")
@@ -189,12 +197,18 @@ export default function ReportPreviewPage() {
         pdfBase64: pdfAttachment?.base64,
         pdfFileName: pdfAttachment?.fileName,
       })
-      setActionFeedback("Envio concluÃ­do com o formato selecionado.")
+      initialSendModeRef.current = sendMode
+      initialSendMessageRef.current = sendMessage
+      setActionFeedback(
+        wasChanged
+          ? "Envio alterado e enviado com sucesso."
+          : "Envio concluído com o formato selecionado."
+      )
     } catch (sendError) {
       setError(
         sendError instanceof Error
           ? sendError.message
-          : "NÃ£o foi possÃ­vel enviar o relatÃ³rio"
+          : "NÃƒÂ£o foi possÃƒÂ­vel enviar o relatÃƒÂ³rio"
       )
     } finally {
       setSending(false)
@@ -206,11 +220,11 @@ export default function ReportPreviewPage() {
       <div>
         <div className="print:hidden">
           <Header
-            title="RelatÃ³rio salvo"
-            subtitle="Carregando relatÃ³rio persistido"
+            title="RelatÃƒÂ³rio salvo"
+            subtitle="Carregando relatÃƒÂ³rio persistido"
           />
         </div>
-        <LoadingSkeleton label="Carregando relatÃ³rio salvo..." />
+        <LoadingSkeleton label="Carregando relatÃƒÂ³rio salvo..." />
       </div>
     )
   }
@@ -220,21 +234,21 @@ export default function ReportPreviewPage() {
       <div>
         <div className="print:hidden">
           <Header
-            title="RelatÃ³rio salvo"
-            subtitle="NÃ£o foi possÃ­vel abrir este relatÃ³rio"
+            title="RelatÃƒÂ³rio salvo"
+            subtitle="NÃƒÂ£o foi possÃƒÂ­vel abrir este relatÃƒÂ³rio"
           />
         </div>
         <div className="p-8">
           <ErrorState
-            title="RelatÃ³rio indisponÃ­vel"
-            message={error || "RelatÃ³rio nÃ£o encontrado"}
+            title="RelatÃƒÂ³rio indisponÃƒÂ­vel"
+            message={error || "RelatÃƒÂ³rio nÃƒÂ£o encontrado"}
             action={
               <button
                 onClick={() => router.push("/dashboard/history")}
                 className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Voltar para o histÃ³rico
+                Voltar para o histÃƒÂ³rico
               </button>
             }
           />
@@ -248,18 +262,18 @@ export default function ReportPreviewPage() {
       <div>
         <div className="print:hidden">
           <Header
-            title="RelatÃ³rio salvo"
+            title="RelatÃƒÂ³rio salvo"
             subtitle="Aguardando processamento do job"
           />
         </div>
         <div className="p-8">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
             {savedReport.status === "FAILED" ? (
-              <p>{savedReport.errorMessage || "NÃ£o foi possÃ­vel gerar este relatÃ³rio."}</p>
+              <p>{savedReport.errorMessage || "NÃƒÂ£o foi possÃƒÂ­vel gerar este relatÃƒÂ³rio."}</p>
             ) : (
               <div className="flex items-center gap-3">
                 <Loader2 className="h-5 w-5 animate-spin text-[#C1121F]" />
-                <p>RelatÃ³rio em fila. Esta pÃ¡gina atualiza automaticamente.</p>
+                <p>RelatÃƒÂ³rio em fila. Esta pÃƒÂ¡gina atualiza automaticamente.</p>
               </div>
             )}
             <button
@@ -267,7 +281,7 @@ export default function ReportPreviewPage() {
               className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
             >
               <ChevronLeft className="h-4 w-4" />
-              Voltar para o histÃ³rico
+              Voltar para o histÃƒÂ³rico
             </button>
           </div>
         </div>
@@ -276,13 +290,16 @@ export default function ReportPreviewPage() {
   }
 
   const { payload } = savedReport
+  const hasSendChanges =
+    sendMode !== initialSendModeRef.current ||
+    sendMessage.trim() !== initialSendMessageRef.current.trim()
 
   return (
     <>
       <div className="print:hidden">
         <Header
-          title="RelatÃ³rio salvo"
-          subtitle={`${payload.client.name} Â· ${payload.filters.since} atÃ© ${payload.filters.until}`}
+          title="RelatÃƒÂ³rio salvo"
+          subtitle={`${payload.client.name} Ã‚Â· ${payload.filters.since} atÃƒÂ© ${payload.filters.until}`}
         />
       </div>
 
@@ -293,7 +310,7 @@ export default function ReportPreviewPage() {
             className="mb-5 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
           >
             <ChevronLeft className="h-4 w-4" />
-            Voltar para o histÃ³rico
+            Voltar para o histÃƒÂ³rico
           </button>
 
           <div className="mb-5 rounded-2xl border border-gray-100 bg-gray-50 p-4">
@@ -304,7 +321,7 @@ export default function ReportPreviewPage() {
               {payload.client.name}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {payload.client.company ?? "Marca nÃ£o informada"}
+              {payload.client.company ?? "Marca nÃƒÂ£o informada"}
             </p>
           </div>
 
@@ -314,7 +331,7 @@ export default function ReportPreviewPage() {
             </p>
             <div className="mt-3 space-y-2 text-sm text-gray-600">
               <p>De: {payload.filters.since}</p>
-              <p>AtÃ©: {payload.filters.until}</p>
+              <p>AtÃƒÂ©: {payload.filters.until}</p>
               <p>Objetivo: {payload.filters.objective}</p>
               <p>
                 Gerado em:{" "}
@@ -349,7 +366,7 @@ export default function ReportPreviewPage() {
                 }`}
               />
             </div>
-            Insights automÃ¡ticos
+            Insights automÃƒÂ¡ticos
           </label>
         </aside>
 
@@ -366,6 +383,21 @@ export default function ReportPreviewPage() {
                 {error}
               </div>
             ) : null}
+
+            <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
+              <div
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  hasSendChanges
+                    ? "bg-[#FFF1F2] text-[#C1121F]"
+                    : "bg-green-50 text-green-700"
+                }`}
+              >
+                {hasSendChanges ? "Envio alterado" : "Envio sem alterações"}
+              </div>
+              <span className="text-xs text-gray-400">
+                Você pode ajustar o formato antes de enviar.
+              </span>
+            </div>
 
             <div className="mb-6">
               <SendReportComposer
@@ -420,7 +452,7 @@ export default function ReportPreviewPage() {
                 className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
               >
                 <Download className="h-4 w-4" />
-                {generating ? "Gerando PDF..." : "Salvar relatÃ³rio em PDF"}
+                {generating ? "Gerando PDF..." : "Salvar relatÃƒÂ³rio em PDF"}
               </button>
             </div>
           </div>
@@ -463,14 +495,15 @@ export default function ReportPreviewPage() {
             return
           }
           setActionFeedback(
-            `Agendamento salvo. PrÃ³ximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
+            `Agendamento salvo. PrÃƒÂ³ximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
           )
           setScheduleModalOpen(false)
         }}
         onDisabled={() => {
-          setActionFeedback("Agendamento automÃ¡tico desativado com sucesso.")
+          setActionFeedback("Agendamento automÃƒÂ¡tico desativado com sucesso.")
         }}
       />
     </>
   )
 }
+

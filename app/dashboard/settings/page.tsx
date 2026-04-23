@@ -212,15 +212,26 @@ export default function SettingsPage() {
       }
 
       setResult("success")
-      if (isObject(data)) setMetaUser(readMetaUser((data as MetaTokenSaveResponse).metaUser))
+      if (isObject(data)) {
+        const savedToken = data as MetaTokenSaveResponse
+        setMetaUser(readMetaUser(savedToken.metaUser))
+        setSavedTokenMasked(savedToken.tokenMasked)
+        setSelectedTokenPreset(
+          savedToken.selectedPreset === "ISAQUE" || savedToken.selectedPreset === "BRAYTON"
+            ? savedToken.selectedPreset
+            : null
+        )
+        setTokenStatus(
+          isTokenStatus(savedToken.tokenStatus) ? savedToken.tokenStatus : "unknown"
+        )
+        setStatusDetail(typeof savedToken.detail === "string" ? savedToken.detail : "")
+        setTokenExpiresAt(
+          typeof savedToken.expiresAt === "string" ? savedToken.expiresAt : null
+        )
+      }
       setToken("")
-      setDraftTokenPreset(
-        tokenValue
-          ? null
-          : presetValue ?? null
-      )
+      setDraftTokenPreset(tokenValue ? null : presetValue ?? null)
       setIsEditingToken(false)
-      await loadMetaStatus()
     } catch (error) {
       setResult("error")
       setErrorMsg(error instanceof Error ? error.message : "Erro ao salvar o token da META")
