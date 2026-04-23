@@ -1,6 +1,7 @@
 import type { Prisma, User } from "@prisma/client"
 import { authOptions } from "@/lib/auth"
 import { getSessionUser } from "@/lib/session-user"
+import { getBootstrapLoginAccount } from "@/lib/auth-accounts"
 import { logError, logInfo, logWarn } from "@/lib/safe-logger"
 
 type Role = "ADMIN" | "MANAGER"
@@ -14,7 +15,8 @@ export type AuthenticatedUser = Pick<
   | "metaAccessToken"
   | "metaTokenExpiresAt"
   | "evolutionInstance"
->
+> & {
+}
 
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   try {
@@ -39,6 +41,29 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
       userId: user?.id ?? null,
       role: user?.role ?? null,
     })
+
+    if (user) {
+      return user as AuthenticatedUser
+    }
+
+    const bootstrapAccount = getBootstrapLoginAccount(session.user.email)
+
+    if (bootstrapAccount) {
+      logWarn("auth.current-user.bootstrap-fallback", {
+        email: session.user.email,
+        accountId: bootstrapAccount.id,
+      })
+
+      return {
+        id: session.user.id || bootstrapAccount.id,
+        email: bootstrapAccount.email,
+        role: bootstrapAccount.role,
+        passwordHash: "",
+        metaAccessToken: null,
+        metaTokenExpiresAt: null,
+        evolutionInstance: null,
+      }
+    }
 
     return user
   } catch (error) {

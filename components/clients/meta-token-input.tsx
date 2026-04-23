@@ -5,8 +5,11 @@ type MetaTokenInputProps = {
   showToken: boolean
   isSubmitting: boolean
   disabled?: boolean
+  canSubmit?: boolean
   hasSavedToken: boolean
   placeholder?: string
+  submitLabel?: string
+  submittingLabel?: string
   onChange: (value: string) => void
   onToggleVisibility: () => void
   onSubmit: () => void
@@ -17,8 +20,11 @@ export function MetaTokenInput({
   showToken,
   isSubmitting,
   disabled,
+  canSubmit,
   hasSavedToken,
   placeholder,
+  submitLabel,
+  submittingLabel,
   onChange,
   onToggleVisibility,
   onSubmit,
@@ -52,18 +58,16 @@ export function MetaTokenInput({
         <button
           type="button"
           onClick={onSubmit}
-          disabled={isSubmitting || disabled || !value}
+          disabled={isSubmitting || disabled || (canSubmit ?? !value)}
           className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-[#C1121F] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
         >
           {isSubmitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Validando...
+              {submittingLabel ?? "Salvando..."}
             </>
-          ) : hasSavedToken ? (
-            "Atualizar token"
           ) : (
-            "Validar e Salvar"
+            submitLabel ?? (hasSavedToken ? "Atualizar token" : "Validar e Salvar")
           )}
         </button>
       </div>

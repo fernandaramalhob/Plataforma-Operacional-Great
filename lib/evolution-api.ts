@@ -4,7 +4,7 @@ import type {
   EvolutionInstance,
 } from "@/types/evolution.types"
 
-const DEFAULT_EVOLUTION_API_TIMEOUT_MS = 30_000
+const DEFAULT_EVOLUTION_API_TIMEOUT_MS = 15_000
 
 type EvolutionSendTextResponse = {
   key?: {
@@ -38,6 +38,10 @@ type EvolutionCatalog = {
   instances: EvolutionInstance[]
   groups: EvolutionGroup[]
   partialErrors: string[]
+}
+
+type EvolutionCatalogOptions = {
+  groupInstances?: string[]
 }
 
 function getRequiredEnv(name: "EVOLUTION_API_URL" | "EVOLUTION_API_KEY" | "EVOLUTION_INSTANCE") {
@@ -244,8 +248,10 @@ export async function sendWhatsAppText(params: {
     | { error?: string; message?: string }
     | null = null
 
+  const encodedInstance = encodeURIComponent(instance)
+
   try {
-    response = await fetch(`${apiUrl}/message/sendText/${instance}`, {
+    response = await fetch(`${apiUrl}/message/sendText/${encodedInstance}`, {
       method: "POST",
       headers: {
         ...buildEvolutionRequestHeaders(apiKey),
@@ -293,7 +299,7 @@ export async function sendWhatsAppText(params: {
     const normalizedError = normalizeEvolutionError(
       error,
       timeoutMs,
-      `/message/sendText/${instance}`
+      `/message/sendText/${encodedInstance}`
     )
 
     logIntegrationEvent({
@@ -339,8 +345,10 @@ export async function sendWhatsAppDocument(params: {
     | { error?: string; message?: string }
     | null = null
 
+  const encodedInstance = encodeURIComponent(instance)
+
   try {
-    response = await fetch(`${apiUrl}/message/sendMedia/${instance}`, {
+    response = await fetch(`${apiUrl}/message/sendMedia/${encodedInstance}`, {
       method: "POST",
       headers: {
         ...buildEvolutionRequestHeaders(apiKey),
@@ -386,7 +394,7 @@ export async function sendWhatsAppDocument(params: {
     const normalizedError = normalizeEvolutionError(
       error,
       timeoutMs,
-      `/message/sendMedia/${instance}`
+      `/message/sendMedia/${encodedInstance}`
     )
 
     logIntegrationEvent({
@@ -408,11 +416,15 @@ export async function sendWhatsAppDocument(params: {
 
 type EvolutionGroupResponseItem = {
   id?: string
+  remoteJid?: string
   subject?: string
+  pushName?: string
   subjectOwner?: string
   size?: number
   participants?: unknown[]
   announce?: boolean
+  unreadCount?: number
+  isSaved?: boolean
 }
 
 export function getEvolutionConfig() {
@@ -540,8 +552,13 @@ export async function listEvolutionInstances() {
 
 function buildGroupFetchTargets(
   config: EvolutionConfig,
-  instances: EvolutionInstance[]
+  instances: EvolutionInstance[],
+  preferredInstances?: string[]
 ) {
+  if (preferredInstances?.length) {
+    return dedupeStrings(preferredInstances)
+  }
+
   const preferredTargets = instances
     .filter((instance) => {
       if (instance.isPrimary) {
@@ -563,10 +580,13 @@ async function fetchEvolutionGroupsForInstance(
   config: EvolutionConfig,
   instance: string
 ) {
+  const encodedInstance = encodeURIComponent(instance)
   const data = await fetchEvolutionJson<EvolutionGroupResponseItem[]>({
     apiUrl: config.apiUrl,
     apiKey: config.apiKey,
-    path: `/group/fetchAllGroups/${instance}?getParticipants=false`,
+    path: `/chat/findChats/${encodedInstance}`,
+    method: "POST",
+    body: "{}",
   })
 
   if (!Array.isArray(data)) {
@@ -575,24 +595,32 @@ async function fetchEvolutionGroupsForInstance(
 
   return data
     .map((group) => {
-      const id = typeof group.id === "string" ? group.id.trim() : ""
+      const id = typeof group.remoteJid === "string"
+        ? group.remoteJid.trim()
+        : typeof group.id === "string"
+          ? group.id.trim()
+          : ""
 
-      if (!id) {
+      if (!id || !id.endsWith("@g.us")) {
         return null
       }
 
       return {
         id,
         subject:
-          typeof group.subject === "string" && group.subject.trim()
-            ? group.subject.trim()
+          typeof group.pushName === "string" && group.pushName.trim()
+            ? group.pushName.trim()
+            : typeof group.subject === "string" && group.subject.trim()
+              ? group.subject.trim()
             : "Grupo sem nome",
         size:
-          typeof group.size === "number"
-            ? group.size
-            : Array.isArray(group.participants)
-              ? group.participants.length
-              : 0,
+          typeof group.unreadCount === "number"
+            ? group.unreadCount
+            : typeof group.size === "number"
+              ? group.size
+              : Array.isArray(group.participants)
+                ? group.participants.length
+                : 0,
         announce: Boolean(group.announce),
         instance,
       } satisfies EvolutionGroup
@@ -600,7 +628,9 @@ async function fetchEvolutionGroupsForInstance(
     .filter((group): group is EvolutionGroup => Boolean(group))
 }
 
-export async function loadEvolutionCatalog(): Promise<EvolutionCatalog> {
+export async function loadEvolutionCatalog(
+  options?: EvolutionCatalogOptions
+): Promise<EvolutionCatalog> {
   const startedAt = Date.now()
   const config = getEvolutionConfig()
 
@@ -630,25 +660,32 @@ export async function loadEvolutionCatalog(): Promise<EvolutionCatalog> {
       : []
   }
 
-  const targets = buildGroupFetchTargets(config, instances)
+  const targets = buildGroupFetchTargets(
+    config,
+    instances,
+    options?.groupInstances
+  )
+  const groupResults = await Promise.allSettled(
+    targets.map(async (instance) => ({
+      instance,
+      groups: await fetchEvolutionGroupsForInstance(config, instance),
+    }))
+  )
   const groups: EvolutionGroup[] = []
 
-  for (const instance of targets) {
-    try {
-      const instanceGroups = await fetchEvolutionGroupsForInstance(config, instance)
-      groups.push(...instanceGroups)
-    } catch (error) {
-      partialErrors.push(
-        error instanceof Error
-          ? `${instance}: ${error.message}`
-          : `${instance}: Falha ao listar grupos`
-      )
+  groupResults.forEach((result, index) => {
+    if (result.status === "fulfilled") {
+      groups.push(...result.value.groups)
+      return
     }
-  }
 
-  if (groups.length === 0 && partialErrors.length > 0) {
-    throw new Error(partialErrors[0] ?? "Falha ao listar grupos na Evolution API")
-  }
+    const instance = targets[index]
+    partialErrors.push(
+      result.reason instanceof Error
+        ? `${instance}: ${result.reason.message}`
+        : `${instance}: Falha ao listar grupos`
+    )
+  })
 
   const sortedGroups = groups.sort((left, right) => {
     const subjectComparison = left.subject.localeCompare(right.subject, "pt-BR")
@@ -677,7 +714,9 @@ export async function loadEvolutionCatalog(): Promise<EvolutionCatalog> {
 
     return {
       config,
-      connected: true,
+      connected: instances.some(
+        (instance) => instance.status === null || instance.status === "open"
+      ),
       instances,
       groups: sortedGroups,
       partialErrors,

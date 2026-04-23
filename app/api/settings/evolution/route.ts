@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
 import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await getCurrentUser()
 
@@ -14,10 +14,15 @@ export async function GET() {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
+    const requestUrl = new URL(request.url)
+    const previewInstance = normalizeEvolutionInstancePreference(
+      requestUrl.searchParams.get("previewInstance")
+    )
     const selectedInstance = normalizeEvolutionInstancePreference(
       user.evolutionInstance ?? null
     )
     const config = getEvolutionConfig()
+    const effectiveGroupInstance = previewInstance || selectedInstance || config.instance || null
 
     if (!config.configured) {
       return NextResponse.json<EvolutionSettingsResponse>({
@@ -25,6 +30,7 @@ export async function GET() {
         connected: false,
         instance: config.instance || null,
         selectedInstance,
+        previewInstance: effectiveGroupInstance,
         detail:
           "Configure EVOLUTION_API_URL, EVOLUTION_API_KEY e EVOLUTION_INSTANCE para habilitar o WhatsApp.",
         groups: [],
@@ -33,7 +39,9 @@ export async function GET() {
     }
 
     try {
-      const catalog = await loadEvolutionCatalog()
+      const catalog = await loadEvolutionCatalog({
+        groupInstances: effectiveGroupInstance ? [effectiveGroupInstance] : undefined,
+      })
       const connectedInstances = catalog.instances.filter(
         (instance) => instance.status === null || instance.status === "open"
       )
@@ -47,6 +55,7 @@ export async function GET() {
         connected: catalog.connected,
         instance: config.instance,
         selectedInstance,
+        previewInstance: effectiveGroupInstance,
         detail:
           catalog.partialErrors.length > 0
             ? `${detail} Algumas instancias nao puderam ser consultadas nesta atualizacao.`
@@ -60,6 +69,7 @@ export async function GET() {
         connected: false,
         instance: config.instance,
         selectedInstance,
+        previewInstance: effectiveGroupInstance,
         detail: error instanceof Error ? error.message : "Falha ao consultar a Evolution API.",
         groups: [],
         instances: [],

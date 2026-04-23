@@ -62,6 +62,15 @@ type MetaListResponse<T> = {
   data?: T[]
 }
 
+type MetaPagedResponse<T> = MetaListResponse<T> & {
+  paging?: {
+    cursors?: {
+      after?: string
+    }
+    next?: string
+  }
+}
+
 export type MetaApiItem = {
   id?: string
   name?: string
@@ -211,6 +220,54 @@ export async function metaApiListRequest<T>(
   return Array.isArray(data.data) ? data.data : []
 }
 
+export async function metaApiListAllRequest<T>(
+  params: MetaApiRequestParams & {
+    pageSize?: number
+  }
+): Promise<T[]> {
+  const pageSize = params.pageSize ?? 100
+  const results: T[] = []
+  let after: string | undefined
+
+  while (true) {
+    const page = await metaApiRequest<MetaPagedResponse<T>>({
+      path: params.path,
+      token: params.token,
+      query: {
+        ...(params.query ?? {}),
+        limit: pageSize,
+        ...(after ? { after } : {}),
+      },
+    })
+
+    const pageData = Array.isArray(page.data) ? page.data : []
+    results.push(...pageData)
+
+    const nextAfter =
+      page.paging?.cursors?.after?.trim() ??
+      (() => {
+        const nextUrl = page.paging?.next?.trim()
+
+        if (!nextUrl) {
+          return null
+        }
+
+        try {
+          return new URL(nextUrl).searchParams.get("after")
+        } catch {
+          return null
+        }
+      })()
+    if (!nextAfter || nextAfter === after || pageData.length === 0) {
+      break
+    }
+
+    after = nextAfter
+  }
+
+  return results
+}
+
 export function getMetaAppAccessToken() {
   const appId =
     process.env.META_APP_ID?.trim() || process.env.FACEBOOK_APP_ID?.trim()
@@ -255,13 +312,13 @@ export async function getMetaAdAccounts(
   fields = "id,name,account_status,currency,amount_spent",
   limit = 100
 ) {
-  return metaApiListRequest<MetaApiItem>({
+  return metaApiListAllRequest<MetaApiItem>({
     path: "/me/adaccounts",
     token,
     query: {
       fields,
-      limit,
     },
+    pageSize: limit,
   })
 }
 

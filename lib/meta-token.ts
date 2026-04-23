@@ -96,7 +96,7 @@ function getPresetTokenFromEnv(preset: MetaTokenPreset) {
 }
 
 export function getMetaTokenPresetLabel(preset: MetaTokenPreset) {
-  return preset === "ISAQUE" ? "Isaque" : "Bryton"
+  return preset === "ISAQUE" ? "Isaque" : "Brayton"
 }
 
 export function isMetaTokenPresetToken(value: string) {

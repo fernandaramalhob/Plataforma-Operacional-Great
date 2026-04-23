@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import type { Prisma } from "@prisma/client"
 import type { Session } from "next-auth"
 import { prisma } from "@/lib/prisma"
+import { logWarn } from "@/lib/safe-logger"
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
@@ -15,20 +16,28 @@ async function findUserByNormalizedEmail<T extends Prisma.UserSelect>(
   email: string,
   select: T
 ): Promise<UserWithEmail<T> | null> {
-  const normalizedEmail = normalizeEmail(email)
+  try {
+    const normalizedEmail = normalizeEmail(email)
 
-  const users = (await prisma.user.findMany({
-    select: {
-      ...(select as Prisma.UserSelect),
-      email: true,
-    },
-  })) as Array<UserWithEmail<T>>
+    const users = (await prisma.user.findMany({
+      select: {
+        ...(select as Prisma.UserSelect),
+        email: true,
+      },
+    })) as Array<UserWithEmail<T>>
 
-  return (
-    users.find(
-      (user) => normalizeEmail((user as { email: string }).email) === normalizedEmail
-    ) ?? null
-  )
+    return (
+      users.find(
+        (user) => normalizeEmail((user as { email: string }).email) === normalizedEmail
+      ) ?? null
+    )
+  } catch (error) {
+    logWarn("session-user.lookup-failed", {
+      email,
+      error: error instanceof Error ? error.message : "Erro desconhecido",
+    })
+    return null
+  }
 }
 
 export async function findUserForSession<T extends Prisma.UserSelect>(params: {
@@ -51,13 +60,20 @@ export async function findUserForSession<T extends Prisma.UserSelect>(params: {
       : ""
 
   if (sessionUserId) {
-    const userById = await prisma.user.findUnique({
-      where: { id: sessionUserId },
-      select: params.select,
-    })
+    try {
+      const userById = await prisma.user.findUnique({
+        where: { id: sessionUserId },
+        select: params.select,
+      })
 
-    if (userById) {
-      return userById
+      if (userById) {
+        return userById
+      }
+    } catch (error) {
+      logWarn("session-user.lookup-by-id-failed", {
+        userId: sessionUserId,
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      })
     }
   }
 
