@@ -39,7 +39,9 @@ export async function GET(request: Request) {
     }
 
     try {
-      const catalog = await loadEvolutionCatalog()
+      const catalog = await loadEvolutionCatalog({
+        groupInstances: effectiveGroupInstance ? [effectiveGroupInstance] : undefined,
+      })
       const connectedInstances = catalog.instances.filter(
         (instance) => instance.status === null || instance.status === "open"
       )

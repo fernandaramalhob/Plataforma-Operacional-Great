@@ -3,7 +3,5 @@
   "/api/settings/meta-token/route": "app/api/settings/meta-token/route.js",
   "/api/settings/evolution/route": "app/api/settings/evolution/route.js",
   "/api/settings/meta-account/route": "app/api/settings/meta-account/route.js",
-  "/page": "app/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
   "/dashboard/settings/page": "app/dashboard/settings/page.js"
 }

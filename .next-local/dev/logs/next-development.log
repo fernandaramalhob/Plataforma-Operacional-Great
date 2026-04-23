@@ -74,3 +74,84 @@
 [00:01:51.113] Server  INFO    [auth.current-user.loaded] {}
 [00:01:51.770] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T17:45:14.086Z","integration":"whatsapp","action":"list-instances","status":"success","durationMs":649,"details":{"primaryInstance":"GreatGo","statusCode":200,"instancesCount":3}}
 [00:02:06.900] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T17:45:29.219Z","integration":"whatsapp","action":"list-groups","status":"success","durationMs":15783,"details":{"primaryInstance":"GreatGo","instancesCount":3,"queriedInstances":["Brayton GreatGO","Fernanda - GreatGo","GreatGo - isaque"],"groupsCount":0,"partialErrorsCount":3}}
+[00:08:36.140] Server  INFO    [auth.redirect.same-origin] {}
+[00:08:36.146] Server  INFO    [auth.session.ready] {}
+[00:08:38.275] Server  INFO    [auth.redirect.same-origin] {}
+[00:08:38.279] Server  INFO    [auth.session.ready] {}
+[00:08:57.854] Server  INFO    [auth.redirect.same-origin] {}
+[00:08:57.857] Server  INFO    [auth.session.ready] {}
+[00:09:17.066] Server  INFO    [auth.redirect.same-origin] {}
+[00:09:17.068] Server  INFO    [auth.session.ready] {}
+[00:10:28.127] Server  INFO    [auth.proxy.block-api] {}
+[00:11:42.464] Server  LOG     ○ Compiling /api/test/login ...
+[00:11:49.271] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"name\", \"public\".\"User\".\"avatarUrl\", \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\", \"public\".\"User\".\"createdAt\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"email\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:11:49.273] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"name\", \"public\".\"User\".\"avatarUrl\", \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\", \"public\".\"User\".\"createdAt\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"email\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:11:52.221] Server  INFO    [auth.session.ready] {}
+[00:11:52.224] Server  INFO    [auth.session.ready] {}
+[00:11:52.380] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"id\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:11:52.381] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"id\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:11:52.384] Server  INFO    [auth.current-user.loaded] {}
+[00:11:52.421] Server  INFO    [auth.current-user.loaded] {}
+[00:11:53.479] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T17:55:15.784Z","integration":"whatsapp","action":"list-instances","status":"success","durationMs":1041,"details":{"primaryInstance":"GreatGo","statusCode":200,"instancesCount":3}}
+[00:11:53.595] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T17:55:15.915Z","integration":"whatsapp","action":"list-instances","status":"success","durationMs":1204,"details":{"primaryInstance":"GreatGo","statusCode":200,"instancesCount":3}}
+[00:12:08.578] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T17:55:30.897Z","integration":"whatsapp","action":"list-groups","status":"success","durationMs":16154,"details":{"primaryInstance":"GreatGo","instancesCount":3,"queriedInstances":["Brayton GreatGO","Fernanda - GreatGo","GreatGo - isaque"],"groupsCount":0,"partialErrorsCount":3}}
+[00:12:08.626] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T17:55:30.945Z","integration":"whatsapp","action":"list-groups","status":"success","durationMs":16235,"details":{"primaryInstance":"GreatGo","instancesCount":3,"queriedInstances":["Brayton GreatGO","Fernanda - GreatGo","GreatGo - isaque"],"groupsCount":0,"partialErrorsCount":3}}
+[00:14:53.261] Server  LOG     prisma:query "SELECT 1"
+[00:14:53.311] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"name\", \"public\".\"User\".\"avatarUrl\", \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\", \"public\".\"User\".\"createdAt\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"email\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:14:53.748] Server  INFO    [auth.session.ready] {}
+[00:14:53.811] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"id\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:14:53.813] Server  INFO    [auth.current-user.loaded] {}
+[00:14:54.357] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T17:58:16.662Z","integration":"whatsapp","action":"list-instances","status":"success","durationMs":522,"details":{"primaryInstance":"GreatGo","statusCode":200,"instancesCount":3}}
+[00:15:09.375] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T17:58:31.695Z","integration":"whatsapp","action":"list-groups","status":"success","durationMs":15560,"details":{"primaryInstance":"GreatGo","instancesCount":3,"queriedInstances":["Fernanda - GreatGo"],"groupsCount":0,"partialErrorsCount":1}}
+[00:16:07.521] Server  LOG     prisma:query "SELECT 1"
+[00:16:07.568] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"name\", \"public\".\"User\".\"avatarUrl\", \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\", \"public\".\"User\".\"createdAt\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"email\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:16:10.507] Server  INFO    [auth.session.ready] {}
+[00:16:10.569] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"id\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:16:10.579] Server  INFO    [auth.current-user.loaded] {}
+[00:16:11.324] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T17:59:33.643Z","integration":"whatsapp","action":"list-instances","status":"success","durationMs":740,"details":{"primaryInstance":"GreatGo","statusCode":200,"instancesCount":3}}
+[00:16:26.345] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T17:59:48.664Z","integration":"whatsapp","action":"list-groups","status":"success","durationMs":15762,"details":{"primaryInstance":"GreatGo","instancesCount":3,"queriedInstances":["Fernanda - GreatGo"],"groupsCount":0,"partialErrorsCount":1}}
+[00:23:18.353] Server  LOG     ○ Compiling /api/auth/[...nextauth] ...
+[00:23:22.074] Server  INFO    [auth.redirect.same-origin] {}
+[00:23:22.128] Server  INFO    [auth.session.ready] {}
+[00:24:47.453] Server  INFO    [auth.redirect.same-origin] {}
+[00:24:47.458] Server  INFO    [auth.session.ready] {}
+[00:24:54.240] Server  LOG     ○ Compiling /api/test/login ...
+[00:24:59.776] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"name\", \"public\".\"User\".\"avatarUrl\", \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\", \"public\".\"User\".\"createdAt\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"email\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:25:05.070] Server  INFO    [auth.session.ready] {}
+[00:25:05.287] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"id\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:25:05.339] Server  INFO    [auth.current-user.loaded] {}
+[00:25:06.346] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T18:08:28.666Z","integration":"whatsapp","action":"list-instances","status":"success","durationMs":984,"details":{"primaryInstance":"GreatGo","statusCode":200,"instancesCount":3}}
+[00:25:21.374] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T18:08:43.694Z","integration":"whatsapp","action":"list-groups","status":"success","durationMs":16014,"details":{"primaryInstance":"GreatGo","instancesCount":3,"queriedInstances":["Fernanda - GreatGo"],"groupsCount":0,"partialErrorsCount":1}}
+[00:25:56.625] Server  LOG     prisma:query "SELECT 1"
+[00:25:56.668] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"name\", \"public\".\"User\".\"avatarUrl\", \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\", \"public\".\"User\".\"createdAt\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"email\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:25:57.024] Server  INFO    [auth.session.ready] {}
+[00:25:57.183] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"id\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:25:57.186] Server  INFO    [auth.current-user.loaded] {}
+[00:25:57.710] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T18:09:20.018Z","integration":"whatsapp","action":"list-instances","status":"success","durationMs":508,"details":{"primaryInstance":"GreatGo","statusCode":200,"instancesCount":3}}
+[00:26:13.534] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T18:09:35.854Z","integration":"whatsapp","action":"list-groups","status":"success","durationMs":16345,"details":{"primaryInstance":"GreatGo","instancesCount":3,"queriedInstances":["Fernanda - GreatGo"],"groupsCount":66,"partialErrorsCount":0}}
+[00:31:03.352] Server  LOG     ○ Compiling /api/auth/[...nextauth] ...
+[00:31:09.031] Server  INFO    [auth.redirect.same-origin] {}
+[00:31:09.098] Server  INFO    [auth.session.ready] {}
+[00:31:13.155] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:31:13.469] Server  INFO    [auth.redirect.same-origin] {}
+[00:31:13.519] Server  INFO    [auth.session.ready] {}
+[00:31:16.569] Server  LOG     ○ Compiling /api/settings/evolution ...
+[00:31:27.598] Server  INFO    [auth.redirect.same-origin] {}
+[00:31:27.607] Server  INFO    [auth.redirect.same-origin] {}
+[00:31:27.628] Server  INFO    [auth.session.ready] {}
+[00:31:27.636] Server  INFO    [auth.session.ready] {}
+[00:31:29.285] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"name\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"id\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:31:29.601] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"email\", \"public\".\"User\".\"role\"::text, \"public\".\"User\".\"passwordHash\", \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\", \"public\".\"User\".\"evolutionInstance\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"id\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:31:30.919] Server  INFO    [auth.current-user.loaded] {}
+[00:31:32.313] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T18:14:54.506Z","integration":"meta-graph","action":"/me","status":"success","durationMs":2582,"details":{"path":"/me","query":{"fields":"id,name,email"},"statusCode":200}}
+[00:31:33.175] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T18:14:55.492Z","integration":"whatsapp","action":"list-instances","status":"success","durationMs":2238,"details":{"primaryInstance":"GreatGo","statusCode":200,"instancesCount":3}}
+[00:31:35.599] Server  INFO    [auth.redirect.same-origin] {}
+[00:31:35.604] Server  INFO    [auth.session.ready] {}
+[00:31:35.762] Server  LOG     prisma:query "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"metaAccessToken\", \"public\".\"User\".\"metaTokenExpiresAt\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"id\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+[00:31:36.150] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T18:14:58.464Z","integration":"meta-graph","action":"/me","status":"success","durationMs":378,"details":{"path":"/me","query":{"fields":"id,name,email"},"statusCode":200}}
+[00:31:40.168] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T18:15:02.488Z","integration":"meta-graph","action":"/me/adaccounts","status":"success","durationMs":4014,"details":{"path":"/me/adaccounts","query":{"fields":"id,name,account_status,currency,amount_spent","limit":100},"statusCode":200}}
+[00:31:42.414] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T18:15:04.735Z","integration":"meta-graph","action":"/me/adaccounts","status":"success","durationMs":1813,"details":{"path":"/me/adaccounts","query":{"fields":"id,name,account_status,currency,amount_spent","limit":100,"after":"MTIwMjM5ODUyNDY4NTMwNTM3"},"statusCode":200}}
+[00:31:42.981] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T18:15:05.299Z","integration":"meta-graph","action":"/me/adaccounts","status":"success","durationMs":563,"details":{"path":"/me/adaccounts","query":{"fields":"id,name,account_status,currency,amount_spent","limit":100,"after":"MTIwMjQ3MDAwNDk4NDQwMzU3"},"statusCode":200}}
+[00:31:48.943] Server  INFO    {"type":"integration_event","timestamp":"2026-04-23T18:15:11.262Z","integration":"whatsapp","action":"list-groups","status":"success","durationMs":18010,"details":{"primaryInstance":"GreatGo","instancesCount":3,"queriedInstances":["Fernanda - GreatGo"],"groupsCount":66,"partialErrorsCount":0}}
+[00:31:53.959] Server  INFO    [auth.redirect.same-origin] {}
+[00:31:53.964] Server  INFO    [auth.session.ready] {}

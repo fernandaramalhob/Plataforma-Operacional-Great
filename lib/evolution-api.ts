@@ -179,9 +179,10 @@ async function fetchEvolutionJson<T>(
     path: string
     method?: "GET" | "POST" | "PUT"
     body?: string
+    timeoutMs?: number
   }
 ) {
-  const timeoutMs = getEvolutionApiTimeoutMs()
+  const timeoutMs = params.timeoutMs ?? getEvolutionApiTimeoutMs()
 
   try {
     const response = await fetch(
@@ -658,69 +659,33 @@ async function fetchEvolutionGroupsForInstance(
   instance: string
 ) {
   const encodedInstance = encodeURIComponent(instance)
-  const [groupsResult, chatsResult] = await Promise.allSettled([
-    fetchEvolutionJson<EvolutionGroupResponseItem[]>({
-      apiUrl: config.apiUrl,
-      apiKey: config.apiKey,
-      path: `/group/fetchAllGroups/${encodedInstance}?getParticipants=false`,
-    }),
-    fetchEvolutionJson<EvolutionGroupResponseItem[]>({
-      apiUrl: config.apiUrl,
-      apiKey: config.apiKey,
-      path: `/chat/findChats/${encodedInstance}`,
-      method: "POST",
-      body: "{}",
-    }),
+  const data = await fetchEvolutionJson<EvolutionGroupResponseItem[]>({
+    apiUrl: config.apiUrl,
+    apiKey: config.apiKey,
+    path: `/group/fetchAllGroups/${encodedInstance}?getParticipants=false`,
+    timeoutMs: 45_000,
+  })
+
+  if (!Array.isArray(data)) {
+    throw new Error("fetchAllGroups retornou resposta inválida")
+  }
+
+  const mergedGroups = mergeEvolutionGroups([
+    {
+      instance,
+      groups: data
+        .map((group) => mapEvolutionGroupResponseItem(group, instance))
+        .filter((group): group is EvolutionGroup => Boolean(group)),
+    },
   ])
 
-  const normalizedGroups: EvolutionGroup[] = []
-  const partialErrors: string[] = []
-
-  if (groupsResult.status === "fulfilled") {
-    const data = groupsResult.value
-    if (Array.isArray(data)) {
-      normalizedGroups.push(
-        ...data
-          .map((group) => mapEvolutionGroupResponseItem(group, instance))
-          .filter((group): group is EvolutionGroup => Boolean(group))
-      )
-    } else {
-      partialErrors.push("fetchAllGroups retornou resposta inválida")
-    }
-  } else {
-    partialErrors.push(
-      groupsResult.reason instanceof Error
-        ? groupsResult.reason.message
-        : "Falha ao listar grupos na Evolution API"
-    )
-  }
-
-  if (chatsResult.status === "fulfilled") {
-    const data = chatsResult.value
-    if (Array.isArray(data)) {
-      normalizedGroups.push(
-        ...data
-          .map((group) => mapEvolutionGroupResponseItem(group, instance))
-          .filter((group): group is EvolutionGroup => Boolean(group))
-      )
-    }
-  } else {
-    partialErrors.push(
-      chatsResult.reason instanceof Error
-        ? chatsResult.reason.message
-        : "Falha ao listar chats na Evolution API"
-    )
-  }
-
-  const mergedGroups = mergeEvolutionGroups([{ instance, groups: normalizedGroups }])
-
-  if (mergedGroups.length === 0 && partialErrors.length > 0) {
-    throw new Error(partialErrors[0])
+  if (mergedGroups.length === 0) {
+    throw new Error("Nenhum grupo foi retornado pela Evolution API")
   }
 
   return {
     groups: mergedGroups,
-    partialErrors,
+    partialErrors: [] as string[],
   }
 }
 
