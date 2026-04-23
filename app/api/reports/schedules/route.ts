@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { getCurrentUser, scopeClientWhere } from "@/lib/authorization"
+import { listEvolutionGroups } from "@/lib/evolution-api"
 import { prisma } from "@/lib/prisma"
 import { parsePendingReportJobPayload } from "@/lib/report-domain"
 import { serializeReportSchedule } from "@/lib/report-schedule"
@@ -43,7 +44,26 @@ type ClientWithSchedule = Prisma.ClientGetPayload<{
       }
     }
   }
-}>
+}> 
+
+function normalizeGroupId(groupId: string | null | undefined) {
+  if (!groupId) {
+    return null
+  }
+
+  const trimmed = groupId.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  const separatorIndex = trimmed.indexOf("::")
+
+  if (separatorIndex < 0) {
+    return trimmed
+  }
+
+  return trimmed.slice(separatorIndex + 2).trim() || null
+}
 
 function findRelatedReport(client: ClientWithSchedule) {
   const schedule = client.reportSchedule
@@ -212,6 +232,19 @@ export async function GET() {
       },
     })
 
+    let groupNameById = new Map<string, string>()
+
+    try {
+      const groups = await listEvolutionGroups()
+      groupNameById = new Map(
+        groups
+          .filter((group) => Boolean(group.id))
+          .map((group) => [group.id, group.subject])
+      )
+    } catch (error) {
+      logError("reports.schedules.groups", error)
+    }
+
     const schedules: ReportScheduleListItem[] = clients
       .flatMap((client) =>
         client.reportSchedule
@@ -222,6 +255,12 @@ export async function GET() {
                 clientCompany: client.company,
                 clientStatus: client.status,
                 clientWhatsappGroupId: client.whatsappGroupId,
+                clientWhatsappGroupName:
+                  groupNameById.get(
+                    normalizeGroupId(client.reportSchedule.groupId) ??
+                      normalizeGroupId(client.whatsappGroupId) ??
+                      ""
+                  ) ?? null,
                 schedule: serializeReportSchedule(client.reportSchedule),
                 ...deriveScheduleStatus(client),
               },

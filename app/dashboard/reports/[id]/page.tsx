@@ -20,6 +20,7 @@ import { buildReportPdfFilePayload, exportReportPdf } from "@/lib/report-pdf"
 import { buildReportSendPreview } from "@/lib/report-message"
 import {
   pollSavedReportUntilReady,
+  saveSavedReportMessage,
   sendReportToWhatsApp,
 } from "@/lib/report-client"
 import { logError } from "@/lib/safe-logger"
@@ -40,6 +41,7 @@ export default function ReportPreviewPage() {
   const [error, setError] = useState("")
   const [generating, setGenerating] = useState(false)
   const [sending, setSending] = useState(false)
+  const [savingMessage, setSavingMessage] = useState(false)
   const [actionFeedback, setActionFeedback] = useState("")
   const [sendMode, setSendMode] = useState<ReportSendMode>("PDF_AND_MESSAGE")
   const [sendMessage, setSendMessage] = useState("")
@@ -215,6 +217,37 @@ export default function ReportPreviewPage() {
     }
   }
 
+  async function handleSaveMessage() {
+    if (!savedReport?.payload) {
+      return
+    }
+
+    setSavingMessage(true)
+    setError("")
+    setActionFeedback("")
+
+    try {
+      const response = await saveSavedReportMessage(savedReport.id, sendMessage)
+      const savedMessage = response.message ?? ""
+
+      setSendMessage(savedMessage)
+      initialSendMessageRef.current = savedMessage
+      setActionFeedback(
+        savedMessage
+          ? "Mensagem salva com sucesso."
+          : "Mensagem removida e salva com sucesso."
+      )
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Nao foi possivel salvar a mensagem"
+      )
+    } finally {
+      setSavingMessage(false)
+    }
+  }
+
   if (loading) {
     return (
       <div>
@@ -258,17 +291,21 @@ export default function ReportPreviewPage() {
   }
 
   if (!savedReport.payload) {
+    const isCancelled = savedReport.status === "CANCELLED"
+
     return (
       <div>
         <div className="print:hidden">
           <Header
             title="RelatÃƒÂ³rio salvo"
-            subtitle="Aguardando processamento do job"
+            subtitle={isCancelled ? "Envio cancelado" : "Aguardando processamento do job"}
           />
         </div>
         <div className="p-8">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-            {savedReport.status === "FAILED" ? (
+            {isCancelled ? (
+              <p>{savedReport.errorMessage || "O envio foi cancelado com sucesso."}</p>
+            ) : savedReport.status === "FAILED" ? (
               <p>{savedReport.errorMessage || "NÃƒÂ£o foi possÃƒÂ­vel gerar este relatÃƒÂ³rio."}</p>
             ) : (
               <div className="flex items-center gap-3">
@@ -292,6 +329,8 @@ export default function ReportPreviewPage() {
   const { payload } = savedReport
   const hasSendChanges =
     sendMode !== initialSendModeRef.current ||
+    sendMessage.trim() !== initialSendMessageRef.current.trim()
+  const hasMessageChanges =
     sendMessage.trim() !== initialSendMessageRef.current.trim()
 
   return (
@@ -431,6 +470,13 @@ export default function ReportPreviewPage() {
               Voltar
             </button>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+              <button
+                onClick={() => void handleSaveMessage()}
+                disabled={!hasMessageChanges || savingMessage}
+                className="flex items-center gap-2 rounded-xl border border-[#C1121F]/20 bg-[#FFF5F6] px-4 py-2.5 text-sm font-semibold text-[#C1121F] transition hover:bg-[#FFEDEE] disabled:opacity-60"
+              >
+                {savingMessage ? "Salvando..." : "Salvar mensagem"}
+              </button>
               <button
                 onClick={() => setScheduleModalOpen(true)}
                 className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 transition hover:bg-gray-50"

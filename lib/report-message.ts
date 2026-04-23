@@ -89,11 +89,13 @@ export function buildReportSendPreview(params: {
   payload: StoredReportPayload
   message?: string | null
 }) {
-  const defaultMessage = buildWhatsAppReportMessageFromPayload({
-    payload: params.payload,
-    reportId: params.reportId ?? null,
-    reportUrlBase: null,
-  })
+  const defaultMessage =
+    params.payload.uiMessageOverride?.trim() ||
+    buildWhatsAppReportMessageFromPayload({
+      payload: params.payload,
+      reportId: params.reportId ?? null,
+      reportUrlBase: null,
+    })
 
   return params.message?.trim() || defaultMessage
 }

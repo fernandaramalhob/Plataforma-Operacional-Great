@@ -10,6 +10,7 @@ import { logError } from "@/lib/safe-logger"
 
 type PageProps = {
   searchParams: Promise<{
+    period?: string | string[] 
     startDate?: string | string[]
     endDate?: string | string[]
   }>
@@ -57,10 +58,20 @@ function parseInputDate(value: string | undefined) {
 }
 
 function resolveDashboardRange(params: {
+  period?: string | string[]
   startDate?: string | string[]
   endDate?: string | string[]
 }) {
   const defaultRange = getDefaultRange()
+  const period = readSingleValue(params.period)
+  if (period === "all") {
+    return {
+      startDate: defaultRange.weekStart,
+      endDate: defaultRange.weekEnd,
+      allTime: true,
+    }
+  }
+
   const startDate =
     parseInputDate(readSingleValue(params.startDate)) ?? defaultRange.weekStart
   const endDate =
@@ -73,7 +84,7 @@ function resolveDashboardRange(params: {
     }
   }
 
-  return { startDate, endDate }
+  return { startDate, endDate, allTime: false }
 }
 
 export default async function DashboardPage({ searchParams }: PageProps) {

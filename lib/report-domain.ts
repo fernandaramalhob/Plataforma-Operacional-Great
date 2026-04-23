@@ -119,13 +119,23 @@ export function parseStoredReportPayload(
 
 export function buildReportJobErrorPayload(
   message: string,
-  stage: ReportJobStage
+  stage: ReportJobStage,
+  details?: {
+    scheduledAt?: string | null
+    nextAttemptAt?: string | null
+    groupId?: string | null
+    groupName?: string | null
+  }
 ) {
   return {
     jobError: {
       message,
       stage,
       failedAt: new Date().toISOString(),
+      scheduledAt: details?.scheduledAt ?? null,
+      nextAttemptAt: details?.nextAttemptAt ?? null,
+      groupId: details?.groupId ?? null,
+      groupName: details?.groupName ?? null,
     },
   } as Prisma.InputJsonValue
 }
@@ -133,7 +143,13 @@ export function buildReportJobErrorPayload(
 export function attachReportJobErrorPayload(
   payload: StoredReportPayload,
   message: string,
-  stage: ReportJobStage
+  stage: ReportJobStage,
+  details?: {
+    scheduledAt?: string | null
+    nextAttemptAt?: string | null
+    groupId?: string | null
+    groupName?: string | null
+  }
 ) {
   return {
     ...payload,
@@ -141,6 +157,10 @@ export function attachReportJobErrorPayload(
       message,
       stage,
       failedAt: new Date().toISOString(),
+      scheduledAt: details?.scheduledAt ?? null,
+      nextAttemptAt: details?.nextAttemptAt ?? null,
+      groupId: details?.groupId ?? null,
+      groupName: details?.groupName ?? null,
     },
   } as Prisma.InputJsonValue
 }
@@ -300,7 +320,15 @@ export function parseReportJobErrorPayload(
     return null
   }
 
-  const { message, stage, failedAt } = payloadJson.jobError
+  const {
+    message,
+    stage,
+    failedAt,
+    scheduledAt,
+    nextAttemptAt,
+    groupId,
+    groupName,
+  } = payloadJson.jobError
 
   if (
     typeof message !== "string" ||
@@ -311,10 +339,23 @@ export function parseReportJobErrorPayload(
     return null
   }
 
+  if (
+    (scheduledAt != null && typeof scheduledAt !== "string") ||
+    (nextAttemptAt != null && typeof nextAttemptAt !== "string") ||
+    (groupId != null && typeof groupId !== "string") ||
+    (groupName != null && typeof groupName !== "string")
+  ) {
+    return null
+  }
+
   return {
     message,
     stage,
     failedAt,
+    scheduledAt: scheduledAt ?? null,
+    nextAttemptAt: nextAttemptAt ?? null,
+    groupId: groupId ?? null,
+    groupName: groupName ?? null,
   }
 }
 
@@ -337,6 +378,10 @@ export function getHistoryStatusFilter(
     return "PENDING"
   }
 
+  if (value === "Cancelado") {
+    return "CANCELLED"
+  }
+
   return undefined
 }
 
@@ -356,6 +401,7 @@ export function mapReportToHistoryRow(report: {
 }): HistoryRow {
   const payload = parseStoredReportPayload(report.payloadJson)
   const jobError = parseReportJobErrorPayload(report.payloadJson)
+  const pendingJob = parsePendingReportJobPayload(report.payloadJson)
   const latestLog = [...report.sendLogs].sort(
     (left, right) => right.attemptNumber - left.attemptNumber
   )[0]
@@ -363,6 +409,13 @@ export function mapReportToHistoryRow(report: {
   const referenceWeek = payload
     ? `${payload.filters.since} até ${payload.filters.until}`
     : formatDate(report.referenceWeek)
+  const groupId =
+    jobError?.groupId ??
+    pendingJob?.sendOptions?.groupId ??
+    report.client.whatsappGroupId ??
+    null
+  const scheduledAt = jobError?.scheduledAt ?? pendingJob?.queuedAt ?? null
+  const nextSendAt = jobError?.nextAttemptAt ?? pendingJob?.nextAttemptAt ?? null
 
   return {
     id: report.id,
@@ -371,8 +424,10 @@ export function mapReportToHistoryRow(report: {
     clientId: report.clientId,
     client: report.client.name,
     company: report.client.company ?? "-",
-    groupId: report.client.whatsappGroupId ?? null,
-    groupName: null,
+    groupId,
+    groupName: jobError?.groupName ?? null,
+    scheduledAt,
+    nextSendAt,
     status: report.status,
     attempts,
     errorMessage: latestLog?.errorMessage ?? jobError?.message ?? null,

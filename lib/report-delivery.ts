@@ -21,6 +21,7 @@ type SendPersistedReportOptions = {
   groupId?: string | null
   instance?: string | null
   pdfStrategy?: "auto" | "preview" | "standard"
+  deferReportStatusUpdate?: boolean
 }
 
 function resolveReportMessage(params: {
@@ -80,6 +81,15 @@ export async function sendPersistedReportNow(
 
   if (!targetGroupId) {
     throw new Error("Cliente sem grupo de WhatsApp configurado")
+  }
+
+  const currentStatus = await prisma.report.findUnique({
+    where: { id: report.id },
+    select: { status: true },
+  })
+
+  if (currentStatus?.status === "CANCELLED") {
+    throw new Error("Relatorio cancelado")
   }
 
   const mode = options?.mode ?? "PDF_AND_MESSAGE"
@@ -146,22 +156,72 @@ export async function sendPersistedReportNow(
       })
     }
 
-    await prisma.$transaction([
-      prisma.sendLog.update({
+    if (options?.deferReportStatusUpdate) {
+      await prisma.sendLog.update({
         where: { id: sendLog.id },
         data: {
           status: "OK",
           sentAt: new Date(),
           errorMessage: null,
         },
-      }),
-      prisma.report.update({
-        where: { id: report.id },
+      })
+
+      return {
+        reportId: report.id,
+        status: "SENT" as const,
+        mode,
+      }
+    }
+
+    const currentStatusAfterSend = await prisma.report.findUnique({
+      where: { id: report.id },
+      select: { status: true },
+    })
+
+    if (currentStatusAfterSend?.status === "CANCELLED") {
+      await prisma.sendLog.update({
+        where: { id: sendLog.id },
         data: {
-          status: "SENT",
+          status: "FAILED",
+          errorMessage: "Envio cancelado antes da confirmação final.",
         },
-      }),
-    ])
+      })
+
+      throw new Error("Relatorio cancelado")
+    }
+
+    const updatedReport = await prisma.report.updateMany({
+      where: {
+        id: report.id,
+        status: {
+          not: "CANCELLED",
+        },
+      },
+      data: {
+        status: "SENT",
+      },
+    })
+
+    if (updatedReport.count === 0) {
+      await prisma.sendLog.update({
+        where: { id: sendLog.id },
+        data: {
+          status: "FAILED",
+          errorMessage: "Envio cancelado antes da confirmação final.",
+        },
+      })
+
+      throw new Error("Relatorio cancelado")
+    }
+
+    await prisma.sendLog.update({
+      where: { id: sendLog.id },
+      data: {
+        status: "OK",
+        sentAt: new Date(),
+        errorMessage: null,
+      },
+    })
 
     return {
       reportId: report.id,
@@ -171,6 +231,10 @@ export async function sendPersistedReportNow(
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Erro ao enviar relatório"
+
+    if (message === "Relatorio cancelado") {
+      throw error
+    }
 
     logError("report-delivery.send-now", error, {
       reportId: report.id,
@@ -187,8 +251,13 @@ export async function sendPersistedReportNow(
           errorMessage: message,
         },
       }),
-      prisma.report.update({
-        where: { id: report.id },
+      prisma.report.updateMany({
+        where: {
+          id: report.id,
+          status: {
+            not: "CANCELLED",
+          },
+        },
         data: {
           status: "FAILED",
         },

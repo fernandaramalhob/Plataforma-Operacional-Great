@@ -185,6 +185,15 @@ function buildSendPendingJob(params: {
   } satisfies PendingReportJob
 }
 
+async function isReportCancelled(reportId: string) {
+  const report = await prisma.report.findUnique({
+    where: { id: reportId },
+    select: { status: true },
+  })
+
+  return report?.status === "CANCELLED"
+}
+
 async function withReportLock<T>(reportId: string, task: () => Promise<T>) {
   if (!isRedisConfigured()) {
     return task()
@@ -357,8 +366,13 @@ async function persistRetriedJob(params: {
   reportId: string
   pendingJob: PendingReportJob
 }) {
-  await prisma.report.update({
-    where: { id: params.reportId },
+  await prisma.report.updateMany({
+    where: {
+      id: params.reportId,
+      status: {
+        not: "CANCELLED",
+      },
+    },
     data: {
       status: "PENDING",
       payloadJson: buildPendingReportJobPayload(params.pendingJob),
@@ -370,8 +384,13 @@ async function persistFinalGenerationFailure(params: {
   reportId: string
   message: string
 }) {
-  await prisma.report.update({
-    where: { id: params.reportId },
+  await prisma.report.updateMany({
+    where: {
+      id: params.reportId,
+      status: {
+        not: "CANCELLED",
+      },
+    },
     data: {
       status: "FAILED",
       payloadJson: buildReportJobErrorPayload(params.message, "GENERATION"),
@@ -384,8 +403,13 @@ async function persistFinalSendFailure(params: {
   message: string
   storedPayload: StoredReportPayload | null
 }) {
-  await prisma.report.update({
-    where: { id: params.reportId },
+  await prisma.report.updateMany({
+    where: {
+      id: params.reportId,
+      status: {
+        not: "CANCELLED",
+      },
+    },
     data: {
       status: "FAILED",
       payloadJson: params.storedPayload
@@ -453,7 +477,23 @@ async function processSendJob(params: {
 }) {
   const storedPayload = params.pendingJob.storedPayload ?? null
 
+  if (await isReportCancelled(params.reportId)) {
+    return {
+      status: "skipped" as const,
+      reportId: params.reportId,
+      reason: "cancelled",
+    }
+  }
+
   if (!storedPayload) {
+    if (await isReportCancelled(params.reportId)) {
+      return {
+        status: "skipped" as const,
+        reportId: params.reportId,
+        reason: "cancelled",
+      }
+    }
+
     const message = "Relatorio gerado nao encontrado para envio automatico"
     await handleSendFailure({
       reportId: params.reportId,
@@ -474,27 +514,63 @@ async function processSendJob(params: {
       params.pendingJob.requestedByUserId
     )
 
+    if (await isReportCancelled(params.reportId)) {
+      return {
+        status: "skipped" as const,
+        reportId: params.reportId,
+        reason: "cancelled",
+      }
+    }
+
     await sendPersistedReportNow(params.reportId, {
       mode: params.pendingJob.sendOptions?.mode,
       message: params.pendingJob.sendOptions?.message,
       groupId: params.pendingJob.sendOptions?.groupId,
       instance: preferredInstance,
       pdfStrategy: "standard",
+      deferReportStatusUpdate: true,
     })
 
-    await prisma.report.update({
-      where: { id: params.reportId },
+    if (await isReportCancelled(params.reportId)) {
+      return {
+        status: "skipped" as const,
+        reportId: params.reportId,
+        reason: "cancelled",
+      }
+    }
+
+    const updated = await prisma.report.updateMany({
+      where: {
+        id: params.reportId,
+        status: "PENDING",
+      },
       data: {
         status: "SENT",
         payloadJson: serializeStoredReportPayload(storedPayload),
       },
     })
 
+    if (updated.count === 0) {
+      return {
+        status: "skipped" as const,
+        reportId: params.reportId,
+        reason: "cancelled",
+      }
+    }
+
     return {
       status: "processed" as const,
       reportId: params.reportId,
     }
   } catch (error) {
+    if (await isReportCancelled(params.reportId)) {
+      return {
+        status: "skipped" as const,
+        reportId: params.reportId,
+        reason: "cancelled",
+      }
+    }
+
     const message =
       error instanceof Error ? error.message : "Erro ao enviar relatorio"
 
@@ -523,6 +599,14 @@ async function processGenerationJob(params: {
   pendingJob: PendingReportJob
   client: ReportForProcessing["client"]
 }) {
+  if (await isReportCancelled(params.reportId)) {
+    return {
+      status: "skipped" as const,
+      reportId: params.reportId,
+      reason: "cancelled",
+    }
+  }
+
   const user = await loadRequestedByUser(params.pendingJob.requestedByUserId)
 
   if (!user) {
@@ -546,6 +630,15 @@ async function processGenerationJob(params: {
       client: params.client,
       filters: params.pendingJob.filters,
     })
+
+    if (await isReportCancelled(params.reportId)) {
+      return {
+        status: "skipped" as const,
+        reportId: params.reportId,
+        reason: "cancelled",
+      }
+    }
+
     const generatedAt = new Date()
     const storedPayload = buildStoredReportPayload(
       payload,
@@ -554,8 +647,11 @@ async function processGenerationJob(params: {
     )
 
     if (!params.pendingJob.enqueueSendOnComplete) {
-      await prisma.report.update({
-        where: { id: params.reportId },
+      const updated = await prisma.report.updateMany({
+        where: {
+          id: params.reportId,
+          status: "PENDING",
+        },
         data: {
           generatedAt,
           referenceWeek: buildReferenceWeekDate(params.pendingJob.filters.since),
@@ -563,6 +659,14 @@ async function processGenerationJob(params: {
           payloadJson: serializeStoredReportPayload(storedPayload),
         },
       })
+
+      if (updated.count === 0) {
+        return {
+          status: "skipped" as const,
+          reportId: params.reportId,
+          reason: "cancelled",
+        }
+      }
 
       return {
         status: "processed" as const,
@@ -576,8 +680,11 @@ async function processGenerationJob(params: {
       now: generatedAt,
     })
 
-    await prisma.report.update({
-      where: { id: params.reportId },
+    const updated = await prisma.report.updateMany({
+      where: {
+        id: params.reportId,
+        status: "PENDING",
+      },
       data: {
         generatedAt,
         referenceWeek: buildReferenceWeekDate(params.pendingJob.filters.since),
@@ -586,11 +693,35 @@ async function processGenerationJob(params: {
       },
     })
 
+    if (updated.count === 0) {
+      return {
+        status: "skipped" as const,
+        reportId: params.reportId,
+        reason: "cancelled",
+      }
+    }
+
+    if (await isReportCancelled(params.reportId)) {
+      return {
+        status: "skipped" as const,
+        reportId: params.reportId,
+        reason: "cancelled",
+      }
+    }
+
     return processSendJob({
       reportId: params.reportId,
       pendingJob: sendPendingJob,
     })
   } catch (error) {
+    if (await isReportCancelled(params.reportId)) {
+      return {
+        status: "skipped" as const,
+        reportId: params.reportId,
+        reason: "cancelled",
+      }
+    }
+
     const message =
       error instanceof Error ? error.message : "Erro ao gerar relatorio"
 

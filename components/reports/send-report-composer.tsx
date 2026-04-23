@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { MessageSquare, FileText, Send, Users } from "lucide-react"
 import type {
   ReportSendMode,
@@ -48,6 +49,18 @@ export function SendReportComposer({
 }: SendReportComposerProps) {
   const showsPdf = mode === "PDF_AND_MESSAGE" || mode === "PDF_ONLY"
   const showsMessage = mode === "PDF_AND_MESSAGE" || mode === "MESSAGE_ONLY"
+  const messageRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    const textarea = messageRef.current
+
+    if (!textarea || !showsMessage) {
+      return
+    }
+
+    textarea.style.height = "0px"
+    textarea.style.height = `${textarea.scrollHeight}px`
+  }, [message, showsMessage])
 
   return (
     <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm print:hidden">
@@ -83,11 +96,12 @@ export function SendReportComposer({
             Mensagem do WhatsApp
           </label>
           <textarea
+            ref={messageRef}
             value={message}
             onChange={(event) => onMessageChange(event.target.value)}
             disabled={disabled}
-            rows={10}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F] disabled:opacity-60"
+            rows={4}
+            className="w-full resize-none overflow-hidden rounded-2xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F] disabled:opacity-60"
           />
         </div>
       ) : null}

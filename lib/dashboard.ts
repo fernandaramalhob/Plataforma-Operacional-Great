@@ -44,6 +44,7 @@ export type DashboardChartData = Record<
 export type DashboardActivityStatus =
   | "Enviado"
   | "Falha"
+  | "Cancelado"
   | "Pendente"
   | "Conectado"
 
@@ -125,6 +126,7 @@ export type DashboardData = {
 export type DashboardDateRange = {
   startDate: Date
   endDate: Date
+  allTime?: boolean
 }
 
 type GetDashboardDataOptions = {
@@ -290,6 +292,10 @@ function formatCalendarDate(date: Date) {
 }
 
 function buildPeriodLabel(dateRange: DashboardDateRange) {
+  if (dateRange.allTime) {
+    return "Todo o tempo"
+  }
+
   const startLabel = formatCalendarDate(dateRange.startDate)
   const endLabel = formatCalendarDate(dateRange.endDate)
 
@@ -332,6 +338,10 @@ function mapStatusLabel(status: ReportStatus): DashboardActivityStatus {
 
   if (status === "FAILED") {
     return "Falha"
+  }
+
+  if (status === "CANCELLED") {
+    return "Cancelado"
   }
 
   return "Pendente"
@@ -392,12 +402,23 @@ function buildChartData(
   reports: Array<{ generatedAt: Date }>,
   dateRange: DashboardDateRange
 ): DashboardChartData {
-  const rangeDayStart = startOfDay(dateRange.startDate)
-  const rangeDayEnd = startOfDay(dateRange.endDate)
-  const rangeWeekStart = startOfWeek(dateRange.startDate)
-  const rangeWeekEnd = startOfWeek(dateRange.endDate)
-  const rangeMonthStart = startOfMonth(dateRange.startDate)
-  const rangeMonthEnd = startOfMonth(dateRange.endDate)
+  const sortedReports = [...reports].sort(
+    (left, right) => left.generatedAt.getTime() - right.generatedAt.getTime()
+  )
+  const fallbackDayStart = startOfDay(dateRange.startDate)
+  const fallbackDayEnd = startOfDay(dateRange.endDate)
+  const rangeDayStart =
+    dateRange.allTime && sortedReports.length > 0
+      ? startOfDay(sortedReports[0].generatedAt)
+      : fallbackDayStart
+  const rangeDayEnd =
+    dateRange.allTime && sortedReports.length > 0
+      ? startOfDay(sortedReports[sortedReports.length - 1].generatedAt)
+      : fallbackDayEnd
+  const rangeWeekStart = startOfWeek(rangeDayStart)
+  const rangeWeekEnd = startOfWeek(rangeDayEnd)
+  const rangeMonthStart = startOfMonth(rangeDayStart)
+  const rangeMonthEnd = startOfMonth(rangeDayEnd)
 
   const days = []
   for (
@@ -844,6 +865,7 @@ export async function getDashboardData(
     startDate: startOfWeek(new Date()),
     endDate: addDays(startOfWeek(new Date()), 6),
   }
+  const isAllTime = Boolean(dateRange.allTime)
 
   if (!user) {
     return buildEmptyDashboardData(dateRange)
@@ -851,10 +873,12 @@ export async function getDashboardData(
 
   const rangeStart = startOfDay(dateRange.startDate)
   const rangeEnd = endOfDay(dateRange.endDate)
-  const reportDateRangeWhere = {
-    gte: rangeStart,
-    lte: rangeEnd,
-  }
+  const reportDateRangeWhere = isAllTime
+    ? null
+    : {
+        gte: rangeStart,
+        lte: rangeEnd,
+      }
 
   const reportScopeWhere: Prisma.ReportWhereInput = isAdmin(user)
     ? {}
@@ -908,9 +932,13 @@ export async function getDashboardData(
           },
         },
         reports: {
-          where: {
-            generatedAt: reportDateRangeWhere,
-          },
+          ...(reportDateRangeWhere
+            ? {
+                where: {
+                  generatedAt: reportDateRangeWhere,
+                },
+              }
+            : {}),
           orderBy: {
             generatedAt: "desc",
           },
@@ -939,7 +967,11 @@ export async function getDashboardData(
     prisma.report.findMany({
       where: {
         ...reportScopeWhere,
-        generatedAt: reportDateRangeWhere,
+        ...(reportDateRangeWhere
+          ? {
+              generatedAt: reportDateRangeWhere,
+            }
+          : {}),
       },
       select: {
         generatedAt: true,
@@ -949,7 +981,11 @@ export async function getDashboardData(
     prisma.report.findMany({
       where: {
         ...reportScopeWhere,
-        generatedAt: reportDateRangeWhere,
+        ...(reportDateRangeWhere
+          ? {
+              generatedAt: reportDateRangeWhere,
+            }
+          : {}),
       },
       orderBy: { generatedAt: "desc" },
       take: 100,
@@ -982,9 +1018,13 @@ export async function getDashboardData(
               },
             },
             reports: {
-              where: {
-                generatedAt: reportDateRangeWhere,
-              },
+              ...(reportDateRangeWhere
+                ? {
+                    where: {
+                      generatedAt: reportDateRangeWhere,
+                    },
+                  }
+                : {}),
               orderBy: {
                 generatedAt: "desc",
               },
@@ -1016,7 +1056,11 @@ export async function getDashboardData(
       by: ["status"],
       where: {
         ...reportScopeWhere,
-        generatedAt: reportDateRangeWhere,
+        ...(reportDateRangeWhere
+          ? {
+              generatedAt: reportDateRangeWhere,
+            }
+          : {}),
       },
       _count: {
         _all: true,
@@ -1034,6 +1078,7 @@ export async function getDashboardData(
       PENDING: 0,
       SENT: 0,
       FAILED: 0,
+      CANCELLED: 0,
     }
   )
   const sentReportsInPeriod = reportStatusCounts.SENT

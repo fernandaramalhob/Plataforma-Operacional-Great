@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma"
 import {
   buildReportJobErrorPayload,
   parsePendingReportJobPayload,
-  parseStoredReportPayload,
 } from "@/lib/report-domain"
 import { logError } from "@/lib/safe-logger"
 import type { ApiErrorResponse } from "@/types/api.types"
@@ -32,6 +31,7 @@ export async function POST(
         client: {
           select: {
             managerId: true,
+            whatsappGroupId: true,
           },
         },
       },
@@ -71,23 +71,28 @@ export async function POST(
       )
     }
 
-    const storedPayload =
-      parseStoredReportPayload(report.payloadJson) ?? pendingJob.storedPayload ?? null
+    const scheduledAt = pendingJob.queuedAt
+    const nextAttemptAt = pendingJob.nextAttemptAt ?? pendingJob.queuedAt
+    const groupId =
+      pendingJob.sendOptions?.groupId ?? report.client.whatsappGroupId ?? null
 
     await prisma.report.update({
       where: { id: report.id },
       data: {
-        status: "FAILED",
-        payloadJson: storedPayload
-          ? buildReportJobErrorPayload(CANCEL_MESSAGE, "SEND")
-          : buildReportJobErrorPayload(CANCEL_MESSAGE, "SEND"),
+        status: "CANCELLED",
+        payloadJson: buildReportJobErrorPayload(CANCEL_MESSAGE, "SEND", {
+          scheduledAt,
+          nextAttemptAt,
+          groupId,
+          groupName: null,
+        }),
       },
     })
 
     return NextResponse.json<ReportCancelResponse>({
       ok: true,
       reportId: report.id,
-      status: "FAILED",
+      status: "CANCELLED",
       cancelled: true,
     })
   } catch (error) {

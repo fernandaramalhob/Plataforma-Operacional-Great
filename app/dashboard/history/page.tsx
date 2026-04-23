@@ -1,12 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
 import {
   CheckCircle,
   Clock,
   Download,
   Loader2,
+  RefreshCw,
   XCircle,
 } from "lucide-react"
 import { Header } from "@/components/layout/header"
@@ -18,31 +19,69 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import { fetchJsonOrThrow } from "@/lib/api-client"
 import { cancelQueuedReport } from "@/lib/report-client"
 import type { ClientLookupOption } from "@/types/client.types"
-import type { HistoryRow, ReportSendResponse } from "@/types/report.types"
+import type {
+  HistoryRow,
+  ReportSendResponse,
+  ReportStatusValue,
+} from "@/types/report.types"
+
+type HistoryStatusFilter = "ALL" | ReportStatusValue
+
+const HISTORY_STATUS_OPTIONS: Array<{
+  label: string
+  value: HistoryStatusFilter
+}> = [
+  { label: "Todos", value: "ALL" },
+  { label: "Enviado", value: "SENT" },
+  { label: "Falha", value: "FAILED" },
+  { label: "Cancelado", value: "CANCELLED" },
+  { label: "Pendente", value: "PENDING" },
+]
 
 function statusLabel(status: string): string {
   if (status === "SENT") return "Enviado"
   if (status === "FAILED") return "Falha"
+  if (status === "CANCELLED") return "Cancelado"
   return "Pendente"
 }
 
 function statusTone(status: string) {
   if (status === "SENT") return "success" as const
   if (status === "FAILED") return "danger" as const
+  if (status === "CANCELLED") return "warning" as const
   return "neutral" as const
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return null
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return date.toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  })
 }
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryRow[]>([])
   const [clients, setClients] = useState<ClientLookupOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [retryingReportId, setRetryingReportId] = useState<string | null>(null)
   const [cancelingReportId, setCancelingReportId] = useState<string | null>(null)
   const [actionFeedback, setActionFeedback] = useState("")
   const [actionError, setActionError] = useState("")
-  const [statusFilter, setStatusFilter] = useState("Todos")
+  const [statusFilter, setStatusFilter] = useState<HistoryStatusFilter>("ALL")
   const [clientFilter, setClientFilter] = useState("Todos os clientes")
   const [search, setSearch] = useState("")
+  const deferredSearch = useDeferredValue(search)
 
   useEffect(() => {
     void fetchJsonOrThrow<ClientLookupOption[]>(
@@ -54,26 +93,16 @@ export default function HistoryPage() {
       .catch(() => {})
   }, [])
 
-  const loadHistory = useCallback(async () => {
-    const params = new URLSearchParams()
-
-    if (statusFilter !== "Todos") {
-      params.set("status", statusFilter)
+  const loadHistory = useCallback(async (options?: { silent?: boolean }) => {
+    if (options?.silent) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
     }
-
-    if (clientFilter !== "Todos os clientes") {
-      const client = clients.find((item) => item.name === clientFilter)
-
-      if (client) {
-        params.set("clientId", client.id)
-      }
-    }
-
-    setLoading(true)
 
     try {
       const data = await fetchJsonOrThrow<HistoryRow[]>(
-        `/api/history?${params.toString()}`,
+        "/api/history",
         undefined,
         "Erro ao carregar histórico"
       )
@@ -83,21 +112,52 @@ export default function HistoryPage() {
       setHistory([])
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
-  }, [clientFilter, clients, statusFilter])
+  }, [])
 
   useEffect(() => {
     void loadHistory()
   }, [loadHistory])
 
-  const filtered = history.filter(
-    (item) =>
-      item.client.toLowerCase().includes(search.toLowerCase()) ||
-      item.company.toLowerCase().includes(search.toLowerCase())
+  const selectedClient = useMemo(
+    () =>
+      clientFilter === "Todos os clientes"
+        ? null
+        : clients.find((item) => item.name === clientFilter) ?? null,
+    [clientFilter, clients]
   )
+
+  const filtered = useMemo(() => {
+    const normalizedSearch = deferredSearch.toLowerCase().trim()
+
+    return history.filter((item) => {
+      if (statusFilter !== "ALL" && item.status !== statusFilter) {
+        return false
+      }
+
+      if (selectedClient && item.clientId !== selectedClient.id) {
+        return false
+      }
+
+      if (!normalizedSearch) {
+        return true
+      }
+
+      return (
+        item.client.toLowerCase().includes(normalizedSearch) ||
+        item.company.toLowerCase().includes(normalizedSearch) ||
+        (item.groupId ?? "").toLowerCase().includes(normalizedSearch) ||
+        (item.groupName ?? "").toLowerCase().includes(normalizedSearch)
+      )
+    })
+  }, [deferredSearch, history, selectedClient, statusFilter])
 
   const totalEnviados = filtered.filter((item) => item.status === "SENT").length
   const totalFalhas = filtered.filter((item) => item.status === "FAILED").length
+  const totalCancelados = filtered.filter(
+    (item) => item.status === "CANCELLED"
+  ).length
   const totalPendentes = filtered.filter((item) => item.status === "PENDING").length
 
   function exportCSV() {
@@ -108,6 +168,8 @@ export default function HistoryPage() {
       "Empresa",
       "Grupo ID",
       "Grupo Nome",
+      "Agendado Em",
+      "Previsto Para",
       "Status",
       "Tentativas",
     ]
@@ -118,6 +180,8 @@ export default function HistoryPage() {
       item.company,
       item.groupId ?? "-",
       item.groupName ?? "-",
+      item.scheduledAt ?? "-",
+      item.nextSendAt ?? "-",
       item.status,
       item.attempts,
     ])
@@ -143,7 +207,7 @@ export default function HistoryPage() {
       )
 
       setActionFeedback("Relatório reenviado com sucesso.")
-      await loadHistory()
+      await loadHistory({ silent: true })
     } catch (error) {
       setActionError(
         error instanceof Error
@@ -163,7 +227,7 @@ export default function HistoryPage() {
     try {
       await cancelQueuedReport(reportId)
       setActionFeedback("Envio cancelado com sucesso.")
-      await loadHistory()
+      await loadHistory({ silent: true })
     } catch (error) {
       setActionError(
         error instanceof Error
@@ -173,6 +237,12 @@ export default function HistoryPage() {
     } finally {
       setCancelingReportId(null)
     }
+  }
+
+  async function handleRefreshHistory() {
+    setActionFeedback("")
+    setActionError("")
+    await loadHistory({ silent: true })
   }
 
   return (
@@ -191,7 +261,7 @@ export default function HistoryPage() {
         {actionError ? (
           <ErrorState
             message={actionError}
-            title="Falha ao reenviar"
+            title="Falha na ação"
             className="mb-4"
           />
         ) : null}
@@ -208,10 +278,7 @@ export default function HistoryPage() {
 
             <FilterSelect
               value={clientFilter}
-              onChange={(value) => {
-                setLoading(true)
-                setClientFilter(value)
-              }}
+              onChange={(value) => setClientFilter(value)}
               className="min-w-[220px]"
               options={[
                 { value: "Todos os clientes", label: "Todos os clientes" },
@@ -222,21 +289,18 @@ export default function HistoryPage() {
               ]}
             />
 
-            <div className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-              {["Todos", "Enviado", "Falha", "Pendente"].map((status) => (
+            <div className="flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+              {HISTORY_STATUS_OPTIONS.map((status) => (
                 <button
-                  key={status}
-                  onClick={() => {
-                    setLoading(true)
-                    setStatusFilter(status)
-                  }}
+                  key={status.value}
+                  onClick={() => setStatusFilter(status.value)}
                   className={`rounded-xl px-3.5 py-2 text-sm font-medium transition ${
-                    statusFilter === status
+                    statusFilter === status.value
                       ? "bg-white text-slate-900 shadow-[0_8px_20px_-16px_rgba(15,23,42,0.65)]"
                       : "text-slate-500 hover:text-slate-700"
                   }`}
                 >
-                  {status}
+                  {status.label}
                 </button>
               ))}
             </div>
@@ -248,10 +312,24 @@ export default function HistoryPage() {
               <Download className="h-4 w-4" />
               Exportar CSV
             </button>
+
+            <button
+              onClick={() => void handleRefreshHistory()}
+              disabled={refreshing}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              title="Atualizar histórico"
+              aria-label="Atualizar histórico"
+            >
+              {refreshing ? (
+                <Loader2 className="h-4 w-4 animate-spin text-[#C1121F]" />
+              ) : (
+                <RefreshCw className="h-4 w-4 text-[#C1121F]" />
+              )}
+            </button>
           </div>
         </div>
 
-        <div className="mb-6 grid grid-cols-3 gap-4">
+        <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
           <div className="flex items-center gap-3 rounded-2xl border border-green-100 bg-green-50 px-5 py-4">
             <CheckCircle className="h-5 w-5 text-green-500" />
             <div>
@@ -264,6 +342,13 @@ export default function HistoryPage() {
             <div>
               <p className="text-2xl font-bold text-red-700">{totalFalhas}</p>
               <p className="text-sm text-red-600">Falhas</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4">
+            <Clock className="h-5 w-5 text-amber-500" />
+            <div>
+              <p className="text-2xl font-bold text-amber-700">{totalCancelados}</p>
+              <p className="text-sm text-amber-600">Cancelados</p>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4">
@@ -315,6 +400,8 @@ export default function HistoryPage() {
                     className={`border-b border-gray-50 transition ${
                       row.status === "FAILED"
                         ? "bg-red-50/40 hover:bg-red-50"
+                        : row.status === "CANCELLED"
+                          ? "bg-amber-50/30 hover:bg-amber-50"
                         : "hover:bg-gray-50"
                     }`}
                   >
@@ -351,6 +438,9 @@ export default function HistoryPage() {
                         {row.status === "FAILED" ? (
                           <XCircle className="h-4 w-4 text-red-500" />
                         ) : null}
+                        {row.status === "CANCELLED" ? (
+                          <Clock className="h-4 w-4 text-amber-500" />
+                        ) : null}
                         {row.status === "PENDING" ? (
                           <Clock className="h-4 w-4 text-gray-400" />
                         ) : null}
@@ -360,6 +450,16 @@ export default function HistoryPage() {
                       </div>
                       {row.referenceWeek ? (
                         <p className="mt-1 text-xs text-gray-400">{row.referenceWeek}</p>
+                      ) : null}
+                      {formatDateTime(row.scheduledAt) ? (
+                        <p className="mt-1 text-xs text-gray-400">
+                          Agendado em {formatDateTime(row.scheduledAt)}
+                        </p>
+                      ) : null}
+                      {formatDateTime(row.nextSendAt) ? (
+                        <p className="mt-1 text-xs text-gray-400">
+                          Envio previsto em {formatDateTime(row.nextSendAt)}
+                        </p>
                       ) : null}
                       {row.errorMessage ? (
                         <p className="mt-1 max-w-[200px] truncate text-xs text-red-400">
@@ -390,9 +490,11 @@ export default function HistoryPage() {
                           {cancelingReportId === row.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : null}
-                          {cancelingReportId === row.id
-                            ? "Cancelando..."
-                            : "Cancelar envio"}
+                          {row.status === "CANCELLED"
+                            ? "Cancelado"
+                            : cancelingReportId === row.id
+                              ? "Cancelando..."
+                              : "Cancelar envio"}
                         </button>
                       </div>
                     </td>

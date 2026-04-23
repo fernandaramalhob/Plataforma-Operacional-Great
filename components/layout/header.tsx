@@ -12,6 +12,12 @@ interface HeaderProps {
   subtitle?: string
 }
 
+type DashboardRangeState = {
+  weekStart: Date
+  weekEnd: Date
+  allTime: boolean
+}
+
 function getDefaultRange() {
   const today = new Date()
   const weekStart = new Date(today)
@@ -65,16 +71,21 @@ function parseInputDate(value: string | null) {
   return parsed
 }
 
-function readRangeFromLocation(search: string, fallback = getDefaultRange()) {
+function readRangeFromLocation(search: string, fallback = getDefaultRange()): DashboardRangeState {
   const params = new URLSearchParams(search)
+  const period = params.get("period")
   const selectedStart = parseInputDate(params.get("startDate")) ?? fallback.weekStart
   const selectedEnd = parseInputDate(params.get("endDate")) ?? fallback.weekEnd
 
-  if (selectedStart.getTime() > selectedEnd.getTime()) {
-    return fallback
+  if (period === "all") {
+    return { weekStart: selectedStart, weekEnd: selectedEnd, allTime: true }
   }
 
-  return { weekStart: selectedStart, weekEnd: selectedEnd }
+  if (selectedStart.getTime() > selectedEnd.getTime()) {
+    return { ...fallback, allTime: false }
+  }
+
+  return { weekStart: selectedStart, weekEnd: selectedEnd, allTime: false }
 }
 
 const DEFAULT_RANGE = getDefaultRange()
@@ -94,14 +105,15 @@ export function Header({ title }: HeaderProps) {
     },
   ])
 
-  const [currentRange, setCurrentRange] = useState(() =>
+  const [currentRange, setCurrentRange] = useState<DashboardRangeState>(() =>
     typeof window === "undefined"
-      ? DEFAULT_RANGE
+      ? { ...DEFAULT_RANGE, allTime: false }
       : readRangeFromLocation(window.location.search, DEFAULT_RANGE)
   )
   const [draftStart, setDraftStart] = useState(formatInputDate(currentRange.weekStart))
   const [draftEnd, setDraftEnd] = useState(formatInputDate(currentRange.weekEnd))
   const hasDraftError = draftStart > draftEnd
+  const isAllTime = currentRange.allTime
 
   useEffect(() => {
     const syncRangeFromLocation = () => {
@@ -145,9 +157,10 @@ export function Header({ title }: HeaderProps) {
       return
     }
 
-    const params = new URLSearchParams()
+    const params = new URLSearchParams(window.location.search)
     params.set("startDate", draftStart)
     params.set("endDate", draftEnd)
+    params.delete("period")
 
     const selectedStart = parseInputDate(draftStart) ?? DEFAULT_RANGE.weekStart
     const selectedEnd = parseInputDate(draftEnd) ?? DEFAULT_RANGE.weekEnd
@@ -155,13 +168,25 @@ export function Header({ title }: HeaderProps) {
     setCurrentRange({
       weekStart: selectedStart,
       weekEnd: selectedEnd,
+      allTime: false,
     })
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
     setIsDateFilterOpen(false)
   }
 
+  function applyAllTimeFilter() {
+    const params = new URLSearchParams(window.location.search)
+    params.delete("startDate")
+    params.delete("endDate")
+    params.set("period", "all")
+
+    setCurrentRange({ ...DEFAULT_RANGE, allTime: true })
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+    setIsDateFilterOpen(false)
+  }
+
   function resetDateFilter() {
-    setCurrentRange(DEFAULT_RANGE)
+    setCurrentRange({ ...DEFAULT_RANGE, allTime: false })
     router.replace(pathname, { scroll: false })
     setIsDateFilterOpen(false)
   }
@@ -213,8 +238,12 @@ export function Header({ title }: HeaderProps) {
                   >
                     <CalendarDays className="h-3.5 w-3.5 text-[color:var(--color-app-text-faint)]" />
                     <span>
-                      Período: {formatDate(currentRange.weekStart)} -{" "}
-                      {formatDate(currentRange.weekEnd)}
+                      Período:{" "}
+                      {isAllTime
+                        ? "Todo o tempo"
+                        : `${formatDate(currentRange.weekStart)} - ${formatDate(
+                            currentRange.weekEnd
+                          )}`}
                     </span>
                     <ChevronDown
                       className={`h-3.5 w-3.5 text-[color:var(--color-app-text-faint)] transition ${
@@ -274,6 +303,14 @@ export function Header({ title }: HeaderProps) {
                             onClick={resetDateFilter}
                           >
                             Semana atual
+                          </button>
+
+                          <button
+                            type="button"
+                            className="text-sm font-medium text-[color:var(--color-app-text-soft)] transition hover:text-[color:var(--color-app-text)]"
+                            onClick={applyAllTimeFilter}
+                          >
+                            Todo o tempo
                           </button>
 
                           <button
@@ -343,53 +380,45 @@ export function Header({ title }: HeaderProps) {
 
                     <div className="space-y-2">
                       {notifications.map((notification) => (
-                        <div
+                        <button
                           key={notification.id}
-                          className={`rounded-2xl border px-3.5 py-3 ${
+                          type="button"
+                          onClick={() =>
+                            setNotifications((current) =>
+                              current.map((item) =>
+                                item.id === notification.id
+                                  ? { ...item, read: true }
+                                  : item
+                              )
+                            )
+                          }
+                          className={`w-full rounded-xl border px-3 py-3 text-left transition ${
                             notification.read
                               ? "border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)]"
-                              : "border-[color:var(--color-danger-border)] bg-[var(--color-danger-soft)]"
+                              : "border-[#C1121F]/20 bg-[#FFF5F6]"
                           }`}
                         >
-                          <div className="flex items-start gap-3">
-                            <span
-                              className={`mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full ${
-                                notification.read
-                                  ? "bg-[var(--color-app-text-faint)]"
-                                  : "bg-[#C1121F]"
-                              }`}
-                            />
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-[color:var(--color-app-text)]">
-                                {notification.title}
-                              </p>
-                              <p className="mt-1 text-xs leading-5 text-[color:var(--color-app-text-soft)]">
-                                {notification.description}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
+                          <p className="text-sm font-medium text-[color:var(--color-app-text)]">
+                            {notification.title}
+                          </p>
+                          <p className="mt-1 text-xs text-[color:var(--color-app-text-soft)]">
+                            {notification.description}
+                          </p>
+                        </button>
                       ))}
-                    </div>
-
-                    <div className="mt-4 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setIsNotificationsOpen(false)}
-                        className="rounded-xl bg-[var(--color-app-surface-muted)] px-3.5 py-2 text-xs font-medium text-[color:var(--color-app-text-soft)] transition hover:bg-[var(--color-app-surface-subtle)]"
-                      >
-                        Fechar
-                      </button>
                     </div>
                   </div>
                 ) : null}
               </div>
 
-              <Link href="/dashboard/profile">
-                <div className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#C1121F] transition hover:opacity-90">
-                  <span className="text-sm font-semibold text-white">{initials}</span>
-                </div>
-              </Link>
+              {session?.user ? (
+                <Link
+                  href="/dashboard/profile"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] text-sm font-semibold text-[color:var(--color-app-text)] transition hover:border-[color:var(--color-app-border-strong)] hover:bg-[var(--color-app-surface)]"
+                >
+                  {(initials || "GG").slice(0, 2)}
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>

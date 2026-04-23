@@ -9,6 +9,7 @@ import type {
   ReportScheduleResponse,
   ReportSendResponse,
   SavedReportResponse,
+  SavedReportMessageResponse,
 } from "@/types/report.types"
 import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
@@ -50,6 +51,23 @@ export async function loadSavedReport(
   )
 }
 
+export async function saveSavedReportMessage(
+  reportId: string,
+  message: string
+) {
+  return fetchJsonOrThrow<SavedReportMessageResponse>(
+    `/api/reports/${reportId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message }),
+    },
+    "Nao foi possivel salvar a mensagem"
+  )
+}
+
 export async function pollSavedReportUntilReady({
   reportId,
   sequence,
@@ -69,7 +87,11 @@ export async function pollSavedReportUntilReady({
 
     onUpdate?.(report)
 
-    if (report.payload || report.status === "FAILED") {
+    if (
+      report.payload ||
+      report.status === "FAILED" ||
+      report.status === "CANCELLED"
+    ) {
       return report
     }
 

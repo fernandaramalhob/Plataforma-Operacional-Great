@@ -156,6 +156,7 @@ enum ReportStatus {
   PENDING
   SENT
   FAILED
+  CANCELLED
 }
 
 enum SendLogStatus {

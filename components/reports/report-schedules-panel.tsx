@@ -72,6 +72,12 @@ function formatGroupDisplay(groupId: string | null | undefined) {
   return groupId.slice(separatorIndex + 2)
 }
 
+function formatGroupName(groupName: string | null | undefined) {
+  const trimmed = groupName?.trim()
+
+  return trimmed ? trimmed : null
+}
+
 function getAvatarAccent(name: string) {
   const palette = [
     "from-[#C1121F] to-[#E85D75]",
@@ -282,12 +288,19 @@ export function ReportSchedulesPanel({
                         <p className="mt-3 text-[18px] font-semibold leading-[1.2] tracking-tight text-slate-900 sm:text-[19px]">
                           {getSendModeLabel(item.schedule.sendMode)}
                         </p>
-                        <p className="mt-2 break-all text-sm leading-6 text-slate-500">
-                          Grupo:{" "}
-                          {formatGroupDisplay(
-                            item.schedule.groupId ?? item.clientWhatsappGroupId
-                          )}
-                        </p>
+                        <div className="mt-2 space-y-1 break-all text-sm leading-6 text-slate-500">
+                          <p>
+                            Grupo:{" "}
+                            {formatGroupDisplay(
+                              item.schedule.groupId ?? item.clientWhatsappGroupId
+                            )}
+                          </p>
+                          {formatGroupName(item.clientWhatsappGroupName) ? (
+                            <p className="text-slate-400">
+                              {formatGroupName(item.clientWhatsappGroupName)}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">

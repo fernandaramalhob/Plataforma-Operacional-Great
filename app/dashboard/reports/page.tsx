@@ -815,7 +815,7 @@ export default function ReportsPage() {
                 { label: "3 meses", value: "90d" },
                 { label: "6 meses", value: "180d" },
                 { label: "1 ano", value: "365d" },
-                { label: "Completo", value: "all" },
+                { label: "Todo o tempo", value: "all" },
               ].map((period) => (
                 <button
                   key={period.value}

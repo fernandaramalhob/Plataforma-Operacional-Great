@@ -4,7 +4,7 @@ export type ReportObjectiveValue =
   | "CONVERSIONS"
   | "MESSAGES"
 
-export type ReportStatusValue = "PENDING" | "SENT" | "FAILED"
+export type ReportStatusValue = "PENDING" | "SENT" | "FAILED" | "CANCELLED"
 
 export type ReportJobStage = "GENERATION" | "SEND"
 export type PendingReportJobKind = "GENERATION" | "SEND"
@@ -59,6 +59,10 @@ export type ReportJobError = {
   message: string
   stage: ReportJobStage
   failedAt: string
+  scheduledAt?: string | null
+  nextAttemptAt?: string | null
+  groupId?: string | null
+  groupName?: string | null
 }
 
 export type PendingReportSendOptions = {
@@ -176,6 +180,7 @@ export type ReportRequest = {
 export type StoredReportPayload = ReportPayload & {
   client: ReportClient
   filters: ReportFilters
+  uiMessageOverride?: string | null
 }
 
 export type ReportGenerationResponse = ReportPayload & {
@@ -265,6 +270,7 @@ export type ReportScheduleListItem = {
   clientCompany: string | null
   clientStatus: string
   clientWhatsappGroupId: string | null
+  clientWhatsappGroupName: string | null
   schedule: ReportScheduleResponse
   status: ReportScheduleStatusValue
   statusLabel: string
@@ -284,6 +290,12 @@ export type SavedReportResponse = {
   errorMessage: string | null
 }
 
+export type SavedReportMessageResponse = {
+  ok: true
+  reportId: string
+  message: string | null
+}
+
 export type HistoryRow = {
   id: string
   date: string
@@ -293,6 +305,8 @@ export type HistoryRow = {
   company: string
   groupId: string | null
   groupName: string | null
+  scheduledAt: string | null
+  nextSendAt: string | null
   status: ReportStatusValue
   attempts: number
   errorMessage: string | null
