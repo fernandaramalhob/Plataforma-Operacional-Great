@@ -177,7 +177,7 @@ function readEvolutionInstanceCandidate(
 async function fetchEvolutionJson<T>(
   params: Pick<EvolutionConfig, "apiUrl" | "apiKey"> & {
     path: string
-    method?: "GET" | "POST"
+    method?: "GET" | "POST" | "PUT"
     body?: string
   }
 ) {
@@ -498,14 +498,6 @@ export async function listEvolutionInstances() {
       })
     }
 
-    if (config.instance && !instances.has(config.instance)) {
-      instances.set(config.instance, {
-        name: config.instance,
-        status: null,
-        isPrimary: true,
-      })
-    }
-
     const normalizedInstances = [...instances.values()].sort((left, right) => {
       if (left.isPrimary !== right.isPrimary) {
         return left.isPrimary ? -1 : 1
@@ -576,56 +568,174 @@ function buildGroupFetchTargets(
   return dedupeStrings(config.instance ? [config.instance] : [])
 }
 
+function normalizeInstanceKey(value: string | null | undefined) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+}
+
+function normalizeEvolutionGroupId(group: EvolutionGroupResponseItem) {
+  return typeof group.id === "string"
+    ? group.id.trim()
+    : typeof group.remoteJid === "string"
+      ? group.remoteJid.trim()
+      : ""
+}
+
+function normalizeEvolutionGroupSubject(group: EvolutionGroupResponseItem) {
+  return typeof group.subject === "string" && group.subject.trim()
+    ? group.subject.trim()
+    : typeof group.pushName === "string" && group.pushName.trim()
+      ? group.pushName.trim()
+      : "Grupo sem nome"
+}
+
+function normalizeEvolutionGroupSize(group: EvolutionGroupResponseItem) {
+  return typeof group.size === "number"
+    ? group.size
+    : Array.isArray(group.participants)
+      ? group.participants.length
+      : typeof group.unreadCount === "number"
+        ? group.unreadCount
+        : 0
+}
+
+function mapEvolutionGroupResponseItem(
+  group: EvolutionGroupResponseItem,
+  instance: string
+) {
+  const id = normalizeEvolutionGroupId(group)
+
+  if (!id || !id.endsWith("@g.us")) {
+    return null
+  }
+
+  return {
+    id,
+    subject: normalizeEvolutionGroupSubject(group),
+    size: normalizeEvolutionGroupSize(group),
+    announce: Boolean(group.announce),
+    instance,
+  } satisfies EvolutionGroup
+}
+
+function mergeEvolutionGroups(
+  groupsByInstance: Array<{ instance: string; groups: EvolutionGroup[] }>
+) {
+  const merged = new Map<string, EvolutionGroup>()
+
+  for (const entry of groupsByInstance) {
+    for (const group of entry.groups) {
+      const existing = merged.get(group.id)
+
+      if (!existing) {
+        merged.set(group.id, group)
+        continue
+      }
+
+      merged.set(group.id, {
+        id: group.id,
+        subject:
+          existing.subject !== "Grupo sem nome"
+            ? existing.subject
+            : group.subject,
+        size: Math.max(existing.size, group.size),
+        announce: existing.announce || group.announce,
+        instance:
+          normalizeInstanceKey(existing.instance) === normalizeInstanceKey(group.instance)
+            ? existing.instance
+            : existing.instance || group.instance,
+      })
+    }
+  }
+
+  return [...merged.values()]
+}
+
 async function fetchEvolutionGroupsForInstance(
   config: EvolutionConfig,
   instance: string
 ) {
   const encodedInstance = encodeURIComponent(instance)
-  const data = await fetchEvolutionJson<EvolutionGroupResponseItem[]>({
-    apiUrl: config.apiUrl,
-    apiKey: config.apiKey,
-    path: `/chat/findChats/${encodedInstance}`,
-    method: "POST",
-    body: "{}",
-  })
+  const [groupsResult, chatsResult] = await Promise.allSettled([
+    fetchEvolutionJson<EvolutionGroupResponseItem[]>({
+      apiUrl: config.apiUrl,
+      apiKey: config.apiKey,
+      path: `/group/fetchAllGroups/${encodedInstance}?getParticipants=false`,
+    }),
+    fetchEvolutionJson<EvolutionGroupResponseItem[]>({
+      apiUrl: config.apiUrl,
+      apiKey: config.apiKey,
+      path: `/chat/findChats/${encodedInstance}`,
+      method: "POST",
+      body: "{}",
+    }),
+  ])
 
-  if (!Array.isArray(data)) {
-    throw new Error("Falha ao listar grupos na Evolution API")
+  const normalizedGroups: EvolutionGroup[] = []
+  const partialErrors: string[] = []
+
+  if (groupsResult.status === "fulfilled") {
+    const data = groupsResult.value
+    if (Array.isArray(data)) {
+      normalizedGroups.push(
+        ...data
+          .map((group) => mapEvolutionGroupResponseItem(group, instance))
+          .filter((group): group is EvolutionGroup => Boolean(group))
+      )
+    } else {
+      partialErrors.push("fetchAllGroups retornou resposta inválida")
+    }
+  } else {
+    partialErrors.push(
+      groupsResult.reason instanceof Error
+        ? groupsResult.reason.message
+        : "Falha ao listar grupos na Evolution API"
+    )
   }
 
-  return data
-    .map((group) => {
-      const id = typeof group.remoteJid === "string"
-        ? group.remoteJid.trim()
-        : typeof group.id === "string"
-          ? group.id.trim()
-          : ""
+  if (chatsResult.status === "fulfilled") {
+    const data = chatsResult.value
+    if (Array.isArray(data)) {
+      normalizedGroups.push(
+        ...data
+          .map((group) => mapEvolutionGroupResponseItem(group, instance))
+          .filter((group): group is EvolutionGroup => Boolean(group))
+      )
+    }
+  } else {
+    partialErrors.push(
+      chatsResult.reason instanceof Error
+        ? chatsResult.reason.message
+        : "Falha ao listar chats na Evolution API"
+    )
+  }
 
-      if (!id || !id.endsWith("@g.us")) {
-        return null
-      }
+  const mergedGroups = mergeEvolutionGroups([{ instance, groups: normalizedGroups }])
 
-      return {
-        id,
-        subject:
-          typeof group.pushName === "string" && group.pushName.trim()
-            ? group.pushName.trim()
-            : typeof group.subject === "string" && group.subject.trim()
-              ? group.subject.trim()
-            : "Grupo sem nome",
-        size:
-          typeof group.unreadCount === "number"
-            ? group.unreadCount
-            : typeof group.size === "number"
-              ? group.size
-              : Array.isArray(group.participants)
-                ? group.participants.length
-                : 0,
-        announce: Boolean(group.announce),
-        instance,
-      } satisfies EvolutionGroup
-    })
-    .filter((group): group is EvolutionGroup => Boolean(group))
+  if (mergedGroups.length === 0 && partialErrors.length > 0) {
+    throw new Error(partialErrors[0])
+  }
+
+  return {
+    groups: mergedGroups,
+    partialErrors,
+  }
+}
+
+async function restartEvolutionInstance(
+  config: EvolutionConfig,
+  instance: string
+) {
+  const encodedInstance = encodeURIComponent(instance)
+
+  await fetchEvolutionJson<unknown>({
+    apiUrl: config.apiUrl,
+    apiKey: config.apiKey,
+    path: `/instance/restart/${encodedInstance}`,
+    method: "PUT",
+  })
 }
 
 export async function loadEvolutionCatalog(
@@ -675,7 +785,8 @@ export async function loadEvolutionCatalog(
 
   groupResults.forEach((result, index) => {
     if (result.status === "fulfilled") {
-      groups.push(...result.value.groups)
+      groups.push(...result.value.groups.groups)
+      partialErrors.push(...result.value.groups.partialErrors)
       return
     }
 
@@ -741,6 +852,17 @@ export async function loadEvolutionCatalog(
 export async function listEvolutionGroups() {
   const catalog = await loadEvolutionCatalog()
   return catalog.groups
+}
+
+export async function syncEvolutionInstance(instance?: string | null) {
+  const config = getEvolutionConfig()
+  const targetInstance = normalizeEvolutionInstanceName(instance ?? config.instance)
+
+  if (!config.configured || !targetInstance) {
+    return
+  }
+
+  await restartEvolutionInstance(config, targetInstance)
 }
 
 async function resolveEvolutionInstanceForDestination(

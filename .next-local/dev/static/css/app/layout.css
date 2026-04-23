@@ -1297,9 +1297,6 @@ video {
 .border-\[color\:var\(--color-app-border\)\] {
   border-color: var(--color-app-border);
 }
-.border-\[color\:var\(--color-danger-border\)\] {
-  border-color: var(--color-danger-border);
-}
 .border-\[color\:var\(--color-dashboard-accent-border\)\] {
   border-color: var(--color-dashboard-accent-border);
 }
@@ -1497,12 +1494,6 @@ video {
 }
 .bg-\[var\(--color-app-surface-muted\)\] {
   background-color: var(--color-app-surface-muted);
-}
-.bg-\[var\(--color-app-text-faint\)\] {
-  background-color: var(--color-app-text-faint);
-}
-.bg-\[var\(--color-danger-soft\)\] {
-  background-color: var(--color-danger-soft);
 }
 .bg-\[var\(--color-dashboard-accent-soft\)\] {
   background-color: var(--color-dashboard-accent-soft);
@@ -2987,6 +2978,11 @@ html[data-theme="dark"] body {
   background-color: rgb(253 235 236 / var(--tw-bg-opacity, 1));
 }
 
+.hover\:bg-\[\#FFEDEE\]:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(255 237 238 / var(--tw-bg-opacity, 1));
+}
+
 .hover\:bg-\[\#a50f1a\]:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(165 15 26 / var(--tw-bg-opacity, 1));
@@ -2999,10 +2995,6 @@ html[data-theme="dark"] body {
 
 .hover\:bg-\[var\(--color-app-surface\)\]:hover {
   background-color: var(--color-app-surface);
-}
-
-.hover\:bg-\[var\(--color-app-surface-subtle\)\]:hover {
-  background-color: var(--color-app-surface-subtle);
 }
 
 .hover\:bg-amber-50:hover {
@@ -3056,11 +3048,6 @@ html[data-theme="dark"] body {
 .hover\:bg-white:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
-}
-
-.hover\:bg-\[\#FFEDEE\]:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(255 237 238 / var(--tw-bg-opacity, 1));
 }
 
 .hover\:text-\[\#C1121F\]:hover {

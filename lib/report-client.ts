@@ -206,9 +206,10 @@ export async function loadReportSchedules() {
   )
 }
 
-export async function loadEvolutionSettings() {
+export async function loadEvolutionSettings(options?: { sync?: boolean }) {
+  const query = options?.sync ? "?sync=1" : ""
   return fetchJsonOrThrow<EvolutionSettingsResponse>(
-    "/api/settings/evolution",
+    `/api/settings/evolution${query}`,
     {
       cache: "no-store",
     },

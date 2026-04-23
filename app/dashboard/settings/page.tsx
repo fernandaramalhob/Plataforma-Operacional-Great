@@ -317,7 +317,7 @@ export default function SettingsPage() {
   const loadEvolutionStatus = useCallback(
     async (
       previewInstance?: string | null,
-      options?: { syncDraft?: boolean }
+      options?: { syncDraft?: boolean; syncInstance?: boolean }
     ) => {
       setIsLoadingEvolution(true)
       setEvolutionError("")
@@ -325,8 +325,9 @@ export default function SettingsPage() {
         const query = previewInstance
           ? `?previewInstance=${encodeURIComponent(previewInstance)}`
           : ""
+        const syncQuery = options?.syncInstance ? `${query ? "&" : "?"}sync=1` : ""
         const data = await fetchJsonOrThrow<EvolutionSettingsResponse>(
-          `/api/settings/evolution${query}`,
+          `/api/settings/evolution${query}${syncQuery}`,
           { cache: "no-store" },
           "NÃ£o foi possÃ­vel carregar a Evolution"
         )
@@ -809,7 +810,7 @@ export default function SettingsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => void loadEvolutionStatus()}
+                onClick={() => void loadEvolutionStatus(currentEvolutionInstance || null)}
                 className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
               >
                 <RefreshCw className={`h-4 w-4 ${isLoadingEvolution ? "animate-spin" : ""}`} />

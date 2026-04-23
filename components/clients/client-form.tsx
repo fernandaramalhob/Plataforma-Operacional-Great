@@ -4,6 +4,13 @@ import { fetchJsonOrThrow } from "@/lib/api-client"
 import type { ClientFormValues } from "@/types/client.types"
 import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
+function normalizeInstanceKey(value: string | null | undefined) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+}
+
 type SharedClientFields = Pick<
   ClientFormValues,
   "email" | "phone" | "notes" | "whatsappGroupId"
@@ -61,6 +68,18 @@ export function ClientForm({
   }, [])
 
   const availableGroups = groupsResponse?.groups ?? []
+  const activeInstance =
+    groupsResponse?.previewInstance ??
+    groupsResponse?.selectedInstance ??
+    groupsResponse?.instance ??
+    null
+  const filteredGroups = activeInstance
+    ? availableGroups.filter(
+        (group) =>
+          normalizeInstanceKey(group.instance) === normalizeInstanceKey(activeInstance)
+      )
+    : availableGroups
+  const visibleGroups = filteredGroups.length > 0 ? filteredGroups : availableGroups
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
@@ -143,18 +162,19 @@ export function ClientForm({
               <p className="text-xs text-red-500">
                 {groupsResponse.detail ?? "Não foi possível consultar os grupos."}
               </p>
-            ) : availableGroups.length === 0 ? (
+            ) : visibleGroups.length === 0 ? (
               <p className="text-xs text-gray-500">
-                Nenhum grupo encontrado nas instâncias consultadas.
+                Nenhum grupo encontrado na instância selecionada.
               </p>
             ) : (
               <>
                 <p className="mb-2 text-xs text-gray-500">
+                  {activeInstance ? `Instância em uso: ${activeInstance}. ` : ""}
                   {groupsResponse.instances.length} instância(s) detectada(s) nesta integração.
                 </p>
                 <select
                   value={
-                    availableGroups.some((group) => group.id === values.whatsappGroupId)
+                    visibleGroups.some((group) => group.id === values.whatsappGroupId)
                       ? values.whatsappGroupId
                       : ""
                   }
@@ -164,7 +184,7 @@ export function ClientForm({
                   className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1121F]"
                 >
                   <option value="">Selecione um grupo para preencher o campo</option>
-                  {availableGroups.map((group) => (
+                  {visibleGroups.map((group) => (
                     <option key={`${group.instance}:${group.id}`} value={group.id}>
                       [{group.instance}] {group.subject} - {group.size} participante(s)
                     </option>

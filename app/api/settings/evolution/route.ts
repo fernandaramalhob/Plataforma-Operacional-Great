@@ -39,9 +39,7 @@ export async function GET(request: Request) {
     }
 
     try {
-      const catalog = await loadEvolutionCatalog({
-        groupInstances: effectiveGroupInstance ? [effectiveGroupInstance] : undefined,
-      })
+      const catalog = await loadEvolutionCatalog()
       const connectedInstances = catalog.instances.filter(
         (instance) => instance.status === null || instance.status === "open"
       )
@@ -53,7 +51,7 @@ export async function GET(request: Request) {
       return NextResponse.json<EvolutionSettingsResponse>({
         configured: true,
         connected: catalog.connected,
-        instance: config.instance,
+        instance: selectedInstance || config.instance || null,
         selectedInstance,
         previewInstance: effectiveGroupInstance,
         detail:
@@ -67,7 +65,7 @@ export async function GET(request: Request) {
       return NextResponse.json<EvolutionSettingsResponse>({
         configured: true,
         connected: false,
-        instance: config.instance,
+        instance: selectedInstance || config.instance || null,
         selectedInstance,
         previewInstance: effectiveGroupInstance,
         detail: error instanceof Error ? error.message : "Falha ao consultar a Evolution API.",

@@ -22,6 +22,13 @@ import type {
 } from "@/types/report.types"
 import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
+function normalizeInstanceKey(value: string | null | undefined) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+}
+
 type ReportScheduleModalProps = {
   open: boolean
   clientId?: string | null
@@ -204,9 +211,21 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
     [form.hour, form.minute]
   )
   const availableGroups = groupsResponse?.groups ?? []
+  const activeInstance =
+    groupsResponse?.previewInstance ??
+    groupsResponse?.selectedInstance ??
+    groupsResponse?.instance ??
+    null
+  const filteredGroups = activeInstance
+    ? availableGroups.filter(
+        (group) =>
+          normalizeInstanceKey(group.instance) === normalizeInstanceKey(activeInstance)
+      )
+    : availableGroups
+  const visibleGroups = filteredGroups.length > 0 ? filteredGroups : availableGroups
   const manualGroupValue = normalizeGroupSelection(form.groupId)
   const selectedGroupValue =
-    availableGroups
+    visibleGroups
       .map((group) => buildGroupOptionValue(group.instance, group.id))
       .find((value) => {
         const rawGroupId = normalizeGroupSelection(value)
@@ -523,9 +542,9 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
                   <p className="text-xs text-rose-600">
                     {groupsResponse.detail ?? "Nao foi possivel consultar os grupos."}
                   </p>
-                ) : availableGroups.length === 0 ? (
+                  ) : visibleGroups.length === 0 ? (
                   <p className="text-xs text-slate-500">
-                    Nenhum grupo encontrado nas instancias conectadas.
+                    Nenhum grupo encontrado na instância selecionada.
                   </p>
                 ) : (
                   <>
@@ -541,7 +560,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
                       className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#C1121F]"
                     >
                       <option value="">Usar grupo padrao do cliente</option>
-                      {availableGroups.map((group) => (
+                      {visibleGroups.map((group) => (
                         <option
                           key={`${group.instance}:${group.id}`}
                           value={buildGroupOptionValue(group.instance, group.id)}
@@ -551,6 +570,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
                       ))}
                     </select>
                     <p className="text-xs text-slate-500">
+                      {activeInstance ? `Instância em uso: ${activeInstance}. ` : ""}
                       {groupsResponse.instances.length} instancia(s) detectada(s) nesta integracao.
                     </p>
                   </>
