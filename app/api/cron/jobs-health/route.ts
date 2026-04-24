@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { isAuthorizedCronRequest } from "@/lib/cron-auth"
 import { recordReportAlert } from "@/lib/report-monitoring"
+import { runDueReportScheduleSweep } from "@/lib/report-schedule-fallback"
 import {
   getReportWorkerHealth,
   markReportWorkerAlertSent,
@@ -18,6 +19,11 @@ async function handleRequest(request: Request) {
   }
 
   try {
+    await runDueReportScheduleSweep({
+      source: "cron-jobs-health",
+      limit: 10,
+    })
+
     const health = await getReportWorkerHealth()
 
     if (shouldRecordReportWorkerAlert(health)) {

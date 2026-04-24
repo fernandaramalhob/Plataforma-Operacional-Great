@@ -8,6 +8,7 @@ import {
   mapReportToHistoryRow,
   mapScheduleToHistoryRow,
 } from "@/lib/report-domain"
+import { runDueReportScheduleSweep } from "@/lib/report-schedule-fallback"
 import { logError } from "@/lib/safe-logger"
 
 export async function GET(request: Request) {
@@ -16,6 +17,11 @@ export async function GET(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
+
+    await runDueReportScheduleSweep({
+      source: "history-route",
+      limit: 10,
+    })
 
     const { searchParams } = new URL(request.url)
     const status = getHistoryStatusFilter(searchParams.get("status"))

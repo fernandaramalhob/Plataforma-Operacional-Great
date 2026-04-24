@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser, isAdmin } from "@/lib/authorization"
 import { getReportQueuesHealth } from "@/lib/report-monitoring"
+import { runDueReportScheduleSweep } from "@/lib/report-schedule-fallback"
 import { logError } from "@/lib/safe-logger"
 
 export async function GET() {
@@ -17,6 +18,11 @@ export async function GET() {
         { status: 403 }
       )
     }
+
+    await runDueReportScheduleSweep({
+      source: "jobs-health-route",
+      limit: 10,
+    })
 
     const health = await getReportQueuesHealth()
 

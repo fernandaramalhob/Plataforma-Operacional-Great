@@ -251,7 +251,7 @@ export async function getReportQueuesHealth() {
       ? {
           id: "vercel-cron-report-jobs",
           next: null,
-          pattern: "0 13 * * *",
+          pattern: "13 15 * * *",
         }
       : null,
     worker,
