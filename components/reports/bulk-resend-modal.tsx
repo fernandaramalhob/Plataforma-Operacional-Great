@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react"
 import { CalendarClock, Loader2, X } from "lucide-react"
-import { rescheduleQueuedReports } from "@/lib/report-client"
+import { rescheduleQueuedReport, rescheduleQueuedReports } from "@/lib/report-client"
 
 type BulkReportResendModalProps = {
   open: boolean
-  reportIds: string[]
-  reportLabels: string[]
+  items: Array<{
+    id: string
+    source: "report" | "schedule"
+    clientId: string
+    label: string
+  }>
   defaultScheduledAt?: string | null
   onClose: () => void
   onSaved: (result: { scheduledAt: string; succeeded: number; failed: number }) => void
@@ -41,8 +45,7 @@ function buildInitialDateTime(defaultScheduledAt?: string | null) {
 
 export function BulkReportResendModal({
   open,
-  reportIds,
-  reportLabels,
+  items,
   defaultScheduledAt,
   onClose,
   onSaved,
@@ -63,7 +66,7 @@ export function BulkReportResendModal({
     setError("")
   }, [defaultScheduledAt, open])
 
-  if (!open || reportIds.length === 0) {
+  if (!open || items.length === 0) {
     return null
   }
 
@@ -79,15 +82,43 @@ export function BulkReportResendModal({
     setError("")
 
     try {
-      const result = await rescheduleQueuedReports(
-        reportIds,
-        scheduledAt.toISOString()
-      )
+      const reportItems = items.filter((item) => item.source === "report")
+      const scheduleItems = items.filter((item) => item.source === "schedule")
+
+      const [reportResult, scheduleResult] = await Promise.all([
+        reportItems.length > 0
+          ? rescheduleQueuedReports(
+              reportItems.map((item) => item.id),
+              scheduledAt.toISOString()
+            )
+          : Promise.resolve({ succeeded: 0, failed: 0 }),
+        scheduleItems.length > 0
+          ? fetch("/api/reports/schedules/reschedule", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                clientIds: scheduleItems.map((item) => item.clientId),
+                scheduledAt: scheduledAt.toISOString(),
+              }),
+            }).then(async (response) => {
+              if (!response.ok) {
+                throw new Error("Nao foi possivel reagendar os agendamentos")
+              }
+
+              return (await response.json()) as {
+                succeeded: number
+                failed: number
+              }
+            })
+          : Promise.resolve({ succeeded: 0, failed: 0 }),
+      ])
 
       onSaved({
         scheduledAt: scheduledAt.toISOString(),
-        succeeded: result.succeeded,
-        failed: result.failed,
+        succeeded: reportResult.succeeded + scheduleResult.succeeded,
+        failed: reportResult.failed + scheduleResult.failed,
       })
     } catch (rescheduleError) {
       setError(
@@ -112,7 +143,7 @@ export function BulkReportResendModal({
               Escolha a nova hora
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              {reportIds.length} relatórios selecionados para reagendamento.
+              {items.length} relatórios selecionados para reagendamento.
             </p>
           </div>
           <button
@@ -131,7 +162,7 @@ export function BulkReportResendModal({
                 <CalendarClock className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-900">
+            <p className="text-sm font-semibold text-slate-900">
                   Reagendar envio dos selecionados
                 </p>
                 <p className="text-xs text-slate-500">
@@ -164,7 +195,7 @@ export function BulkReportResendModal({
 
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 text-sm text-slate-600">
             <p className="font-semibold text-slate-800">Selecionados</p>
-            <p className="mt-1 break-words">{reportLabels.join(", ")}</p>
+            <p className="mt-1 break-words">{items.map((item) => item.label).join(", ")}</p>
           </div>
 
           {error ? (

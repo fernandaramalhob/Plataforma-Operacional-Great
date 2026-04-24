@@ -185,15 +185,27 @@ export async function persistGeneratedReport(params: {
   filters: ReportFiltersInput
 }): Promise<ReportGenerationResponse> {
   const generatedAt = new Date()
+  const referenceWeek = buildReferenceWeekDate(params.filters.since)
   const storedPayload = buildStoredReportPayload(
     params.payload,
     params.filters,
     generatedAt
   )
-  const report = await prisma.report.create({
-    data: {
+  const report = await prisma.report.upsert({
+    where: {
+      clientId_referenceWeek: {
+        clientId: params.clientId,
+        referenceWeek,
+      },
+    },
+    create: {
       clientId: params.clientId,
-      referenceWeek: buildReferenceWeekDate(params.filters.since),
+      referenceWeek,
+      status: "PENDING",
+      payloadJson: serializeStoredReportPayload(storedPayload),
+    },
+    update: {
+      generatedAt,
       status: "PENDING",
       payloadJson: serializeStoredReportPayload(storedPayload),
     },
@@ -215,13 +227,34 @@ export async function queueReportGeneration(params: {
   sendOptions?: PendingReportSendOptions | null
   source?: "manual" | "schedule" | "weekly"
 }) {
-  return prisma.report.create({
-    data: {
+  const referenceWeek = buildReferenceWeekDate(params.filters.since)
+  const queuedAt = new Date().toISOString()
+
+  return prisma.report.upsert({
+    where: {
+      clientId_referenceWeek: {
+        clientId: params.clientId,
+        referenceWeek,
+      },
+    },
+    create: {
       clientId: params.clientId,
-      referenceWeek: buildReferenceWeekDate(params.filters.since),
+      referenceWeek,
       status: "PENDING",
       payloadJson: buildPendingReportJobPayload({
-        queuedAt: new Date().toISOString(),
+        queuedAt,
+        requestedByUserId: params.requestedByUserId,
+        source: params.source ?? "manual",
+        filters: params.filters,
+        enqueueSendOnComplete: params.enqueueSendOnComplete ?? false,
+        sendOptions: params.sendOptions ?? null,
+      }),
+    },
+    update: {
+      generatedAt: new Date(),
+      status: "PENDING",
+      payloadJson: buildPendingReportJobPayload({
+        queuedAt,
         requestedByUserId: params.requestedByUserId,
         source: params.source ?? "manual",
         filters: params.filters,

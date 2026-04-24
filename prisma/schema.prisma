@@ -110,6 +110,7 @@ model Report {
   @@index([clientId, generatedAt])
   @@index([status, generatedAt])
   @@index([referenceWeek])
+  @@unique([clientId, referenceWeek])
 }
 
 model SendLog {

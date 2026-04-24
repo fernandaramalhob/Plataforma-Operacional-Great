@@ -146,3 +146,11 @@ Operacao:
 - em deploy Vercel, o arquivo `vercel.json` registra uma repeticao diaria de apoio para processar a fila e checar a saude do worker
 - no plano Hobby, o cron da Vercel nao garante horario exato de minuto; o worker continuo e quem faz o disparo real
 - os scripts `npm run report:weekly` e `npm run report:weekly:daemon` continuam disponiveis para operacao manual/externa ou para um host sempre ligado
+
+Windows:
+
+- para manter o worker sempre ligado em Windows, abra o PowerShell como Administrador e instale a tarefa agendada com `npm run report:windows:daemon:install`
+- esse comando registra uma tarefa no `Task Scheduler` que sobe ao iniciar o Windows e reinicia o daemon se ele cair
+- para iniciar o daemon manualmente no Windows, use `npm run report:windows:daemon:run`
+- para remover a tarefa agendada, use `npm run report:windows:daemon:uninstall`
+- os logs do launcher ficam em `.codex-report-daemon.out.log` e `.codex-report-daemon.err.log`

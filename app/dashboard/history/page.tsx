@@ -81,7 +81,7 @@ function isPastDue(value: string | null) {
 }
 
 function isEligibleForBulkResend(row: HistoryRow) {
-  return row.source === "report" && row.status === "PENDING" && isPastDue(row.nextSendAt)
+  return row.status === "PENDING" && isPastDue(row.nextSendAt)
 }
 
 export default function HistoryPage() {
@@ -180,15 +180,17 @@ export default function HistoryPage() {
   const selectedBulkResendRows = filtered.filter((row) =>
     selectedReportIds.includes(row.reportId ?? row.id)
   )
-  const selectedBulkResendReportIds = selectedBulkResendRows.map(
-    (row) => row.reportId ?? row.id
-  )
+  const selectedBulkResendItems = selectedBulkResendRows.map((row) => ({
+    id: row.reportId ?? row.id,
+    source: row.source,
+    clientId: row.clientId,
+    label: row.client,
+  }))
   const allEligibleSelected =
     eligibleBulkResendRows.length > 0 &&
     eligibleBulkResendRows.every((row) =>
       selectedReportIds.includes(row.reportId ?? row.id)
     )
-  const bulkResendSelectedLabels = selectedBulkResendRows.map((row) => row.client)
 
   useEffect(() => {
     setSelectedReportIds((current) =>
@@ -411,10 +413,10 @@ export default function HistoryPage() {
             <button
               type="button"
               onClick={() => setBulkResendOpen(true)}
-              disabled={selectedBulkResendReportIds.length === 0}
+              disabled={selectedBulkResendItems.length === 0}
               className="inline-flex items-center justify-center rounded-2xl bg-[#C1121F] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
             >
-              Reenviar selecionados ({selectedBulkResendReportIds.length})
+              Reenviar selecionados ({selectedBulkResendItems.length})
             </button>
 
             <button
@@ -660,8 +662,7 @@ export default function HistoryPage() {
 
         <BulkReportResendModal
           open={bulkResendOpen}
-          reportIds={selectedBulkResendReportIds}
-          reportLabels={bulkResendSelectedLabels}
+          items={selectedBulkResendItems}
           onClose={() => setBulkResendOpen(false)}
           onSaved={({ scheduledAt, succeeded, failed }) => {
             setBulkResendOpen(false)
