@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Sidebar } from "@/components/layout/sidebar"
+import { ReportScheduleAutoSweep } from "@/components/layout/report-schedule-auto-sweep"
 
 const SIDEBAR_WIDTH = 280
 const SIDEBAR_COLLAPSED_WIDTH = 88
@@ -25,6 +26,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           marginLeft: isSidebarCollapsed ? `${SIDEBAR_COLLAPSED_WIDTH}px` : `${SIDEBAR_WIDTH}px`,
         }}
       >
+        <ReportScheduleAutoSweep />
         {children}
       </main>
     </div>
