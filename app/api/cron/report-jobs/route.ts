@@ -147,7 +147,7 @@ async function handleRequest(request: Request) {
       remaining,
       continuation,
       note:
-        "No plano Hobby da Vercel, a execucao pode acontecer em qualquer momento dentro da hora agendada, nao exatamente no minuto 10:00.",
+        "O cron da Vercel aqui funciona como apoio diario. No plano Hobby, ele pode rodar em qualquer momento dentro da hora agendada, sem garantia de minuto exato.",
     }, {
       status: continuation?.triggered ? 202 : 200,
     })

@@ -75,7 +75,8 @@ Agenda:
 - segredos documentados em `.env.example` e `.env.local.example`
 - validacao de lote reduzido suportada via `--max-clients` ou `--client-id`
 - logs locais em `automacao/relatorios-doutores/logs/`
-- tarefa agendada registrada no Windows Task Scheduler como `GreatGo Weekly Doctor Reports`
+- worker continuo com heartbeat persistido e alerta automatico de saude
+- cron Vercel configurado como apoio diario, com precisao limitada no plano Hobby
 - pendencias atuais: validacao completa dos tokens Meta de todos os clientes e confirmacao do proximo disparo semanal com a tarefa atualizada
 
 

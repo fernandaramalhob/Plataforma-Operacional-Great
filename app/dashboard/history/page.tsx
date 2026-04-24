@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { ErrorState } from "@/components/shared/error-state"
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
 import { StatusBadge } from "@/components/shared/status-badge"
+import { BulkReportResendModal } from "@/components/reports/bulk-resend-modal"
 import { fetchJsonOrThrow } from "@/lib/api-client"
 import { cancelQueuedReport } from "@/lib/report-client"
 import type { ClientLookupOption } from "@/types/client.types"
@@ -69,6 +70,20 @@ function formatDateTime(value: string | null) {
   })
 }
 
+function isPastDue(value: string | null) {
+  if (!value) {
+    return false
+  }
+
+  const date = new Date(value)
+
+  return !Number.isNaN(date.getTime()) && date.getTime() <= Date.now()
+}
+
+function isEligibleForBulkResend(row: HistoryRow) {
+  return row.source === "report" && row.status === "PENDING" && isPastDue(row.nextSendAt)
+}
+
 export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryRow[]>([])
   const [clients, setClients] = useState<ClientLookupOption[]>([])
@@ -81,6 +96,8 @@ export default function HistoryPage() {
   const [statusFilter, setStatusFilter] = useState<HistoryStatusFilter>("ALL")
   const [clientFilter, setClientFilter] = useState("Todos os clientes")
   const [search, setSearch] = useState("")
+  const [selectedReportIds, setSelectedReportIds] = useState<string[]>([])
+  const [bulkResendOpen, setBulkResendOpen] = useState(false)
   const deferredSearch = useDeferredValue(search)
 
   useEffect(() => {
@@ -159,9 +176,33 @@ export default function HistoryPage() {
     (item) => item.status === "CANCELLED"
   ).length
   const totalPendentes = filtered.filter((item) => item.status === "PENDING").length
+  const eligibleBulkResendRows = filtered.filter(isEligibleForBulkResend)
+  const selectedBulkResendRows = filtered.filter((row) =>
+    selectedReportIds.includes(row.reportId ?? row.id)
+  )
+  const selectedBulkResendReportIds = selectedBulkResendRows.map(
+    (row) => row.reportId ?? row.id
+  )
+  const allEligibleSelected =
+    eligibleBulkResendRows.length > 0 &&
+    eligibleBulkResendRows.every((row) =>
+      selectedReportIds.includes(row.reportId ?? row.id)
+    )
+  const bulkResendSelectedLabels = selectedBulkResendRows.map((row) => row.client)
+
+  useEffect(() => {
+    setSelectedReportIds((current) =>
+      current.filter((reportId) =>
+        filtered.some(
+          (row) =>
+            (row.reportId ?? row.id) === reportId && isEligibleForBulkResend(row)
+        )
+      )
+    )
+  }, [filtered])
 
   function exportCSV() {
-  const headers = [
+    const headers = [
       "Origem",
       "Data",
       "Hora",
@@ -170,6 +211,7 @@ export default function HistoryPage() {
       "Grupo ID",
       "Grupo Nome",
       "Agendado Em",
+      "Enviado Em",
       "Previsto Para",
       "Status",
       "Tentativas",
@@ -183,6 +225,7 @@ export default function HistoryPage() {
       item.groupId ?? "-",
       item.groupName ?? "-",
       item.scheduledAt ?? "-",
+      item.sentAt ?? "-",
       item.nextSendAt ?? "-",
       item.status,
       item.attempts,
@@ -245,6 +288,37 @@ export default function HistoryPage() {
     setActionFeedback("")
     setActionError("")
     await loadHistory({ silent: true })
+  }
+
+  function toggleBulkResendSelection(row: HistoryRow) {
+    if (!isEligibleForBulkResend(row)) {
+      return
+    }
+
+    const reportId = row.reportId ?? row.id
+
+    setSelectedReportIds((current) =>
+      current.includes(reportId)
+        ? current.filter((id) => id !== reportId)
+        : [...current, reportId]
+    )
+  }
+
+  function toggleAllEligibleBulkResends() {
+    setSelectedReportIds((current) => {
+      if (allEligibleSelected) {
+        return current.filter(
+          (reportId) => !eligibleBulkResendRows.some((row) => (row.reportId ?? row.id) === reportId)
+        )
+      }
+
+      const next = new Set(current)
+      eligibleBulkResendRows.forEach((row) => {
+        next.add(row.reportId ?? row.id)
+      })
+
+      return Array.from(next)
+    })
   }
 
   return (
@@ -316,6 +390,34 @@ export default function HistoryPage() {
             </button>
 
             <button
+              type="button"
+              onClick={toggleAllEligibleBulkResends}
+              disabled={eligibleBulkResendRows.length === 0}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              title={
+                allEligibleSelected
+                  ? "Desmarcar todos os pendentes vencidos"
+                  : "Selecionar todos os pendentes vencidos"
+              }
+              aria-label={
+                allEligibleSelected
+                  ? "Desmarcar todos os pendentes vencidos"
+                  : "Selecionar todos os pendentes vencidos"
+              }
+            >
+              {allEligibleSelected ? "Desmarcar vencidos" : "Selecionar vencidos"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setBulkResendOpen(true)}
+              disabled={selectedBulkResendReportIds.length === 0}
+              className="inline-flex items-center justify-center rounded-2xl bg-[#C1121F] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
+            >
+              Reenviar selecionados ({selectedBulkResendReportIds.length})
+            </button>
+
+            <button
               onClick={() => void handleRefreshHistory()}
               disabled={refreshing}
               className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -376,6 +478,9 @@ export default function HistoryPage() {
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Seleção
+                  </th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Data e Hora
                   </th>
                   <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -400,6 +505,10 @@ export default function HistoryPage() {
                   <tr
                     key={row.id}
                     className={`border-b border-gray-50 transition ${
+                      selectedReportIds.includes(row.reportId ?? row.id)
+                        ? "bg-[#FFF5F6]"
+                        : ""
+                    } ${
                       row.status === "FAILED"
                         ? "bg-red-50/40 hover:bg-red-50"
                         : row.status === "CANCELLED"
@@ -407,6 +516,25 @@ export default function HistoryPage() {
                         : "hover:bg-gray-50"
                     }`}
                   >
+                    <td className="px-5 py-4 align-top">
+                      {isEligibleForBulkResend(row) ? (
+                        <button
+                          type="button"
+                          aria-label={`Selecionar ${row.client}`}
+                          aria-pressed={selectedReportIds.includes(row.reportId ?? row.id)}
+                          onClick={() => toggleBulkResendSelection(row)}
+                          className={`flex h-5 w-5 items-center justify-center rounded border text-[11px] font-bold transition ${
+                            selectedReportIds.includes(row.reportId ?? row.id)
+                              ? "border-[#C1121F] bg-[#C1121F] text-white"
+                              : "border-slate-300 bg-white text-transparent hover:border-[#C1121F]"
+                          }`}
+                        >
+                          X
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-300">-</span>
+                      )}
+                    </td>
                     <td className="px-5 py-4">
                       <p className="text-sm font-medium text-gray-900">{row.date}</p>
                       <p className="text-xs text-gray-400">{row.time}</p>
@@ -467,7 +595,12 @@ export default function HistoryPage() {
                           Agendado em {formatDateTime(row.scheduledAt)}
                         </p>
                       ) : null}
-                      {formatDateTime(row.nextSendAt) ? (
+                      {row.status === "SENT" && formatDateTime(row.sentAt) ? (
+                        <p className="mt-1 text-xs text-gray-400">
+                          Enviado em {formatDateTime(row.sentAt)}
+                        </p>
+                      ) : null}
+                      {row.status !== "SENT" && formatDateTime(row.nextSendAt) ? (
                         <p className="mt-1 text-xs text-gray-400">
                           Envio previsto em {formatDateTime(row.nextSendAt)}
                         </p>
@@ -524,6 +657,24 @@ export default function HistoryPage() {
             </table>
           )}
         </div>
+
+        <BulkReportResendModal
+          open={bulkResendOpen}
+          reportIds={selectedBulkResendReportIds}
+          reportLabels={bulkResendSelectedLabels}
+          onClose={() => setBulkResendOpen(false)}
+          onSaved={({ scheduledAt, succeeded, failed }) => {
+            setBulkResendOpen(false)
+            setSelectedReportIds([])
+            setActionError("")
+            setActionFeedback(
+              failed > 0
+                ? `${succeeded} relatórios reagendados para ${new Date(scheduledAt).toLocaleString("pt-BR")}. ${failed} falharam.`
+                : `${succeeded} relatórios reagendados para ${new Date(scheduledAt).toLocaleString("pt-BR")}.`
+            )
+            void loadHistory({ silent: true })
+          }}
+        />
       </div>
     </div>
   )

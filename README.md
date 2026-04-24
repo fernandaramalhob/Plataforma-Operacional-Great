@@ -143,5 +143,6 @@ Operacao:
 
 - alertas operacionais recentes ficam persistidos no Redis
 - `GET /api/jobs/health` retorna scheduler, fila persistida e alertas recentes para administradores
-- em deploy Vercel, o arquivo `vercel.json` registra o cron `* * * * *` para processar a fila
-- os scripts `npm run report:weekly` e `npm run report:weekly:daemon` continuam disponiveis apenas para operacao manual/externa
+- em deploy Vercel, o arquivo `vercel.json` registra uma repeticao diaria de apoio para processar a fila e checar a saude do worker
+- no plano Hobby, o cron da Vercel nao garante horario exato de minuto; o worker continuo e quem faz o disparo real
+- os scripts `npm run report:weekly` e `npm run report:weekly:daemon` continuam disponiveis para operacao manual/externa ou para um host sempre ligado

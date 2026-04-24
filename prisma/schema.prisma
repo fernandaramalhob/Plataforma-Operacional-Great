@@ -74,6 +74,16 @@ model ReportSchedule {
   @@index([active, nextRunAt])
 }
 
+model ReportWorkerHeartbeat {
+  id              String   @id
+  startedAt       DateTime @default(now())
+  lastHeartbeatAt DateTime
+  lastError       String?
+  lastAlertAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 model ClientCampaign {
   id             String  @id @default(uuid())
   clientId       String

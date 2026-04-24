@@ -1,5 +1,5 @@
 [Unit]
-Description=GreatGo Weekly Report Automation Daemon
+Description=GreatGo Report Worker Daemon
 After=network.target
 
 [Service]

@@ -7,6 +7,7 @@ import { config as loadDotenv } from "dotenv"
 import { REPORT_AUTOMATION_DEFAULT_TIMEZONE } from "@/lib/report-automation"
 import { processPendingReportBatch } from "@/lib/report-processing"
 import { processDueReportSchedules } from "@/lib/report-schedule"
+import { touchReportWorkerHeartbeat } from "@/lib/report-worker-health"
 
 type WeeklyDoctorReportsCliArgs = {
   dryRun: boolean
@@ -369,6 +370,22 @@ async function tryRunScheduledAutomation(params: {
   }
 }
 
+async function pingWorkerHeartbeat(lastError?: string | null) {
+  try {
+    await touchReportWorkerHeartbeat({
+      lastError: lastError?.trim() || null,
+    })
+  } catch (error) {
+    console.error(
+      `[ERRO] ${
+        error instanceof Error
+          ? error.message
+          : "Falha ao atualizar o heartbeat do worker"
+      }`
+    )
+  }
+}
+
 async function main() {
   const repoRoot = getRepoRoot()
   const cliArgs = parseDaemonCliArgs()
@@ -400,33 +417,59 @@ async function main() {
       + `${cliArgs.once ? " | once" : ""}`
   )
 
+  await pingWorkerHeartbeat()
+
   while (true) {
-    await processDueReportSchedules({
-      retryMinutes,
-      dryRun: cliArgs.dryRun,
-    })
-    await processPendingReportBatch().catch((error) => {
-      console.error(
-        `[ERRO] ${error instanceof Error ? error.message : "Falha ao processar fila pendente de relatorios"}`
-      )
-    })
+    try {
+      await processDueReportSchedules({
+        retryMinutes,
+        dryRun: cliArgs.dryRun,
+      })
+      await processPendingReportBatch().catch((error) => {
+        console.error(
+          `[ERRO] ${
+            error instanceof Error
+              ? error.message
+              : "Falha ao processar fila pendente de relatorios"
+          }`
+        )
+      })
 
-    const result = await tryRunScheduledAutomation({
-      cliArgs,
-      schedule,
-      stateFilePath,
-      timeZone,
-      retryMinutes,
-    })
+      const result = await tryRunScheduledAutomation({
+        cliArgs,
+        schedule,
+        stateFilePath,
+        timeZone,
+        retryMinutes,
+      })
 
-    await processPendingReportBatch().catch((error) => {
-      console.error(
-        `[ERRO] ${error instanceof Error ? error.message : "Falha ao processar fila apos disparo da automacao"}`
-      )
-    })
+      await processPendingReportBatch().catch((error) => {
+        console.error(
+          `[ERRO] ${
+            error instanceof Error
+              ? error.message
+              : "Falha ao processar fila apos disparo da automacao"
+          }`
+        )
+      })
 
-    if (cliArgs.once) {
-      return result.exitCode
+      await pingWorkerHeartbeat()
+
+      if (cliArgs.once) {
+        return result.exitCode
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Falha inesperada no daemon da automacao"
+
+      console.error(`[ERRO] ${message}`)
+      await pingWorkerHeartbeat(message)
+
+      if (cliArgs.once) {
+        return 1
+      }
     }
 
     await sleep(pollSeconds * 1_000)
@@ -438,6 +481,9 @@ try {
 } catch (error) {
   console.error(
     `[ERRO] ${error instanceof Error ? error.message : "Falha inesperada no daemon da automacao"}`
+  )
+  await pingWorkerHeartbeat(
+    error instanceof Error ? error.message : "Falha inesperada no daemon da automacao"
   )
   process.exit(1)
 }

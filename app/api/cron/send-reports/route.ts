@@ -148,7 +148,7 @@ async function handleRequest(request: Request) {
         ...summary,
         continuation,
         note:
-          "No plano Hobby da Vercel, o cron semanal pode executar em qualquer momento dentro da hora agendada, nao exatamente no minuto 10:00.",
+          "O cron da Vercel funciona como apoio. No plano Hobby, ele pode executar em qualquer momento dentro da hora agendada, sem garantia de minuto exato.",
       },
       {
         status: continuation?.triggered ? 202 : 200,

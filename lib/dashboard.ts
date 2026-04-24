@@ -694,6 +694,13 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
             warnings: warningAlerts,
           }),
         },
+        {
+          label: "Worker continuo",
+          value: health.worker.ok
+            ? `Ativo desde ${health.worker.lastHeartbeatAt ? new Date(health.worker.lastHeartbeatAt).toLocaleString("pt-BR") : "sem heartbeat ainda"}`
+            : health.worker.detail,
+          tone: health.worker.ok ? "healthy" : "critical",
+        },
       ],
       alerts,
     }

@@ -415,6 +415,7 @@ export function mapReportToHistoryRow(report: {
     report.client.whatsappGroupId ??
     null
   const scheduledAt = jobError?.scheduledAt ?? pendingJob?.queuedAt ?? null
+  const sentAt = latestLog?.sentAt?.toISOString() ?? null
   const nextSendAt = jobError?.nextAttemptAt ?? pendingJob?.nextAttemptAt ?? null
 
   return {
@@ -429,6 +430,7 @@ export function mapReportToHistoryRow(report: {
     groupId,
     groupName: jobError?.groupName ?? null,
     scheduledAt,
+    sentAt,
     nextSendAt,
     status: report.status,
     attempts,
@@ -464,6 +466,7 @@ export function mapScheduleToHistoryRow(schedule: {
   whatsappGroupId: string | null
 }, groupName: string | null): HistoryRow {
   const scheduledAt = schedule.createdAt.toISOString()
+  const sentAt = schedule.lastRunAt?.toISOString() ?? null
   const nextSendAt = schedule.nextRunAt.toISOString()
   const referenceWeek = `${schedule.filtersSince} até ${schedule.filtersUntil}`
 
@@ -479,6 +482,7 @@ export function mapScheduleToHistoryRow(schedule: {
     groupId: schedule.groupId ?? client.whatsappGroupId ?? null,
     groupName,
     scheduledAt,
+    sentAt,
     nextSendAt,
     status: schedule.active ? "PENDING" : "CANCELLED",
     attempts: 0,

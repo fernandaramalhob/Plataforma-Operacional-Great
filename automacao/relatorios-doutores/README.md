@@ -18,7 +18,7 @@ Arquivo principal:
 Arquivos de execucao:
 
 - `scripts/run_weekly_doctor_reports.mts`: runner principal da automacao. Usa as bibliotecas internas do projeto diretamente, sem depender de login HTTP, CSRF ou `localhost`
-- `scripts/run_weekly_doctor_reports_daemon.mts`: daemon cross-platform que observa `REPORT_WEEKLY_CRON` e dispara o runner sem depender do Task Scheduler do Windows
+- `scripts/run_weekly_doctor_reports_daemon.mts`: daemon cross-platform que observa `REPORT_WEEKLY_CRON`, processa os agendamentos pendentes e dispara o runner sem depender do Task Scheduler do Windows
 - `scripts/run_weekly_doctor_reports.ps1`: wrapper PowerShell para executar o runner TypeScript com logs locais
 - `scripts/run_weekly_doctor_reports_task.cmd`: ponto de entrada da tarefa agendada; agora aguarda o fim real da automacao e devolve o exit code correto ao Windows
 - `scripts/register_weekly_doctor_reports_task.ps1`: registra ou atualiza a tarefa no Windows Task Scheduler para toda quinta-feira as 09h00
@@ -67,6 +67,7 @@ Modo sem Windows:
 - rode `npm run report:weekly:daemon` em um servidor Linux, container Docker ou VM sempre ligada
 - o daemon usa `REPORT_WEEKLY_CRON` e `REPORT_WEEKLY_TZ`
 - se a execucao da semana falhar, ele tenta novamente apos `REPORT_AUTOMATION_DAEMON_RETRY_MINUTES`
+- o health check grava alerta automatico se o worker parar de responder
 - estado local do daemon: `automacao/relatorios-doutores/state/weekly-report-daemon-state.json`
 - dry-run de validacao imediata: `npm run report:weekly:daemon:dry-run`
 

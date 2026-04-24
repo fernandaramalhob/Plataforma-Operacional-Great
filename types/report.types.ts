@@ -205,6 +205,13 @@ export type ReportSendResponse = {
   status: ReportStatusValue
 }
 
+export type ReportRescheduleResponse = {
+  ok: true
+  reportId: string
+  scheduledAt: string
+  status: ReportStatusValue
+}
+
 export type ReportCancelResponse = {
   ok: true
   reportId: string
@@ -308,6 +315,7 @@ export type HistoryRow = {
   groupId: string | null
   groupName: string | null
   scheduledAt: string | null
+  sentAt: string | null
   nextSendAt: string | null
   status: ReportStatusValue
   attempts: number

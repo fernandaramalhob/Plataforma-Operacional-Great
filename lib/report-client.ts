@@ -1,6 +1,7 @@
 import { fetchJsonOrThrow } from "@/lib/api-client"
 import type {
   ReportCancelResponse,
+  ReportRescheduleResponse,
   ReportSendRequest,
   QueuedReportResponse,
   ReportRequest,
@@ -118,6 +119,37 @@ export async function sendReportToWhatsApp(
     },
     "Não foi possível enviar o relatório"
   )
+}
+
+export async function rescheduleQueuedReport(
+  reportId: string,
+  scheduledAt: string
+) {
+  return fetchJsonOrThrow<ReportRescheduleResponse>(
+    `/api/reports/${reportId}/reschedule`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ scheduledAt }),
+    },
+    "Nao foi possivel reagendar o relatorio"
+  )
+}
+
+export async function rescheduleQueuedReports(
+  reportIds: string[],
+  scheduledAt: string
+) {
+  const results = await Promise.allSettled(
+    reportIds.map((reportId) => rescheduleQueuedReport(reportId, scheduledAt))
+  )
+
+  return {
+    succeeded: results.filter((result) => result.status === "fulfilled").length,
+    failed: results.filter((result) => result.status === "rejected").length,
+  }
 }
 
 export async function cancelQueuedReport(reportId: string) {

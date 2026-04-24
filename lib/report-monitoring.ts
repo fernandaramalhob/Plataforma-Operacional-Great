@@ -2,6 +2,9 @@ import { randomUUID } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import { getStoredMetaTokenHealth } from "@/lib/meta-token-status"
 import {
+  getReportWorkerHealth,
+} from "@/lib/report-worker-health"
+import {
   parsePendingReportJobPayload,
   parseReportJobErrorPayload,
 } from "@/lib/report-domain"
@@ -32,6 +35,27 @@ type ReportQueueCounts = {
   failed: number
   delayed: number
   paused: number
+}
+
+function buildWorkerHealthAlert(
+  worker: Awaited<ReturnType<typeof getReportWorkerHealth>>
+) {
+  return {
+    id: "report-worker-health",
+    severity: worker.severity ?? "warning",
+    source: "report-worker-health",
+    queueName: "report-worker",
+    message: worker.detail,
+    createdAt: worker.lastHeartbeatAt ?? worker.checkedAt,
+    jobId: null,
+    jobName: "report-worker",
+    details: {
+      status: worker.status,
+      lastHeartbeatAt: worker.lastHeartbeatAt,
+      lastError: worker.lastError,
+      staleAfterMinutes: worker.staleAfterMinutes,
+    },
+  }
 }
 
 function getAlertsRetention() {
@@ -183,6 +207,7 @@ export async function getReportQueuesHealth() {
     alerts,
     integrationAlerts,
     metaToken,
+    worker,
   ] =
     await Promise.all([
       listPendingQueuedReports(),
@@ -196,6 +221,7 @@ export async function getReportQueuesHealth() {
         storedExpiresAt: null,
         forceRemote: true,
       }),
+      getReportWorkerHealth(),
     ])
 
   const schedulerConfigured = Boolean(process.env.CRON_SECRET?.trim())
@@ -203,6 +229,7 @@ export async function getReportQueuesHealth() {
   const metaAppConfigured = Boolean(
     process.env.META_APP_ID?.trim() && process.env.META_APP_SECRET?.trim()
   )
+  const workerAlerts = worker.ok ? [] : [buildWorkerHealthAlert(worker)]
   const pendingGeneration = pendingReports.filter(
     (report) => report.pendingJob.kind !== "SEND"
   )
@@ -214,6 +241,7 @@ export async function getReportQueuesHealth() {
     ok:
       schedulerConfigured &&
       metaToken.ok &&
+      worker.ok &&
       failedGeneration === 0 &&
       failedSend === 0 &&
       alerts.every((alert) => alert.severity !== "error") &&
@@ -223,9 +251,10 @@ export async function getReportQueuesHealth() {
       ? {
           id: "vercel-cron-report-jobs",
           next: null,
-          pattern: "* * * * *",
+          pattern: "0 13 * * *",
         }
       : null,
+    worker,
     queues: {
       generation: buildQueueCounts({
         waiting: pendingGeneration.length,
@@ -251,7 +280,7 @@ export async function getReportQueuesHealth() {
       },
       metaAppCredentialsConfigured: metaAppConfigured,
     },
-    alerts,
+    alerts: [...alerts, ...workerAlerts],
     integrationAlerts,
   }
 }
