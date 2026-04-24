@@ -4,11 +4,11 @@
   "crons": [
     {
       "path": "/api/cron/report-jobs",
-      "schedule": "0 13 * * *"
+      "schedule": "13 15 * * *"
     },
     {
       "path": "/api/cron/jobs-health",
-      "schedule": "30 14 * * *"
+      "schedule": "30 15 * * *"
     }
   ]
 }
