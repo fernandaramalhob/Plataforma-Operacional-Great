@@ -18,10 +18,8 @@ function formatDate(date: string) {
 
 export function buildWhatsAppReportMessageFromPayload(params: {
   payload: StoredReportPayload
-  reportId?: string | null
-  reportUrlBase?: string | null
 }) {
-  const { payload, reportId, reportUrlBase } = params
+  const { payload } = params
   const accountInsights = payload.accountInsights ?? {}
   const spend = parseReportNumber(accountInsights.spend)
   const impressions = parseReportNumber(accountInsights.impressions)
@@ -36,15 +34,11 @@ export function buildWhatsAppReportMessageFromPayload(params: {
     findBestCampaignByObjective(payload.campaigns, payload.filters.objective) ??
     payload.campaigns[0] ??
     null
-  const sanitizedReportUrlBase = reportUrlBase?.replace(/\/+$/, "")
-  const reportUrl = sanitizedReportUrlBase && reportId
-    ? `${sanitizedReportUrlBase}/dashboard/reports/${reportId}`
-    : null
 
   return [
-    "*GreatGo | Relatório META Ads*",
+    "*GreatGo | Relatorio META Ads*",
     `Cliente: ${payload.client.name}`,
-    `Período: ${formatDate(payload.filters.since)} até ${formatDate(payload.filters.until)}`,
+    `Periodo: ${formatDate(payload.filters.since)} ate ${formatDate(payload.filters.until)}`,
     "",
     `Investimento: ${formatCurrency(spend)}`,
     `Impressões: ${formatInteger(impressions)}`,
@@ -64,10 +58,8 @@ export function buildWhatsAppReportMessageFromPayload(params: {
     objectiveMetric.valueLabel && objectiveMetric.valueAmount > 0
       ? `${objectiveMetric.valueLabel}: ${formatCurrency(objectiveMetric.valueAmount)}`
       : null,
-    `Campanhas no relatório: ${payload.campaigns.length}`,
+    `Campanhas no relatorio: ${payload.campaigns.length}`,
     bestCampaign ? `Melhor campanha: ${bestCampaign.name}` : null,
-    reportUrl ? "" : null,
-    reportUrl ? `Abrir relatório: ${reportUrl}` : null,
   ]
     .filter((line): line is string => Boolean(line))
     .join("\n")
@@ -79,8 +71,6 @@ export function buildWhatsAppReportMessage(params: {
 }) {
   return buildWhatsAppReportMessageFromPayload({
     payload: params.payload,
-    reportId: params.reportId,
-    reportUrlBase: process.env.NEXTAUTH_URL?.replace(/\/+$/, "") ?? null,
   })
 }
 
@@ -93,8 +83,6 @@ export function buildReportSendPreview(params: {
     params.payload.uiMessageOverride?.trim() ||
     buildWhatsAppReportMessageFromPayload({
       payload: params.payload,
-      reportId: params.reportId ?? null,
-      reportUrlBase: null,
     })
 
   return params.message?.trim() || defaultMessage
