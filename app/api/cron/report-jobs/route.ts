@@ -19,10 +19,10 @@ function getBatchSize() {
   const value = Number.parseInt(process.env.REPORT_PROCESS_BATCH_SIZE ?? "", 10)
 
   if (!Number.isFinite(value) || value < 1) {
-    return 5
+    return 10
   }
 
-  return value
+  return Math.max(value, 10)
 }
 
 function resolveBaseUrl(request: Request) {

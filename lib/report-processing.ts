@@ -33,7 +33,7 @@ type ReportForProcessing = NonNullable<
 >
 
 const DEFAULT_PROCESS_LOCK_TTL_MS = 5 * 60 * 1000
-const DEFAULT_BATCH_SIZE = 5
+const DEFAULT_BATCH_SIZE = 10
 const DEFAULT_JOB_MAX_ATTEMPTS = 12
 const DEFAULT_JOB_RETRY_DELAY_MS = 60_000
 const DEFAULT_JOB_RETRY_MAX_DELAY_MS = 15 * 60_000
@@ -55,7 +55,7 @@ function getDefaultBatchSize() {
     return DEFAULT_BATCH_SIZE
   }
 
-  return value
+  return Math.max(value, DEFAULT_BATCH_SIZE)
 }
 
 function getDefaultJobMaxAttempts() {
@@ -885,11 +885,9 @@ export async function listPendingQueuedReportIds(limit = getDefaultBatchSize()) 
 
 export async function processPendingReportBatch(limit = getDefaultBatchSize()) {
   const reportIds = await listPendingQueuedReportIds(limit)
-  const results: QueuedReportResult[] = []
-
-  for (const reportId of reportIds) {
-    results.push(await processQueuedReportSafely(reportId))
-  }
+  const results = await Promise.all(
+    reportIds.map(async (reportId) => processQueuedReportSafely(reportId))
+  )
 
   return {
     attempted: reportIds.length,

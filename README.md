@@ -130,7 +130,7 @@ Variaveis de ambiente:
 
 - `REDIS_URL`: conexao principal com o Redis
 - `REPORT_QUEUE_PREFIX`: prefixo das chaves de fila e monitoramento no Redis
-- `REPORT_PROCESS_BATCH_SIZE`: quantidade de relatorios processados por ciclo do cron
+- `REPORT_PROCESS_BATCH_SIZE`: quantidade minima de relatorios processados em paralelo por ciclo do cron
 - `REPORT_PROCESS_LOCK_TTL_SECONDS`: TTL do lock distribuido durante o processamento
 - `REPORT_WEEKLY_CRON`: agenda semanal do disparo automatico
 - `REPORT_WEEKLY_TZ`: timezone usada pelo agendamento semanal
