@@ -552,6 +552,9 @@ export default function ReportsPage() {
     }
   }
 
+  const shellWidthClass =
+    activeListTab === "schedules" ? "max-w-7xl" : "max-w-2xl"
+
   if (!selectedClient) {
     return (
       <>
@@ -562,7 +565,7 @@ export default function ReportsPage() {
           />
         </div>
         <div className="p-8">
-          <div className="mx-auto max-w-2xl">
+          <div className={`mx-auto w-full ${shellWidthClass}`}>
             {actionFeedback ? (
               <div className="mb-4 rounded-2xl border border-green-100 bg-green-50 px-5 py-4 text-sm text-green-700">
                 {actionFeedback}

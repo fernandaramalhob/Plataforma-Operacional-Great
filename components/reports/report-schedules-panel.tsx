@@ -7,6 +7,7 @@ import {
   Pencil,
   RefreshCw,
   Trash2,
+  X,
 } from "lucide-react"
 import { ReportScheduleModal } from "@/components/reports/report-schedule-modal"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -98,6 +99,278 @@ function getInitials(name: string) {
     .toUpperCase()
 }
 
+function formatDateTime(value: string | null | undefined) {
+  if (!value) {
+    return "Nao informado"
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return "Nao informado"
+  }
+
+  return date.toLocaleString("pt-BR")
+}
+
+function getStatusTone(
+  status: ReportScheduleListItem["status"]
+): "neutral" | "success" | "danger" | "warning" | "info" {
+  if (status === "SENT") {
+    return "success"
+  }
+
+  if (status === "FAILED") {
+    return "danger"
+  }
+
+  if (status === "IN_PROGRESS") {
+    return "warning"
+  }
+
+  return "neutral"
+}
+
+type ScheduleDetailsModalProps = {
+  item: ReportScheduleListItem
+  client: ClientListItem | null
+  onClose: () => void
+  onEdit: () => void
+  onOpenClient: () => void
+  onDelete: () => void
+}
+
+function ScheduleDetailsModal({
+  item,
+  client,
+  onClose,
+  onEdit,
+  onOpenClient,
+  onDelete,
+}: ScheduleDetailsModalProps) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-slate-950/55 px-4 py-6 backdrop-blur-sm"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div className="mx-auto flex h-full w-full max-w-4xl items-center justify-center">
+        <div
+          className="max-h-[92vh] w-full overflow-hidden rounded-[32px] bg-white shadow-2xl"
+          onClick={(event) => event.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Detalhes do agendamento de ${item.clientName}`}
+        >
+          <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                Detalhes do bloco
+              </p>
+              <h2 className="mt-2 truncate text-2xl font-semibold text-slate-950">
+                {item.clientName}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Toque fora do pop-up para fechar.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+              aria-label="Fechar detalhes"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="max-h-[calc(92vh-145px)] space-y-5 overflow-y-auto px-6 py-5">
+            <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,#fff8f8_0%,#ffffff_52%,#f6f9ff_100%)] p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${getAvatarAccent(item.clientName)} text-lg font-bold text-white shadow-[0_18px_40px_-26px_rgba(15,23,42,0.65)]`}
+                  >
+                    {getInitials(item.clientName)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[24px] font-semibold tracking-tight text-slate-950">
+                      {item.clientName}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {item.clientCompany ?? "Sem empresa cadastrada"}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <StatusBadge tone={item.clientStatus === "ACTIVE" ? "success" : "neutral"}>
+                        {item.clientStatus === "ACTIVE" ? "Ativo" : "Inativo"}
+                      </StatusBadge>
+                      <StatusBadge tone={getStatusTone(item.status)}>
+                        {item.statusLabel}
+                      </StatusBadge>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
+                  <p className="font-semibold text-slate-800">Agenda</p>
+                  <p className="mt-1">{getScheduleLabel(item.schedule)}</p>
+                  <p className="mt-1">{getSendModeLabel(item.schedule.sendMode)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Frequencia
+                </p>
+                <div className="mt-3 flex items-start gap-3">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-[#C1121F]">
+                    <Calendar className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[18px] font-semibold leading-[1.28] tracking-tight text-slate-900">
+                      {getScheduleLabel(item.schedule)}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {item.schedule.frequency === "ONCE"
+                        ? "Execucao unica"
+                        : "Execucao recorrente semanal"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Envio
+                </p>
+                <div className="mt-3 space-y-2">
+                  <p className="text-[18px] font-semibold leading-[1.2] tracking-tight text-slate-900">
+                    {getSendModeLabel(item.schedule.sendMode)}
+                  </p>
+                  <p className="break-words text-sm leading-6 text-slate-500">
+                    Grupo:{" "}
+                    {formatGroupDisplay(item.schedule.groupId ?? item.clientWhatsappGroupId)}
+                  </p>
+                  {formatGroupName(item.clientWhatsappGroupName) ? (
+                    <p className="break-words text-sm leading-6 text-slate-400">
+                      {formatGroupName(item.clientWhatsappGroupName)}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Proxima execucao
+                </p>
+                <div className="mt-3 flex items-start gap-3">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-[#C1121F]">
+                    <Clock3 className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[18px] font-semibold leading-[1.25] tracking-tight text-slate-900">
+                      {item.schedule.active
+                        ? formatDateTime(item.schedule.nextRunAt)
+                        : formatDateTime(item.schedule.lastRunAt)}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {item.schedule.active ? "Proximo evento" : "Ultima execucao"}
+                    </p>
+                    {item.lastSendAttemptAt ? (
+                      <p className="text-sm text-slate-500">
+                        Ultima tentativa: {formatDateTime(item.lastSendAttemptAt)}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Status
+                </p>
+                <div className="mt-3 space-y-2">
+                  <p className="text-[18px] font-semibold leading-[1.2] tracking-tight text-slate-900">
+                    {item.statusLabel}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {item.statusDetail ?? "Sem detalhes adicionais."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Cliente
+                </p>
+                <div className="mt-3 space-y-2 text-sm text-slate-600">
+                  <p>Grupo do cliente: {item.clientWhatsappGroupId ?? "Nao informado"}</p>
+                  <p>E-mail: {client?.email ?? "Nao informado"}</p>
+                  <p>Conta: {client?.adAccountId ?? "Nao informada"}</p>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Ultimo envio
+                </p>
+                <div className="mt-3 space-y-2 text-sm text-slate-600">
+                  <p>Relatorio: {item.lastReportId ?? "Nao vinculado"}</p>
+                  <p>Gerado em: {formatDateTime(item.lastReportGeneratedAt)}</p>
+                  <p>Ultimo erro: {item.lastSendError ?? "Sem erro registrado"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-2">
+              <button
+                type="button"
+                onClick={onOpenClient}
+                disabled={!client}
+                className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              >
+                Abrir cliente
+              </button>
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <Pencil className="h-4 w-4" />
+                Editar
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ReportSchedulesPanel({
   clients,
   onSelectClient,
@@ -108,6 +381,7 @@ export function ReportSchedulesPanel({
   const [error, setError] = useState("")
   const [actionFeedback, setActionFeedback] = useState("")
   const [editingItem, setEditingItem] = useState<ReportScheduleListItem | null>(null)
+  const [detailsItem, setDetailsItem] = useState<ReportScheduleListItem | null>(null)
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null)
 
   async function fetchSchedules(options?: { silent?: boolean }) {
@@ -173,6 +447,9 @@ export function ReportSchedulesPanel({
   const editingClient = editingItem
     ? clients.find((client) => client.id === editingItem.clientId) ?? null
     : null
+  const detailsClient = detailsItem
+    ? clients.find((client) => client.id === detailsItem.clientId) ?? null
+    : null
 
   return (
     <>
@@ -223,7 +500,7 @@ export function ReportSchedulesPanel({
             className="rounded-[32px] border-slate-200 bg-white py-20"
           />
         ) : (
-          <div className="space-y-4">
+          <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {schedules.map((item) => {
               const client = clients.find((entry) => entry.id === item.clientId) ?? null
               const nextRelevantDate =
@@ -234,7 +511,16 @@ export function ReportSchedulesPanel({
               return (
                 <article
                   key={item.schedule.id}
-                  className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_24px_70px_-46px_rgba(15,23,42,0.46)]"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setDetailsItem(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      setDetailsItem(item)
+                    }
+                  }}
+                  className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_24px_70px_-46px_rgba(15,23,42,0.46)] transition hover:-translate-y-0.5 hover:shadow-[0_30px_80px_-44px_rgba(15,23,42,0.52)] focus:outline-none focus:ring-4 focus:ring-[#C1121F]/10"
                 >
                   <div className="border-b border-slate-100 bg-[linear-gradient(135deg,#fff8f8_0%,#ffffff_52%,#f6f9ff_100%)] px-5 py-4 sm:px-6 sm:py-5">
                     <div className="min-w-0">
@@ -257,6 +543,9 @@ export function ReportSchedulesPanel({
                               tone={item.clientStatus === "ACTIVE" ? "success" : "neutral"}
                             >
                               {item.clientStatus === "ACTIVE" ? "Ativo" : "Inativo"}
+                            </StatusBadge>
+                            <StatusBadge tone={getStatusTone(item.status)}>
+                              {item.statusLabel}
                             </StatusBadge>
                           </div>
                         </div>
@@ -339,7 +628,12 @@ export function ReportSchedulesPanel({
                     <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:flex-wrap">
                       <button
                         type="button"
-                        onClick={() => client && onSelectClient(client)}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          if (client) {
+                            onSelectClient(client)
+                          }
+                        }}
                         data-cy="report-schedule-open-client"
                         disabled={!client}
                         className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
@@ -348,7 +642,10 @@ export function ReportSchedulesPanel({
                       </button>
                       <button
                         type="button"
-                        onClick={() => setEditingItem(item)}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setEditingItem(item)
+                        }}
                         data-cy="report-schedule-edit"
                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
@@ -357,7 +654,10 @@ export function ReportSchedulesPanel({
                       </button>
                       <button
                         type="button"
-                        onClick={() => void handleDelete(item)}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          void handleDelete(item)
+                        }}
                         data-cy="report-schedule-delete"
                         disabled={deletingClientId === item.clientId}
                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-60"
@@ -373,6 +673,28 @@ export function ReportSchedulesPanel({
           </div>
         )}
       </div>
+
+      {detailsItem ? (
+        <ScheduleDetailsModal
+          item={detailsItem}
+          client={detailsClient}
+          onClose={() => setDetailsItem(null)}
+          onOpenClient={() => {
+            if (detailsClient) {
+              onSelectClient(detailsClient)
+              setDetailsItem(null)
+            }
+          }}
+          onEdit={() => {
+            setEditingItem(detailsItem)
+            setDetailsItem(null)
+          }}
+          onDelete={() => {
+            void handleDelete(detailsItem)
+            setDetailsItem(null)
+          }}
+        />
+      ) : null}
 
       <ReportScheduleModal
         open={Boolean(editingItem)}
