@@ -32,6 +32,7 @@ function restoreEnvironment() {
 
 test("loadEvolutionCatalog returns groups from every open instance", async () => {
   setEvolutionEnv()
+  const novaInstance = "NovaInstancia"
 
   globalThis.fetch = async (input) => {
     const url = String(input)
@@ -40,7 +41,7 @@ test("loadEvolutionCatalog returns groups from every open instance", async () =>
       return new Response(
         JSON.stringify([
           { name: "GreatGo", status: "open" },
-          { name: "NovaInstancia", status: "open" },
+          { name: novaInstance, status: "open" },
         ]),
         { status: 200, headers: { "Content-Type": "application/json" } }
       )
@@ -55,7 +56,7 @@ test("loadEvolutionCatalog returns groups from every open instance", async () =>
       )
     }
 
-    if (url.includes("/group/fetchAllGroups/NovaInstancia")) {
+    if (url.includes(`/group/fetchAllGroups/${encodeURIComponent(novaInstance)}`)) {
       return new Response(
         JSON.stringify([
           { id: "999@g.us", subject: "Grupo Novo", size: 22, announce: true },
@@ -64,7 +65,7 @@ test("loadEvolutionCatalog returns groups from every open instance", async () =>
       )
     }
 
-throw new Error(`URL não esperada no teste: ${url}`)
+    throw new Error(`URL nao esperada no teste: ${url}`)
   }
 
   const catalog = await loadEvolutionCatalog()
@@ -109,7 +110,7 @@ test("loadEvolutionCatalog stays connected when a requested instance returns gro
       )
     }
 
-throw new Error(`URL não esperada no teste: ${url}`)
+    throw new Error(`URL nao esperada no teste: ${url}`)
   }
 
   const catalog = await loadEvolutionCatalog({ groupInstances: ["GreatGo"] })
@@ -147,7 +148,7 @@ test("loadEvolutionCatalog resolves reordered instance names to the canonical Ev
       )
     }
 
-throw new Error(`URL não esperada no teste: ${url}`)
+    throw new Error(`URL nao esperada no teste: ${url}`)
   }
 
   const catalog = await loadEvolutionCatalog({
@@ -165,19 +166,20 @@ throw new Error(`URL não esperada no teste: ${url}`)
   restoreEnvironment()
 })
 
-test("sendWhatsAppText resolves the instance from the group id", async () => {
+test("loadEvolutionCatalog falls back to connected instances when the saved instance has no groups", async () => {
   setEvolutionEnv()
   const requestedUrls = []
 
-  globalThis.fetch = async (input, init) => {
+  globalThis.fetch = async (input) => {
     const url = String(input)
     requestedUrls.push(url)
 
     if (url.endsWith("/instance/fetchInstances")) {
       return new Response(
         JSON.stringify([
-          { name: "GreatGo", status: "open" },
-          { name: "NovaInstancia", status: "open" },
+          { name: "GreatGo", status: "closed" },
+          { name: "Fernanda - GreatGo", status: "open" },
+          { name: "Isaque - GreatGo", status: "closed" },
         ]),
         { status: 200, headers: { "Content-Type": "application/json" } }
       )
@@ -190,7 +192,69 @@ test("sendWhatsAppText resolves the instance from the group id", async () => {
       })
     }
 
-    if (url.includes("/group/fetchAllGroups/NovaInstancia")) {
+    if (url.includes("/group/fetchAllGroups/Fernanda%20-%20GreatGo")) {
+      return new Response(
+        JSON.stringify([
+          { id: "120@g.us", subject: "Grupo Fernanda", size: 18, announce: false },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    if (url.includes("/group/fetchAllGroups/Isaque%20-%20GreatGo")) {
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    throw new Error(`URL nao esperada no teste: ${url}`)
+  }
+
+  const catalog = await loadEvolutionCatalog({ groupInstances: ["GreatGo"] })
+
+  assert.equal(catalog.connected, true)
+  assert.equal(catalog.groups.length, 1)
+  assert.equal(catalog.groups[0].instance, "Fernanda - GreatGo")
+  assert.equal(
+    requestedUrls.some((url) => url.includes("/group/fetchAllGroups/GreatGo")),
+    true
+  )
+  assert.equal(
+    requestedUrls.some((url) => url.includes("/group/fetchAllGroups/Fernanda%20-%20GreatGo")),
+    true
+  )
+
+  restoreEnvironment()
+})
+
+test("sendWhatsAppText resolves the instance from the group id", async () => {
+  setEvolutionEnv()
+  const requestedUrls = []
+  const novaInstance = "NovaInstancia"
+
+  globalThis.fetch = async (input, init) => {
+    const url = String(input)
+    requestedUrls.push(url)
+
+    if (url.endsWith("/instance/fetchInstances")) {
+      return new Response(
+        JSON.stringify([
+          { name: "GreatGo", status: "open" },
+          { name: novaInstance, status: "open" },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    if (url.includes("/group/fetchAllGroups/GreatGo")) {
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    if (url.includes(`/group/fetchAllGroups/${encodeURIComponent(novaInstance)}`)) {
       return new Response(
         JSON.stringify([
           { id: "999@g.us", subject: "Grupo Novo", size: 22, announce: false },
@@ -199,7 +263,7 @@ test("sendWhatsAppText resolves the instance from the group id", async () => {
       )
     }
 
-    if (url.endsWith("/message/sendText/NovaInstancia")) {
+    if (url.endsWith(`/message/sendText/${encodeURIComponent(novaInstance)}`)) {
       assert.equal(init?.method, "POST")
 
       return new Response(
@@ -213,7 +277,7 @@ test("sendWhatsAppText resolves the instance from the group id", async () => {
       )
     }
 
-throw new Error(`URL não esperada no teste: ${url}`)
+    throw new Error(`URL nao esperada no teste: ${url}`)
   }
 
   await sendWhatsAppText({
@@ -222,7 +286,9 @@ throw new Error(`URL não esperada no teste: ${url}`)
   })
 
   assert.equal(
-    requestedUrls.includes("https://evolution.example.com/message/sendText/NovaInstancia"),
+    requestedUrls.includes(
+      `https://evolution.example.com/message/sendText/${encodeURIComponent(novaInstance)}`
+    ),
     true
   )
 

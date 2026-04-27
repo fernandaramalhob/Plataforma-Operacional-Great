@@ -67,7 +67,7 @@ function getTokenStatusLabel(status: MetaTokenStatus) {
     case "expired":
       return "Token expirado"
     case "invalid":
-      return "Token invÃ¡lido"
+      return "Token inválido"
     case "unknown":
       return "Status indefinido"
     default:
@@ -115,7 +115,7 @@ function getConnectedMetaDisplayName(
     }
   }
 
-  return metaUser?.name ?? metaUser?.email ?? "usuÃƒÂ¡rio META"
+  return metaUser?.name ?? metaUser?.email ?? "usuário META"
 }
 
 
@@ -205,7 +205,7 @@ export default function SettingsPage() {
         setResult("error")
         setErrorMsg(
           res.status === 401
-            ? "SessÃƒÂ£o expirada ou inexistente. FaÃƒÂ§a login novamente."
+            ? "Sessão expirada ou inexistente. Faça login novamente."
             : getApiErrorMessage(data, `Erro ${res.status}`)
         )
         return
@@ -244,7 +244,7 @@ export default function SettingsPage() {
     const data = await fetchJsonOrThrow<MetaAccount[]>(
       "/api/settings/meta-account",
       undefined,
-      "NÃ£o foi possÃ­vel carregar as contas META"
+      "Não foi possível carregar as contas META"
     )
     setAccounts(Array.isArray(data) ? data : [])
   }, [])
@@ -264,7 +264,7 @@ export default function SettingsPage() {
         setStatusDetail(typeof payload.detail === "string" ? payload.detail : "")
         setTokenExpiresAt(typeof payload.expiresAt === "string" ? payload.expiresAt : null)
         if (res.status === 401) {
-          setErrorMsg("SessÃ£o expirada ou inexistente. FaÃ§a login novamente.")
+          setErrorMsg("Sessão expirada ou inexistente. Faça login novamente.")
           return
         }
         setErrorMsg(getApiErrorMessage(data, `Erro ${res.status}`))
@@ -308,7 +308,7 @@ export default function SettingsPage() {
       }
     } catch (error) {
       setResult("error")
-      setErrorMsg(error instanceof Error ? error.message : "Erro ao carregar configuraÃ§Ãµes")
+      setErrorMsg(error instanceof Error ? error.message : "Erro ao carregar configurações")
     } finally {
       setIsLoadingStatus(false)
     }
@@ -329,7 +329,7 @@ export default function SettingsPage() {
         const data = await fetchJsonOrThrow<EvolutionSettingsResponse>(
           `/api/settings/evolution${query}${syncQuery}`,
           { cache: "no-store" },
-          "NÃ£o foi possÃ­vel carregar a Evolution"
+          "Não foi possível carregar a Evolution"
         )
         setEvolutionData(data)
         const payload = data as EvolutionSettingsResponse
@@ -393,12 +393,12 @@ export default function SettingsPage() {
       setDraftEvolutionInstance(payload.selectedInstance ?? "")
       setEvolutionSaveMessage(
         payload.selectedInstance
-          ? `InstÃ¢ncia ${payload.selectedInstance} salva para esta conta.`
-          : "A preferÃªncia foi removida. O envio volta para a instÃ¢ncia padrÃ£o da Evolution."
+          ? `Instância ${payload.selectedInstance} salva para esta conta.`
+          : "A preferência foi removida. O envio volta para a instância padrão da Evolution."
       )
       await loadEvolutionStatus(payload.selectedInstance ?? null, { syncDraft: true })
     } catch (error) {
-      setEvolutionError(error instanceof Error ? error.message : "Erro ao salvar a instÃ¢ncia da Evolution")
+      setEvolutionError(error instanceof Error ? error.message : "Erro ao salvar a instância da Evolution")
     } finally {
       setIsSavingEvolutionInstance(false)
     }
@@ -423,13 +423,19 @@ export default function SettingsPage() {
         setCopiedGroupId((current) => (current === groupId ? "" : current))
       }, 2000)
     } catch {
-      setEvolutionError("NÃ£o foi possÃ­vel copiar o ID do grupo.")
+      setEvolutionError("Não foi possível copiar o ID do grupo.")
     }
   }
 
   const connectedEvolutionInstances =
     evolutionData?.instances.filter(
-      (instance) => instance.status === null || instance.status === "open"
+      (instance) =>
+        instance.status === null ||
+        instance.status === "open" ||
+        instance.status === "connected" ||
+        instance.status === "online" ||
+        instance.status === "active" ||
+        instance.status === "ready"
     ) ?? []
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -450,7 +456,7 @@ export default function SettingsPage() {
         setResult("error")
         setErrorMsg(
           res.status === 401
-            ? "SessÃ£o expirada ou inexistente. FaÃ§a login novamente."
+            ? "Sessão expirada ou inexistente. Faça login novamente."
             : getApiErrorMessage(data, `Erro ${res.status}`)
         )
         return
@@ -480,10 +486,10 @@ export default function SettingsPage() {
         setImported((prev) => [...prev, acc.id])
         return
       }
-      throw new Error(getApiErrorMessage(data, "NÃ£o foi possÃ­vel importar a conta"))
+      throw new Error(getApiErrorMessage(data, "Não foi possível importar a conta"))
     } catch (error) {
       setResult("error")
-      setErrorMsg(error instanceof Error ? error.message : "NÃ£o foi possÃ­vel importar a conta")
+      setErrorMsg(error instanceof Error ? error.message : "Não foi possível importar a conta")
     } finally {
       setImporting(null)
     }
@@ -493,7 +499,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Header title="ConfiguraÃ§Ãµes" subtitle="Gerencie as integraÃ§Ãµes da plataforma" />
+      <Header title="Configurações" subtitle="Gerencie as integrações da plataforma" />
       <div className="mx-auto max-w-[1480px] px-8 pb-10 pt-6">
         <div className="space-y-6">
           <div className="flex justify-end">
@@ -509,9 +515,9 @@ export default function SettingsPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className={overviewCard}>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">SessÃ£o atual</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Sessão atual</p>
               {isLoadingStatus ? (
-                <LoadingSkeleton label="Carregando sessÃ£o..." className="py-6" />
+                <LoadingSkeleton label="Carregando sessão..." className="py-6" />
               ) : sessionUser ? (
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-gray-900">{sessionUser.name}</p>
@@ -519,9 +525,9 @@ export default function SettingsPage() {
                   <p className="text-xs text-gray-400">Perfil: {sessionUser.role}</p>
                 </div>
               ) : errorMsg ? (
-                <ErrorState title="SessÃ£o indisponÃ­vel" message={errorMsg} />
+                <ErrorState title="Sessão indisponível" message={errorMsg} />
               ) : (
-                <p className="text-sm text-red-500">SessÃ£o nÃ£o encontrada. FaÃ§a login novamente.</p>
+                <p className="text-sm text-red-500">Sessão não encontrada. Faça login novamente.</p>
               )}
             </div>
 
@@ -547,7 +553,7 @@ export default function SettingsPage() {
 
           <div id="settings-meta" className={`${overviewCard} p-8`}>
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">IntegraÃ§Ã£o META Ads</h2>
+              <h2 className="text-lg font-bold text-gray-900">Integração META Ads</h2>
               <div className="relative h-7 w-11 overflow-hidden">
                 <Image
                   src="/meta-logo-blue.png"
@@ -559,11 +565,11 @@ export default function SettingsPage() {
               </div>
             </div>
             <p className="mb-6 text-sm text-gray-400">
-              Atualize o token da conta logada para carregar clientes e contas de anÃºncio da META com seguranÃ§a.
+              Atualize o token da conta logada para carregar clientes e contas de anúncio da META com segurança.
             </p>
             <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-4">
               <p className="text-sm leading-6 text-blue-700">
-                Acesse `business.facebook.com`, abra ConfiguraÃ§Ãµes e localize o acesso Ã  API para obter seu token pessoal.
+                Acesse `business.facebook.com`, abra Configurações e localize o acesso à API para obter seu token pessoal.
               </p>
             </div>
 
@@ -727,7 +733,7 @@ export default function SettingsPage() {
             {result === "success" && metaUser ? (
               <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
                 <CheckCircle className="h-4 w-4" />
-                Token vÃ¡lido. Conectado como <strong>{getConnectedMetaDisplayName(sessionUser, metaUser)}</strong>
+                Token válido. Conectado como <strong>{getConnectedMetaDisplayName(sessionUser, metaUser)}</strong>
               </div>
             ) : null}
 
@@ -749,9 +755,9 @@ export default function SettingsPage() {
 
           {accounts.length > 0 ? (
             <div className={`${overviewCard} p-8`}>
-              <h2 className="mb-1 text-lg font-bold text-gray-900">Contas de anÃºncios encontradas</h2>
+              <h2 className="mb-1 text-lg font-bold text-gray-900">Contas de anúncios encontradas</h2>
               <p className="mb-6 text-sm text-gray-400">
-                {accounts.length} conta(s) vinculada(s) ao token ativo da sessÃ£o atual.
+                {accounts.length} conta(s) vinculada(s) ao token ativo da sessão atual.
               </p>
               <div className="space-y-3">
                 {accounts.map((acc) => {
@@ -804,9 +810,9 @@ export default function SettingsPage() {
           <div id="settings-evolution" className={`${overviewCard} p-8`}>
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">ConexÃ£o Evolution</h2>
+                <h2 className="text-lg font-bold text-gray-900">Conexão Evolution</h2>
                 <p className="text-sm text-gray-400">
-                  Consulte a instÃ¢ncia ativa e copie o ID correto dos grupos do WhatsApp.
+                  Consulte a instância ativa e copie o ID correto dos grupos do WhatsApp.
                 </p>
               </div>
               <button
@@ -828,14 +834,14 @@ export default function SettingsPage() {
             ) : null}
 
             {isLoadingEvolution ? (
-              <LoadingSkeleton label="Carregando instÃ¢ncia Evolution..." className="py-6" />
+              <LoadingSkeleton label="Carregando instância Evolution..." className="py-6" />
             ) : evolutionData ? (
               <>
                 <div className="mb-6 grid gap-4 md:grid-cols-3">
                   <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">InstÃ¢ncia</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Instância</p>
                     <p className="mt-2 text-sm font-semibold text-gray-900">
-                      {evolutionData.instance ?? "NÃ£o informada"}
+                      {evolutionData.instance ?? "Não informada"}
                     </p>
                     {evolutionData.detail ? <p className="mt-1 text-xs text-gray-500">{evolutionData.detail}</p> : null}
                   </div>
@@ -864,7 +870,7 @@ export default function SettingsPage() {
                           ? "Conectada"
                           : evolutionData.configured
                             ? "Configurada"
-                            : "NÃ£o configurada"}
+                            : "Não configurada"}
                       </StatusBadge>
                       <span className="text-sm text-gray-500">{evolutionData.groups.length} grupo(s)</span>
                     </div>
@@ -932,7 +938,7 @@ export default function SettingsPage() {
                           {evolutionData.groups.length} encontrado(s)
                         </p>
                         <p className="mt-1 text-xs text-gray-500">
-                          Os grupos abaixo vêm da instância salva.
+                          Os grupos abaixo vêm das instâncias conectadas.
                         </p>
                       </div>
                     </div>
@@ -1057,10 +1063,10 @@ export default function SettingsPage() {
                 <div className="overflow-hidden rounded-2xl border border-slate-200">
                   <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-3">
                     <MessageCircle className="h-4 w-4 text-gray-400" />
-                    <p className="text-sm font-semibold text-gray-900">Grupos ativos na instÃ¢ncia</p>
+                    <p className="text-sm font-semibold text-gray-900">Grupos ativos nas instâncias conectadas</p>
                   </div>
                   {evolutionData.groups.length === 0 ? (
-                    <div className="px-4 py-6 text-sm text-gray-500">Nenhum grupo encontrado para esta instÃ¢ncia.</div>
+                    <div className="px-4 py-6 text-sm text-gray-500">Nenhum grupo encontrado nas instâncias conectadas.</div>
                   ) : (
                     <div className="divide-y divide-gray-100">
                       {evolutionData.groups.map((group) => (

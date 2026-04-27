@@ -5,6 +5,13 @@ import type {
 } from "@/types/evolution.types"
 
 const DEFAULT_EVOLUTION_API_TIMEOUT_MS = 15_000
+const EVOLUTION_CONNECTED_STATUSES = new Set([
+  "open",
+  "connected",
+  "online",
+  "active",
+  "ready",
+])
 
 type EvolutionSendTextResponse = {
   key?: {
@@ -192,6 +199,18 @@ function normalizeEvolutionInstanceStatus(
 ) {
   const normalized = typeof value === "string" ? value.trim() : ""
   return normalized ? normalized.toLowerCase() : null
+}
+
+function isEvolutionInstanceConnected(status: string | null | undefined) {
+  if (status === null) {
+    return true
+  }
+
+  if (typeof status !== "string") {
+    return false
+  }
+
+  return EVOLUTION_CONNECTED_STATUSES.has(status)
 }
 
 function readEvolutionInstanceCandidate(
@@ -611,7 +630,7 @@ function buildGroupFetchTargets(
         return true
       }
 
-      return instance.status === null || instance.status === "open"
+      return isEvolutionInstanceConnected(instance.status)
     })
     .map((instance) => instance.name)
 
@@ -793,28 +812,53 @@ export async function loadEvolutionCatalog(
     instances,
     options?.groupInstances
   )
-  const groupResults = await Promise.allSettled(
-    targets.map(async (instance) => ({
-      instance,
-      groups: await fetchEvolutionGroupsForInstance(config, instance),
-    }))
-  )
-  const groups: EvolutionGroup[] = []
-
-  groupResults.forEach((result, index) => {
-    if (result.status === "fulfilled") {
-      groups.push(...result.value.groups.groups)
-      partialErrors.push(...result.value.groups.partialErrors)
-      return
-    }
-
-    const instance = targets[index]
-    partialErrors.push(
-      result.reason instanceof Error
-        ? `${instance}: ${result.reason.message}`
-        : `${instance}: Falha ao listar grupos`
+  async function fetchGroupsForTargets(instanceTargets: string[]) {
+    const groupResults = await Promise.allSettled(
+      instanceTargets.map(async (instance) => ({
+        instance,
+        groups: await fetchEvolutionGroupsForInstance(config, instance),
+      }))
     )
-  })
+
+    const groups: EvolutionGroup[] = []
+
+    groupResults.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        groups.push(...result.value.groups.groups)
+        partialErrors.push(...result.value.groups.partialErrors)
+        return
+      }
+
+      const instance = instanceTargets[index]
+      partialErrors.push(
+        result.reason instanceof Error
+          ? `${instance}: ${result.reason.message}`
+          : `${instance}: Falha ao listar grupos`
+      )
+    })
+
+    return groups
+  }
+
+  let groups = await fetchGroupsForTargets(targets)
+
+  if (
+    groups.length === 0 &&
+    options?.groupInstances?.length &&
+    instances.length > 0
+  ) {
+    const fallbackTargets = buildGroupFetchTargets(config, instances, undefined)
+
+    if (
+      fallbackTargets.length > 0 &&
+      fallbackTargets.join("|") !== targets.join("|")
+    ) {
+      groups = await fetchGroupsForTargets(fallbackTargets)
+      if (groups.length > 0) {
+        targets.splice(0, targets.length, ...fallbackTargets)
+      }
+    }
+  }
 
   const sortedGroups = groups.sort((left, right) => {
     const subjectComparison = left.subject.localeCompare(right.subject, "pt-BR")
@@ -826,7 +870,7 @@ export async function loadEvolutionCatalog(
     return left.instance.localeCompare(right.instance, "pt-BR")
   })
   const hasOpenInstance = instances.some(
-    (instance) => instance.status === null || instance.status === "open"
+    (instance) => isEvolutionInstanceConnected(instance.status)
   )
   const hasGroups = sortedGroups.length > 0
 

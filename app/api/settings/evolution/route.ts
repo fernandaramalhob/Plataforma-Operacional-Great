@@ -11,12 +11,32 @@ import { logError } from "@/lib/safe-logger"
 import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 import type { EvolutionInstance } from "@/types/evolution.types"
 
+const EVOLUTION_CONNECTED_STATUSES = new Set([
+  "open",
+  "connected",
+  "online",
+  "active",
+  "ready",
+])
+
+function isEvolutionInstanceConnected(status: string | null | undefined) {
+  if (status === null) {
+    return true
+  }
+
+  if (typeof status !== "string") {
+    return false
+  }
+
+  return EVOLUTION_CONNECTED_STATUSES.has(status)
+}
+
 export async function GET(request: Request) {
   try {
     const user = await getCurrentUser()
 
     if (!user) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const requestUrl = new URL(request.url)
@@ -45,12 +65,7 @@ export async function GET(request: Request) {
     }
 
     try {
-      const catalog = await loadEvolutionCatalog({
-        groupInstances: effectiveGroupInstance ? [effectiveGroupInstance] : undefined,
-      })
-      const connectedInstances = catalog.instances.filter(
-        (instance) => instance.status === null || instance.status === "open"
-      )
+      const catalog = await loadEvolutionCatalog()
       const resolvedPreviewInstance =
         findEvolutionInstanceMatch(previewInstance, catalog.instances)?.name ??
         previewInstance
@@ -59,8 +74,8 @@ export async function GET(request: Request) {
         selectedInstance
       const detail =
         catalog.groups.length > 0
-          ? `${catalog.groups.length} grupo(s) encontrado(s) em ${connectedInstances.length || 1} instância(s).`
-          : "Conexão com a Evolution ativa, mas nenhum grupo foi encontrado."
+          ? `${catalog.groups.length} grupo(s) encontrado(s) nas instâncias conectadas.`
+          : "Conexao com a Evolution ativa, mas nenhum grupo foi encontrado."
 
       return NextResponse.json<EvolutionSettingsResponse>({
         configured: true,
@@ -70,7 +85,7 @@ export async function GET(request: Request) {
         previewInstance: resolvedPreviewInstance,
         detail:
           catalog.partialErrors.length > 0
-            ? `${detail} Algumas instâncias não puderam ser consultadas nesta atualizacao.`
+            ? `${detail} Algumas instâncias não puderam ser consultadas nesta atualização.`
             : detail,
         groups: catalog.groups,
         instances: catalog.instances,
@@ -98,7 +113,7 @@ export async function POST(request: Request) {
     const user = await getCurrentUser()
 
     if (!user) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const body = (await request.json().catch(() => ({}))) as {
@@ -112,11 +127,11 @@ export async function POST(request: Request) {
       matchedInstance = findEvolutionInstanceMatch(selectedInstance, catalog.instances)
       const isAvailable =
         matchedInstance &&
-        (matchedInstance.status === null || matchedInstance.status === "open")
+        isEvolutionInstanceConnected(matchedInstance.status)
 
       if (!isAvailable) {
         return NextResponse.json(
-          { error: "Instância Evolution não encontrada ou indisponível" },
+          { error: "Instancia Evolution nao encontrada ou indisponivel" },
           { status: 400 }
         )
       }
@@ -135,8 +150,8 @@ export async function POST(request: Request) {
       instance: null,
       selectedInstance: matchedInstance?.name ?? selectedInstance,
       detail: selectedInstance
-        ? `Instância ${selectedInstance} salva para esta conta.`
-        : "Instância padrão da Evolution restaurada para esta conta.",
+        ? `Instancia ${selectedInstance} salva para esta conta.`
+        : "A preferencia foi removida. O envio volta para a instancia padrao da Evolution.",
       groups: [],
       instances: [],
     })
