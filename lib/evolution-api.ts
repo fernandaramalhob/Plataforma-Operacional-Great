@@ -138,6 +138,55 @@ function normalizeEvolutionInstanceName(
   return typeof value === "string" ? value.trim() : ""
 }
 
+function normalizeEvolutionInstanceKey(
+  value: string | undefined | null
+) {
+  return normalizeEvolutionInstanceName(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort()
+    .join(" ")
+}
+
+function resolveEvolutionInstanceAlias(
+  requestedInstance: string | undefined | null,
+  instances: EvolutionInstance[]
+) {
+  const requestedKey = normalizeEvolutionInstanceKey(requestedInstance)
+
+  if (!requestedKey) {
+    return null
+  }
+
+  const matchingInstance = instances.find(
+    (instance) => normalizeEvolutionInstanceKey(instance.name) === requestedKey
+  )
+
+  return matchingInstance?.name ?? normalizeEvolutionInstanceName(requestedInstance)
+}
+
+export function findEvolutionInstanceMatch(
+  requestedInstance: string | undefined | null,
+  instances: EvolutionInstance[]
+) {
+  const requestedKey = normalizeEvolutionInstanceKey(requestedInstance)
+
+  if (!requestedKey) {
+    return null
+  }
+
+  return (
+    instances.find(
+      (instance) => normalizeEvolutionInstanceKey(instance.name) === requestedKey
+    ) ?? null
+  )
+}
+
 function normalizeEvolutionInstanceStatus(
   value: string | undefined | null
 ) {
@@ -549,7 +598,11 @@ function buildGroupFetchTargets(
   preferredInstances?: string[]
 ) {
   if (preferredInstances?.length) {
-    return dedupeStrings(preferredInstances)
+    return dedupeStrings(
+      preferredInstances.map((instance) =>
+        resolveEvolutionInstanceAlias(instance, instances) ?? instance
+      )
+    )
   }
 
   const preferredTargets = instances

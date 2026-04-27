@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/authorization"
-import { getEvolutionConfig, loadEvolutionCatalog } from "@/lib/evolution-api"
+import {
+  getEvolutionConfig,
+  loadEvolutionCatalog,
+  findEvolutionInstanceMatch,
+} from "@/lib/evolution-api"
 import { normalizeEvolutionInstancePreference } from "@/lib/evolution-preference"
 import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
 import type { EvolutionSettingsResponse } from "@/types/evolution.types"
+import type { EvolutionInstance } from "@/types/evolution.types"
 
 export async function GET(request: Request) {
   try {
@@ -22,7 +27,8 @@ export async function GET(request: Request) {
       user.evolutionInstance ?? null
     )
     const config = getEvolutionConfig()
-    const effectiveGroupInstance = previewInstance || selectedInstance || config.instance || null
+    const effectiveGroupInstance =
+      previewInstance || selectedInstance || config.instance || null
 
     if (!config.configured) {
       return NextResponse.json<EvolutionSettingsResponse>({
@@ -45,6 +51,12 @@ export async function GET(request: Request) {
       const connectedInstances = catalog.instances.filter(
         (instance) => instance.status === null || instance.status === "open"
       )
+      const resolvedPreviewInstance =
+        findEvolutionInstanceMatch(previewInstance, catalog.instances)?.name ??
+        previewInstance
+      const resolvedSelectedInstance =
+        findEvolutionInstanceMatch(selectedInstance, catalog.instances)?.name ??
+        selectedInstance
       const detail =
         catalog.groups.length > 0
           ? `${catalog.groups.length} grupo(s) encontrado(s) em ${connectedInstances.length || 1} instancia(s).`
@@ -53,9 +65,9 @@ export async function GET(request: Request) {
       return NextResponse.json<EvolutionSettingsResponse>({
         configured: true,
         connected: catalog.connected,
-        instance: selectedInstance || config.instance || null,
-        selectedInstance,
-        previewInstance: effectiveGroupInstance,
+        instance: resolvedSelectedInstance || config.instance || null,
+        selectedInstance: resolvedSelectedInstance,
+        previewInstance: resolvedPreviewInstance,
         detail:
           catalog.partialErrors.length > 0
             ? `${detail} Algumas instancias nao puderam ser consultadas nesta atualizacao.`
@@ -94,13 +106,13 @@ export async function POST(request: Request) {
     }
     const selectedInstance = normalizeEvolutionInstancePreference(body.selectedInstance ?? null)
 
+    let matchedInstance: EvolutionInstance | null = null
     if (selectedInstance) {
       const catalog = await loadEvolutionCatalog()
-      const isAvailable = catalog.instances.some(
-        (instance) =>
-          instance.name === selectedInstance &&
-          (instance.status === null || instance.status === "open")
-      )
+      matchedInstance = findEvolutionInstanceMatch(selectedInstance, catalog.instances)
+      const isAvailable =
+        matchedInstance &&
+        (matchedInstance.status === null || matchedInstance.status === "open")
 
       if (!isAvailable) {
         return NextResponse.json(
@@ -113,7 +125,7 @@ export async function POST(request: Request) {
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        evolutionInstance: selectedInstance,
+        evolutionInstance: matchedInstance?.name ?? selectedInstance,
       },
     })
 
@@ -121,7 +133,7 @@ export async function POST(request: Request) {
       configured: true,
       connected: true,
       instance: null,
-      selectedInstance,
+      selectedInstance: matchedInstance?.name ?? selectedInstance,
       detail: selectedInstance
         ? `Instancia ${selectedInstance} salva para esta conta.`
         : "Instancia padrao da Evolution restaurada para esta conta.",

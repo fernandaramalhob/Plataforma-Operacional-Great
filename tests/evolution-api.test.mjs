@@ -121,6 +121,50 @@ test("loadEvolutionCatalog stays connected when a requested instance returns gro
   restoreEnvironment()
 })
 
+test("loadEvolutionCatalog resolves reordered instance names to the canonical Evolution instance", async () => {
+  setEvolutionEnv()
+  const requestedUrls = []
+
+  globalThis.fetch = async (input) => {
+    const url = String(input)
+    requestedUrls.push(url)
+
+    if (url.endsWith("/instance/fetchInstances")) {
+      return new Response(
+        JSON.stringify([
+          { name: "Isaque - GreatGo", status: "open" },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    if (url.includes("/group/fetchAllGroups/Isaque%20-%20GreatGo")) {
+      return new Response(
+        JSON.stringify([
+          { id: "120@g.us", subject: "Grupo Isaque", size: 10, announce: false },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    throw new Error(`URL nao esperada no teste: ${url}`)
+  }
+
+  const catalog = await loadEvolutionCatalog({
+    groupInstances: ["GreatGo - isaque"],
+  })
+
+  assert.equal(catalog.connected, true)
+  assert.equal(catalog.groups.length, 1)
+  assert.equal(catalog.groups[0].instance, "Isaque - GreatGo")
+  assert.equal(
+    requestedUrls.some((url) => url.includes("/group/fetchAllGroups/Isaque%20-%20GreatGo")),
+    true
+  )
+
+  restoreEnvironment()
+})
+
 test("sendWhatsAppText resolves the instance from the group id", async () => {
   setEvolutionEnv()
   const requestedUrls = []
