@@ -132,7 +132,7 @@ Variaveis de ambiente:
 - `REPORT_QUEUE_PREFIX`: prefixo das chaves de fila e monitoramento no Redis
 - `REPORT_PROCESS_BATCH_SIZE`: quantidade minima de relatorios processados em paralelo por ciclo do cron
 - `REPORT_PROCESS_LOCK_TTL_SECONDS`: TTL do lock distribuido durante o processamento
-- `REPORT_WEEKLY_CRON`: agenda semanal do disparo automatico
+- `REPORT_WEEKLY_CRON`: agenda semanal do disparo automatico, recomendado `0 9 * * 1` para segunda-feira as 09:00
 - `REPORT_WEEKLY_TZ`: timezone usada pelo agendamento semanal
 - `REPORT_WEEKLY_BATCH_SIZE`: quantidade de clientes ativos processados por lote
 - `REPORT_WEEKLY_OBJECTIVE`: objetivo padrao usado no job semanal

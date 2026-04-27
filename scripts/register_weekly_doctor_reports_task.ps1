@@ -43,7 +43,7 @@ try {
   throw "StartTime deve usar o formato HH:mm, por exemplo 09:00."
 }
 
-$description = "Executa a automacao semanal de relatorios toda quinta-feira as 09:00."
+$description = "Executa a automacao semanal de relatorios toda segunda-feira as 09:00."
 $arguments = @(
   '-NoProfile',
   '-ExecutionPolicy',
@@ -64,7 +64,7 @@ $argumentString = [string]::Join(' ', $arguments)
 
 if ($PSCmdlet.ShouldProcess("$TaskPath$TaskName", "Registrar tarefa agendada semanal")) {
   $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $argumentString
-  $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Thursday -At $atTime
+  $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At $atTime
   $settings = New-ScheduledTaskSettingsSet `
     -StartWhenAvailable `
     -AllowStartIfOnBatteries `
@@ -95,7 +95,7 @@ if ($PSCmdlet.ShouldProcess("$TaskPath$TaskName", "Registrar tarefa agendada sem
   Write-Host "Tarefa registrada com sucesso."
   Write-Host "Task: $TaskPath$TaskName"
   Write-Host "Usuario: $TaskUser"
-  Write-Host "Horario: toda quinta-feira as $StartTime"
+  Write-Host "Horario: toda segunda-feira as $StartTime"
   Write-Host "Runner: powershell.exe $argumentString"
 }
 

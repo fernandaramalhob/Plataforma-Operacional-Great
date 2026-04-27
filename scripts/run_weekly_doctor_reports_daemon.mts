@@ -128,7 +128,7 @@ function parseCronNumber(rawValue: string, minimum: number, maximum: number) {
 }
 
 function parseWeeklySchedule(rawCron: string | undefined) {
-  const cron = rawCron?.trim() || "0 9 * * 4"
+  const cron = rawCron?.trim() || "0 9 * * 1"
   const [minuteRaw, hourRaw, dayOfMonth, month, weekdayRaw] = cron.split(/\s+/)
 
   if (!minuteRaw || !hourRaw || !dayOfMonth || !month || !weekdayRaw) {

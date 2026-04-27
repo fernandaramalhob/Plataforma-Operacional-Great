@@ -1,11 +1,11 @@
 ﻿# Automacao de Relatorios para Doutores(as)
 
-Esta pasta concentra o plano operacional da automacao que deve enviar relatorios para cada Doutor(a) toda quinta-feira as 09h00.
+Esta pasta concentra o plano operacional da automacao que deve enviar relatorios para cada Doutor(a) toda segunda-feira as 09h00.
 
 Configuracao alvo:
 
 - frequencia: semanal
-- dia: quinta-feira
+- dia: segunda-feira
 - horario: 09:00
 - timezone: `America/Sao_Paulo`
 - responsabilidade do Python: orquestrar agendamento, disparo, retry e logs
@@ -21,7 +21,7 @@ Arquivos de execucao:
 - `scripts/run_weekly_doctor_reports_daemon.mts`: daemon cross-platform que observa `REPORT_WEEKLY_CRON`, processa os agendamentos pendentes e dispara o runner sem depender do Task Scheduler do Windows
 - `scripts/run_weekly_doctor_reports.ps1`: wrapper PowerShell para executar o runner TypeScript com logs locais
 - `scripts/run_weekly_doctor_reports_task.cmd`: ponto de entrada da tarefa agendada; agora aguarda o fim real da automacao e devolve o exit code correto ao Windows
-- `scripts/register_weekly_doctor_reports_task.ps1`: registra ou atualiza a tarefa no Windows Task Scheduler para toda quinta-feira as 09h00
+- `scripts/register_weekly_doctor_reports_task.ps1`: registra ou atualiza a tarefa no Windows Task Scheduler para toda segunda-feira as 09h00
 - `scripts/run_weekly_doctor_reports.py` e `scripts/report_automation_config.py`: legado de validacao anterior, mantidos apenas como referencia
 
 Fluxo operacional:
@@ -34,10 +34,9 @@ Fluxo operacional:
 
 Destino configurado:
 
-- grupo padrao da automacao: `Teste GreatGo`
 - variavel usada no envio: `REPORT_AUTOMATION_GROUP_ID`
-- comportamento: quando essa variavel estiver preenchida, a automacao envia para esse grupo mesmo que o cliente tenha outro `whatsappGroupId`
-- comportamento sem override: quando `REPORT_AUTOMATION_GROUP_ID` estiver vazio, cada cliente usa seu proprio `whatsappGroupId`
+- comportamento: quando essa variavel estiver preenchida, a automacao envia para esse grupo em todos os clientes elegiveis
+- comportamento recomendado para a operacao real: manter `REPORT_AUTOMATION_GROUP_ID` vazio e cadastrar o `whatsappGroupId` de cada cliente
 
 Validacao com poucos destinatarios:
 
@@ -45,11 +44,12 @@ Validacao com poucos destinatarios:
 - use `--client-id <uuid>` repetido para testar clientes especificos
 - opcionalmente defina `REPORT_AUTOMATION_MAX_CLIENTS=3` no ambiente para manter o lote reduzido ate a validacao inicial
 - por padrao, a automacao processa somente clientes conectados com `adAccountId`
+- para recriar o cenario de teste local com contas e agendamentos seedados, rode `npm run seed:weekly-reports`
 
 Agendamento padrao:
 
 - agendador escolhido: Windows Task Scheduler
-- recorrencia configurada no script de registro: toda quinta-feira as 09:00
+- recorrencia configurada no script de registro: toda segunda-feira as 09:00
 - comando para registrar a tarefa:
 
 ```powershell

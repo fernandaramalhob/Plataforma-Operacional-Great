@@ -19,6 +19,7 @@ function getReportScheduleTimeZone() {
     process.env.REPORT_SCHEDULE_TIMEZONE?.trim()
     || process.env.REPORT_TIMEZONE?.trim()
     || process.env.REPORT_AUTOMATION_TIMEZONE?.trim()
+    || process.env.REPORT_WEEKLY_TZ?.trim()
     || REPORT_SCHEDULE_TIMEZONE
   )
 }
