@@ -85,6 +85,42 @@ test("loadEvolutionCatalog returns groups from every open instance", async () =>
   restoreEnvironment()
 })
 
+test("loadEvolutionCatalog stays connected when a requested instance returns groups", async () => {
+  setEvolutionEnv()
+
+  globalThis.fetch = async (input) => {
+    const url = String(input)
+
+    if (url.endsWith("/instance/fetchInstances")) {
+      return new Response(
+        JSON.stringify([
+          { name: "GreatGo", status: "closed" },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    if (url.includes("/group/fetchAllGroups/GreatGo")) {
+      return new Response(
+        JSON.stringify([
+          { id: "120@g.us", subject: "Grupo Isaque", size: 10, announce: false },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    throw new Error(`URL nao esperada no teste: ${url}`)
+  }
+
+  const catalog = await loadEvolutionCatalog({ groupInstances: ["GreatGo"] })
+
+  assert.equal(catalog.connected, true)
+  assert.equal(catalog.groups.length, 1)
+  assert.equal(catalog.groups[0].instance, "GreatGo")
+
+  restoreEnvironment()
+})
+
 test("sendWhatsAppText resolves the instance from the group id", async () => {
   setEvolutionEnv()
   const requestedUrls = []

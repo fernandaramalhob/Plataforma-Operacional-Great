@@ -772,6 +772,10 @@ export async function loadEvolutionCatalog(
 
     return left.instance.localeCompare(right.instance, "pt-BR")
   })
+  const hasOpenInstance = instances.some(
+    (instance) => instance.status === null || instance.status === "open"
+  )
+  const hasGroups = sortedGroups.length > 0
 
   try {
     logIntegrationEvent({
@@ -790,9 +794,7 @@ export async function loadEvolutionCatalog(
 
     return {
       config,
-      connected: instances.some(
-        (instance) => instance.status === null || instance.status === "open"
-      ),
+      connected: hasGroups || hasOpenInstance,
       instances,
       groups: sortedGroups,
       partialErrors,
