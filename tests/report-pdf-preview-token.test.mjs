@@ -2,7 +2,7 @@
 import {
   createReportPdfAccessToken,
   verifyReportPdfAccessToken,
-} from "@/lib/report-pdf-preview-server"
+} from "@/lib/report-pdf-preview"
 
 test("verifyReportPdfAccessToken aceita token valido do mesmo relatorio", () => {
   process.env.REPORT_PDF_RENDER_SECRET = "test-secret"

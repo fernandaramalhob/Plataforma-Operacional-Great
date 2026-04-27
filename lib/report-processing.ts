@@ -272,7 +272,7 @@ async function recordGenerationFailureAlert(params: {
     severity: "error",
     source: "report-generation",
     queueName: "report-generation",
-    message: "Falha ao processar um relatorio pendente.",
+    message: "Falha ao processar um relatório pendente.",
     jobId: params.reportId,
     jobName: params.pendingJob.source,
     details: {
@@ -298,7 +298,7 @@ async function recordSendFailureAlert(params: {
     severity: "warning",
     source: "report-send",
     queueName: "report-send",
-    message: "Falha ao enviar automaticamente um relatorio ja gerado.",
+    message: "Falha ao enviar automaticamente um relatório ja gerado.",
     jobId: params.reportId,
     jobName: params.pendingJob.source,
     details: {
@@ -317,7 +317,7 @@ async function recordSendFailureAlert(params: {
     severity: "error",
     integration: "whatsapp",
     source: "queued-send",
-    message: "Falha ao enviar relatorio a partir da fila persistida.",
+    message: "Falha ao enviar relatório a partir da fila persistida.",
     dedupeKey: `${params.reportId}:queued-send`,
     details: {
       reportId: params.reportId,
@@ -494,7 +494,7 @@ async function processSendJob(params: {
       }
     }
 
-    const message = "Relatorio gerado nao encontrado para envio automatico"
+    const message = "Relatório gerado não encontrado para envio automatico"
     await handleSendFailure({
       reportId: params.reportId,
       pendingJob: params.pendingJob,
@@ -572,7 +572,7 @@ async function processSendJob(params: {
     }
 
     const message =
-      error instanceof Error ? error.message : "Erro ao enviar relatorio"
+      error instanceof Error ? error.message : "Erro ao enviar relatório"
 
     logError("report-processing.send", error, {
       reportId: params.reportId,
@@ -610,7 +610,7 @@ async function processGenerationJob(params: {
   const user = await loadRequestedByUser(params.pendingJob.requestedByUserId)
 
   if (!user) {
-    const message = "Usuario responsavel pelo relatorio nao foi encontrado"
+    const message = "Usuário responsável pelo relatório não foi encontrado"
     await handleGenerationFailure({
       reportId: params.reportId,
       pendingJob: params.pendingJob,
@@ -723,7 +723,7 @@ async function processGenerationJob(params: {
     }
 
     const message =
-      error instanceof Error ? error.message : "Erro ao gerar relatorio"
+      error instanceof Error ? error.message : "Erro ao gerar relatório"
 
     logError("report-processing.generate", error, {
       reportId: params.reportId,
@@ -821,7 +821,7 @@ export async function processQueuedReportSafely(reportId: string) {
       status: "failed" as const,
       reportId,
       message:
-        error instanceof Error ? error.message : "Falha inesperada ao processar relatorio",
+        error instanceof Error ? error.message : "Falha inesperada ao processar relatório",
     }
   }
 }

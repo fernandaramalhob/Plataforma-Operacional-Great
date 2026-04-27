@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { fetchJsonOrThrow } from "@/lib/api-client"
+import { formatLocalDateInput } from "@/lib/date-input"
 import type { ClientDetail } from "@/types/client.types"
 import type { ReportCampaign, ReportObjectiveValue, ReportSendResponse } from "@/types/report.types"
 
@@ -34,10 +35,6 @@ function getColor(name: string) {
   return colors[name.charCodeAt(0) % colors.length]
 }
 
-function formatDateInput(date: Date) {
-  return date.toISOString().slice(0, 10)
-}
-
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [client, setClient] = useState<ClientDetail | null>(null)
@@ -53,9 +50,9 @@ export default function ClientDetailPage() {
   const defaultStartDate = useMemo(() => {
     const date = new Date()
     date.setDate(date.getDate() - 7)
-    return formatDateInput(date)
+    return formatLocalDateInput(date)
   }, [])
-  const defaultEndDate = useMemo(() => formatDateInput(new Date()), [])
+  const defaultEndDate = useMemo(() => formatLocalDateInput(new Date()), [])
   const [startDate, setStartDate] = useState(defaultStartDate)
   const [endDate, setEndDate] = useState(defaultEndDate)
 

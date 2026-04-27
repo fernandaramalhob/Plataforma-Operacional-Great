@@ -15,6 +15,7 @@ import {
   buildStoredReportPayload,
   serializeStoredReportPayload,
 } from "@/lib/report-domain"
+import { resolveReportAutomationWindow } from "@/lib/report-automation"
 import type {
   PendingReportSendOptions,
   ReportAction,
@@ -36,10 +37,6 @@ type ReportFiltersInput = {
   since: string
   until: string
   objective: string
-}
-
-function formatDateUtc(date: Date) {
-  return date.toISOString().slice(0, 10)
 }
 
 function buildClientPayload(client: ClientWithManager): ReportClient {
@@ -161,7 +158,7 @@ export async function generateLiveReportPayload(params: {
       .slice(0, 5)
       .map((ad) => ({
         id: ad.ad_id ?? crypto.randomUUID(),
-        name: ad.ad_name ?? "Anuncio sem nome",
+        name: ad.ad_name ?? "Anúncio sem nome",
         impressions: ad.impressions,
         reach: ad.reach,
         clicks: ad.clicks,
@@ -169,7 +166,7 @@ export async function generateLiveReportPayload(params: {
         actions: ad.actions as ReportAction[] | undefined,
       })),
     genderBreakdown: genderBreakdown.map((row) => ({
-      dimension: row.gender ?? "nao informado",
+      dimension: row.gender ?? "não informado",
       spend: row.spend,
       impressions: row.impressions,
       reach: row.reach,
@@ -265,26 +262,12 @@ export async function queueReportGeneration(params: {
   })
 }
 
-export function buildLastCompletedWeekRange(referenceDate = new Date()) {
-  const currentDate = new Date(
-    Date.UTC(
-      referenceDate.getUTCFullYear(),
-      referenceDate.getUTCMonth(),
-      referenceDate.getUTCDate()
-    )
-  )
-  const daysSinceMonday = (currentDate.getUTCDay() + 6) % 7
-  const currentWeekStart = new Date(currentDate)
-  currentWeekStart.setUTCDate(currentWeekStart.getUTCDate() - daysSinceMonday)
-
-  const since = new Date(currentWeekStart)
-  since.setUTCDate(since.getUTCDate() - 7)
-
-  const until = new Date(currentWeekStart)
-  until.setUTCDate(until.getUTCDate() - 1)
-
-  return {
-    since: formatDateUtc(since),
-    until: formatDateUtc(until),
-  }
+export function buildLastCompletedWeekRange(
+  timezone = "UTC",
+  referenceDate = new Date()
+) {
+  return resolveReportAutomationWindow({
+    timezone,
+    referenceDate,
+  })
 }

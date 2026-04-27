@@ -103,7 +103,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     dashboardError =
       error instanceof Error
         ? error.message
-        : "Nao foi possivel carregar os dados do dashboard."
+        : "Não foi possível carregar os dados do dashboard."
     logError("dashboard.page.load", error, {
       startDate: dateRange.startDate.toISOString(),
       endDate: dateRange.endDate.toISOString(),
@@ -120,7 +120,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         <div className="space-y-6">
           {dashboardError ? (
             <section className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900">
-              <p className="text-sm font-semibold">Nao foi possivel carregar todos os dados do dashboard.</p>
+              <p className="text-sm font-semibold">Não foi possível carregar todos os dados do dashboard.</p>
               <p className="mt-1 text-sm opacity-80">{dashboardError}</p>
             </section>
           ) : null}

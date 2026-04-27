@@ -93,7 +93,7 @@ const METRIC_LABELS: Array<{
   { key: "cpm", title: "Custo por mil impressões" },
   { key: "conversationsStarted", title: "Conversas iniciadas" },
   { key: "costPerConversation", title: "Custo por conversa" },
-  { key: "conversationRate", title: "Taxa de conversa" },
+      { key: "conversationRate", title: "Taxa de conversa" },
 ]
 
 export function ReportTemplateEditor({
@@ -137,7 +137,7 @@ export function ReportTemplateEditor({
           <div className="mt-4 space-y-4">
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
-              Nome do template
+            Nome do template
             </label>
             <input
               value={templateName}
@@ -193,7 +193,7 @@ export function ReportTemplateEditor({
               onChange={(event) => onClosingNotesChange(event.target.value)}
               disabled={disabled}
               rows={4}
-              placeholder="Adicione orientações, proximos passos ou recados para o cliente."
+              placeholder="Adicione orientações, próximos passos ou recados para o cliente."
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition focus:border-[#C1121F]/25 focus:outline-none focus:ring-4 focus:ring-[#C1121F]/10 disabled:opacity-60"
             />
           </div>
@@ -257,7 +257,7 @@ export function ReportTemplateEditor({
 
         <div className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-            Template salvo
+          Template salvo
           </p>
           <div className="mt-4 flex flex-col gap-3">
             <button
@@ -267,7 +267,7 @@ export function ReportTemplateEditor({
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#C1121F] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
             >
               <Bookmark className="h-4 w-4" />
-              Salvar template
+        Salvar template
             </button>
             <button
               type="button"
@@ -276,14 +276,14 @@ export function ReportTemplateEditor({
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
             >
               <BookmarkCheck className="h-4 w-4" />
-              Carregar template salvo
+        Carregar template salvo
             </button>
           </div>
 
           <p className="mt-3 text-xs leading-5 text-slate-400">
             {hasSavedTemplate
-              ? `Template salvo: ${savedTemplateLabel ?? "modelo do cliente"}`
-              : "Nenhum template salvo para este cliente ainda."}
+      ? `Template salvo: ${savedTemplateLabel ?? "modelo do cliente"}`
+      : "Nenhum template salvo para este cliente ainda."}
           </p>
         </div>
       </div>

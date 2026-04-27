@@ -190,13 +190,13 @@ async function resolveTechnicalUser() {
 
     if (!configuredUser) {
       throw new Error(
-        `Usuario tecnico '${automationEmail}' nao foi encontrado para o envio semanal.`
+        `Usuário tecnico '${automationEmail}' não foi encontrado para o envio semanal.`
       )
     }
 
     if (configuredUser.role !== "ADMIN") {
       throw new Error(
-        `Usuario tecnico '${automationEmail}' precisa ter papel ADMIN.`
+        `Usuário tecnico '${automationEmail}' precisa ter papel ADMIN.`
       )
     }
 
@@ -220,7 +220,7 @@ async function resolveTechnicalUser() {
   })
 
   if (!admin) {
-    throw new Error("Nenhum usuario ADMIN disponivel para o envio semanal.")
+    throw new Error("Nenhum usuário ADMIN disponível para o envio semanal.")
   }
 
   return admin satisfies TechnicalUser
@@ -348,7 +348,7 @@ async function markDispatchAsSent(params: {
   })
 
   if (updateResult.count === 0) {
-    throw new Error("Nao foi possivel confirmar o envio semanal no controle.")
+    throw new Error("Não foi possível confirmar o envio semanal no controle.")
   }
 }
 
@@ -433,7 +433,7 @@ async function claimWeeklyDispatch(params: {
   })
 
   if (!existing) {
-    throw new Error("Controle semanal nao encontrado apos o conflito de chave unica.")
+    throw new Error("Controle semanal não encontrado apos o conflito de chave unica.")
   }
 
   if (existing.status === "SENT") {
@@ -643,7 +643,7 @@ async function processSingleClient(params: {
     }
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Falha ao enviar relatorio semanal."
+      error instanceof Error ? error.message : "Falha ao enviar relatório semanal."
 
     await markDispatchAsFailed({
       dispatchId,

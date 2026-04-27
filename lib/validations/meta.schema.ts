@@ -57,5 +57,5 @@ export const importClientSchema = z
   .strict()
 
 export function getMetaValidationMessage(error: z.ZodError) {
-  return error.issues[0]?.message ?? "Dados da META invalidos"
+  return error.issues[0]?.message ?? "Dados da META inválidos"
 }

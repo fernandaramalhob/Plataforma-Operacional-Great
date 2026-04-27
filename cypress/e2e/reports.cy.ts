@@ -184,7 +184,7 @@ const schedules = {
       schedule: clientSchedule,
       status: "SCHEDULED",
       statusLabel: "Agendado",
-      statusDetail: "Proximo envio em 27/04/2026, 09:30.",
+  statusDetail: "Próximo envio em 27/04/2026, 09:30.",
       lastReportId: "report-123",
       lastReportGeneratedAt: "2026-04-20T15:10:00.000Z",
       lastSendAttemptAt: "2026-04-20T12:30:00.000Z",

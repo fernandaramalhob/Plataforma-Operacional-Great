@@ -102,6 +102,10 @@ test("parseReportJobErrorPayload reads serialized job errors", () => {
     message: "Falha ao enviar",
     stage: "SEND",
     failedAt: "2026-03-25T10:00:00.000Z",
+    scheduledAt: null,
+    nextAttemptAt: null,
+    groupId: null,
+    groupName: null,
   })
 })
 

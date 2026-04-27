@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { findUserForSession } from "@/lib/session-user"
 
 const originalFindUnique = prisma.user.findUnique
+const originalFindMany = prisma.user.findMany
 
 test("findUserForSession prefers the session user id", async () => {
   const calls = []
@@ -63,6 +64,20 @@ test("findUserForSession falls back to normalized email when id is stale", async
 
       return null
     }
+    prisma.user.findMany = async (args) => {
+      calls.push(args)
+
+      if (args.select?.email) {
+        return [
+          {
+            id: "user-999",
+            email: "gestor@greatgo.com",
+          },
+        ]
+      }
+
+      return []
+    }
 
     const user = await findUserForSession({
       sessionUser: {
@@ -81,8 +96,12 @@ test("findUserForSession falls back to normalized email when id is stale", async
     })
     assert.equal(calls.length, 2)
     assert.deepEqual(calls[0].where, { id: "stale-id" })
-    assert.deepEqual(calls[1].where, { email: "gestor@greatgo.com" })
+    assert.deepEqual(calls[1].select, {
+      id: true,
+      email: true,
+    })
   } finally {
     prisma.user.findUnique = originalFindUnique
+    prisma.user.findMany = originalFindMany
   }
 })

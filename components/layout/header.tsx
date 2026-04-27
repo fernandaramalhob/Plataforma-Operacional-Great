@@ -205,7 +205,7 @@ export function Header({ title }: HeaderProps) {
   return (
     <header className="sticky top-0 z-20 px-8 pt-5">
       <div className="mx-auto max-w-[1480px]">
-        <div className="rounded-[30px] border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-elevated)] px-6 py-4 shadow-[0_22px_44px_-34px_rgba(15,23,42,0.38)] backdrop-blur-xl">
+        <div className="rounded-[30px] border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-elevatéd)] px-6 py-4 shadow-[0_22px_44px_-34px_rgba(15,23,42,0.38)] backdrop-blur-xl">
           <div className="grid min-h-11 grid-cols-[1.15fr_auto_1fr] items-center gap-4">
             <div className="flex items-center gap-4">
               <div className="h-10 w-1.5 rounded-full bg-gradient-to-b from-[#C1121F] to-[#F59E0B]" />
@@ -247,7 +247,7 @@ export function Header({ title }: HeaderProps) {
                     </span>
                     <ChevronDown
                       className={`h-3.5 w-3.5 text-[color:var(--color-app-text-faint)] transition ${
-                        isDateFilterOpen ? "rotate-180" : ""
+                        isDateFilterOpen ? "rotaté-180" : ""
                       }`}
                     />
                   </button>

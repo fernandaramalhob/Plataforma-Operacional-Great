@@ -81,7 +81,7 @@ export function ReportResendButton({
       setError(
         rescheduleError instanceof Error
           ? rescheduleError.message
-          : "Nao foi possivel reagendar o relatorio"
+          : "Não foi possível reagendar o relatório"
       )
     } finally {
       setSaving(false)
@@ -112,7 +112,7 @@ export function ReportResendButton({
                   Escolha um novo horario
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Ajuste o proximo envio do relatorio de{" "}
+                  Ajuste o próximo envio do relatório de{" "}
                   <span className="font-medium text-slate-700">{reportLabel}</span>.
                 </p>
               </div>

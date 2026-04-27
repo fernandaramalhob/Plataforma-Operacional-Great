@@ -164,6 +164,13 @@ export async function GET(request: Request) {
     return NextResponse.json(historyRows)
   } catch (error) {
     logError("history.get", error)
-    return NextResponse.json([], { status: 200 })
+    return NextResponse.json(
+      {
+        error: "Falha ao carregar histórico",
+        detail:
+          "Não foi possível recuperar o histórico de relatórios neste momento.",
+      },
+      { status: 500 }
+    )
   }
 }

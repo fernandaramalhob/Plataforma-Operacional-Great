@@ -51,15 +51,15 @@ export function getMetaTokenReadErrorDetail(error: unknown) {
     error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
 
   if (
-    message.includes("unsupported state or unable to authenticate data") ||
+    message.includes("unsupported state or unable to authenticaté data") ||
     message.includes("invalid authentication tag") ||
     message.includes("descriptografar") ||
-    message.includes("criptografado invalido")
+    message.includes("criptografado inválido")
   ) {
-    return "O token META salvo nao pode ser lido neste ambiente. Confirme se META_TOKEN_ENCRYPTION_KEY ou NEXTAUTH_SECRET sao os mesmos do PC de origem, ou salve um novo token."
+    return "O token META salvo não pode ser lido neste ambiente. Confirme se META_TOKEN_ENCRYPTION_KEY ou NEXTAUTH_SECRET são os mesmos do PC de origem, ou salve um novo token."
   }
 
-  return "Nao foi possivel ler o token META salvo. Salve um novo token ou revise a configuracao deste ambiente."
+  return "Não foi possível ler o token META salvo. Salve um novo token ou revise a configuração deste ambiente."
 }
 
 function inferMetaTokenStatus(message: string): MetaTokenStatus {
@@ -129,7 +129,7 @@ export async function inspectMetaTokenValue(
 
         if (debugData.is_valid === false) {
           const message =
-            debugData.error?.message ?? "Token META invalido ou expirado"
+            debugData.error?.message ?? "Token META inválido ou expirado"
 
           return {
             ok: false,
@@ -160,7 +160,7 @@ export async function inspectMetaTokenValue(
     const detail = expiresAt
       ? buildExpiryDetail(
           expiresAt,
-          status === "expiring_soon" ? "Token META expira" : "Token META valido ate"
+          status === "expiring_soon" ? "Token META expira" : "Token META valido até"
         )
       : appAccessToken
         ? "Token META ativo"
@@ -207,7 +207,7 @@ export async function getStoredMetaTokenHealth(params: {
     return {
       ok: false,
       status: "missing",
-      detail: "Token META nao configurado",
+      detail: "Token META não configurado",
       expiresAt: null,
       token: null,
       encryptedToken: null,
@@ -285,7 +285,7 @@ export async function getStoredMetaTokenHealth(params: {
     return {
       ok: true,
       status: "active",
-      detail: buildExpiryDetail(storedExpiresAt, "Token META valido ate"),
+      detail: buildExpiryDetail(storedExpiresAt, "Token META valido até"),
       expiresAt: storedExpiresAt,
       token,
       encryptedToken,
@@ -385,7 +385,7 @@ export async function resolveMetaTokenFromOwners(
       health: {
         ok: false,
         status: "missing" as MetaTokenStatus,
-        detail: "Token META nao configurado",
+        detail: "Token META não configurado",
         expiresAt: null,
         token: null,
         encryptedToken: null,
@@ -451,7 +451,7 @@ export async function resolveMetaTokenFromOwners(
       lastHealth ?? {
         ok: false,
         status: "unknown",
-        detail: "Nao foi possivel validar nenhum token META disponivel",
+        detail: "Não foi possível validar nenhum token META disponível",
         expiresAt: null,
         token: null,
         encryptedToken: null,
@@ -468,7 +468,7 @@ export async function requireMetaTokenFromOwners(
   const { health } = await resolveMetaTokenFromOwners(owners, options)
 
   if (!health.ok || !health.token) {
-    throw new Error(health.detail ?? "Token META nao configurado")
+    throw new Error(health.detail ?? "Token META não configurado")
   }
 
   return health.token

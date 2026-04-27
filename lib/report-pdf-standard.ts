@@ -434,7 +434,7 @@ function buildCampaignRows(payload: StoredReportPayload, objectiveLabel: string)
   })
 }
 
-export function buildReportPdfBuffer(params: {
+export function buildStandardReportPdfBuffer(params: {
   reportId: string
   payload: StoredReportPayload
 }) {

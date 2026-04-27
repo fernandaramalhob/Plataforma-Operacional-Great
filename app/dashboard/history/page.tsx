@@ -22,7 +22,6 @@ import { cancelQueuedReport } from "@/lib/report-client"
 import type { ClientLookupOption } from "@/types/client.types"
 import type {
   HistoryRow,
-  ReportSendResponse,
   ReportStatusValue,
 } from "@/types/report.types"
 
@@ -89,7 +88,7 @@ export default function HistoryPage() {
   const [clients, setClients] = useState<ClientLookupOption[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [retryingReportId, setRetryingReportId] = useState<string | null>(null)
+  const [historyLoadError, setHistoryLoadError] = useState<string | null>(null)
   const [cancelingReportId, setCancelingReportId] = useState<string | null>(null)
   const [actionFeedback, setActionFeedback] = useState("")
   const [actionError, setActionError] = useState("")
@@ -115,6 +114,7 @@ export default function HistoryPage() {
       setRefreshing(true)
     } else {
       setLoading(true)
+      setHistoryLoadError(null)
     }
 
     try {
@@ -125,8 +125,11 @@ export default function HistoryPage() {
       )
 
       setHistory(data)
-    } catch {
-      setHistory([])
+      setHistoryLoadError(null)
+    } catch (error) {
+      setHistoryLoadError(
+        error instanceof Error ? error.message : "Erro ao carregar histórico"
+      )
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -219,7 +222,7 @@ export default function HistoryPage() {
       "Tentativas",
     ]
     const rows = filtered.map((item) => [
-      item.source === "schedule" ? "Agendamento" : "Relatorio",
+      item.source === "schedule" ? "Agendamento" : "Relatório",
       item.date,
       item.time,
       item.client,
@@ -239,31 +242,6 @@ export default function HistoryPage() {
     anchor.href = url
     anchor.download = "histórico-relatórios.csv"
     anchor.click()
-  }
-
-  async function handleRetryReport(reportId: string) {
-    setRetryingReportId(reportId)
-    setActionFeedback("")
-    setActionError("")
-
-    try {
-      await fetchJsonOrThrow<ReportSendResponse>(
-        `/api/reports/${reportId}/send`,
-        { method: "POST" },
-        "Não foi possível reenviar o relatório"
-      )
-
-      setActionFeedback("Relatório reenviado com sucesso.")
-      await loadHistory({ silent: true })
-    } catch (error) {
-      setActionError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível reenviar o relatório"
-      )
-    } finally {
-      setRetryingReportId(null)
-    }
   }
 
   async function handleCancelReport(reportId: string) {
@@ -340,6 +318,23 @@ export default function HistoryPage() {
           <ErrorState
             message={actionError}
             title="Falha na ação"
+            className="mb-4"
+          />
+        ) : null}
+
+        {historyLoadError ? (
+          <ErrorState
+            message={historyLoadError}
+            title="Falha ao carregar histÃ³rico"
+            action={
+              <button
+                type="button"
+                onClick={() => void loadHistory()}
+                className="rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+              >
+                Tentar novamente
+              </button>
+            }
             className="mb-4"
           />
         ) : null}
@@ -469,6 +464,12 @@ export default function HistoryPage() {
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           {loading ? (
             <LoadingSkeleton label="Carregando histórico..." />
+          ) : historyLoadError && history.length === 0 ? (
+            <EmptyState
+              title="Não foi possível carregar o histórico"
+              description="Tente novamente em instantes. Se o erro persistir, o backend pode estar indisponível."
+              className="m-6 border-none px-4 py-20"
+            />
           ) : filtered.length === 0 ? (
             <EmptyState
               title="Nenhum registro encontrado"

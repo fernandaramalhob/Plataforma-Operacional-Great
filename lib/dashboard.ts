@@ -661,9 +661,9 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
       mode: "admin",
       title:
         tone === "critical"
-          ? "OperaÃ§Ã£o requer atenÃ§Ã£o imediata"
+          ? "OperaÃ§Ã£o requer aténÃ§Ã£o imediata"
           : tone === "warning"
-            ? "OperaÃ§Ã£o com pontos de atenÃ§Ã£o"
+            ? "OperaÃ§Ã£o com pontos de aténÃ§Ã£o"
             : "OperaÃ§Ã£o estÃ¡vel",
       description: health.ok
         ? "Filas, agendamento e integraÃ§Ãµes estÃ£o respondendo dentro do esperado."
@@ -828,9 +828,9 @@ function buildLightOperationalPanel(params: {
     mode: "admin",
     title:
       tone === "critical"
-        ? "OperaÃ§Ã£o requer atenÃ§Ã£o"
+        ? "OperaÃ§Ã£o requer aténÃ§Ã£o"
         : tone === "warning"
-          ? "OperaÃ§Ã£o com pontos de atenÃ§Ã£o"
+          ? "OperaÃ§Ã£o com pontos de aténÃ§Ã£o"
           : "OperaÃ§Ã£o estÃ¡vel",
     description:
       "Resumo leve carregado sem consultar filas externas. Ative o painel operacional completo apenas quando ele for exibido.",

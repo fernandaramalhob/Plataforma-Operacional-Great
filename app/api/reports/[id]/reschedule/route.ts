@@ -34,7 +34,7 @@ export async function POST(
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -51,21 +51,21 @@ export async function POST(
 
     if (!report) {
       return NextResponse.json(
-        { error: "Relatorio nao encontrado" },
+        { error: "Relatório não encontrado" },
         { status: 404 }
       )
     }
 
     if (!canAccessClient(user, report.client.managerId)) {
       return NextResponse.json(
-        { error: "Acesso negado a este relatorio" },
+        { error: "Acesso negado a este relatório" },
         { status: 403 }
       )
     }
 
     if (report.status !== "PENDING") {
       return NextResponse.json(
-        { error: "Apenas relatorios pendentes podem ser reagendados" },
+        { error: "Apenas relatórios pendentes podem ser reagendados" },
         { status: 409 }
       )
     }
@@ -74,7 +74,7 @@ export async function POST(
 
     if (!pendingJob) {
       return NextResponse.json(
-        { error: "Relatorio nao possui agendamento pendente" },
+        { error: "Relatório não possui agendamento pendente" },
         { status: 409 }
       )
     }

@@ -25,8 +25,9 @@ import {
   FilterSearchInput,
 } from "@/components/ui/filter-controls"
 import { fetchJsonOrThrow } from "@/lib/api-client"
-import { buildReportPdfFilePayload, exportReportPdf } from "@/lib/report-pdf"
+import { formatLocalDateInput } from "@/lib/date-input"
 import { buildReportSendPreview } from "@/lib/report-message"
+import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
 import {
   pollSavedReportUntilReady,
   requestQueuedReport,
@@ -100,8 +101,6 @@ function getInitials(name: string) {
 }
 
 export default function ReportsPage() {
-  const reportRef = useRef<HTMLDivElement>(null)
-  const pdfReportRef = useRef<HTMLDivElement>(null)
   const reportPollSequenceRef = useRef(0)
   const [clients, setClients] = useState<ClientListItem[]>([])
   const [loadingClients, setLoadingClients] = useState(true)
@@ -116,9 +115,6 @@ export default function ReportsPage() {
   const [isExporting, setIsExporting] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [currentReportId, setCurrentReportId] = useState<string | null>(null)
-  const [currentReportGeneratedAt, setCurrentReportGeneratedAt] = useState<
-    string | null
-  >(null)
   const [actionFeedback, setActionFeedback] = useState("")
   const [sendMode, setSendMode] = useState<ReportSendMode>("PDF_AND_MESSAGE")
   const [sendMessage, setSendMessage] = useState("")
@@ -201,7 +197,6 @@ export default function ReportsPage() {
     }
 
     setCurrentReportId(savedReport.id)
-    setCurrentReportGeneratedAt(savedReport.generatedAt)
     setReportData(payload)
     setSelectedCampaigns(payload.campaigns.map((campaign) => campaign.id))
     const previewMessage = buildReportSendPreview({
@@ -223,7 +218,6 @@ export default function ReportsPage() {
     setReportError("")
     setSelectedCampaigns([])
     setCurrentReportId(null)
-    setCurrentReportGeneratedAt(null)
     setActionFeedback("")
     setLoadingReportMessage("")
     setSendMode("PDF_AND_MESSAGE")
@@ -260,8 +254,6 @@ export default function ReportsPage() {
 
   useEffect(() => {
     const today = new Date()
-    const formatDate = (date: Date) => date.toISOString().split("T")[0]
-
     if (activePeriod === "custom") {
       return
     }
@@ -276,14 +268,14 @@ export default function ReportsPage() {
 
     if (activePeriod === "all") {
       setStartDate("2020-01-01")
-      setEndDate(formatDate(today))
+      setEndDate(formatLocalDateInput(today))
       return
     }
 
     const start = new Date(today)
     start.setDate(today.getDate() - daysByPeriod[activePeriod])
-    setStartDate(formatDate(start))
-    setEndDate(formatDate(today))
+    setStartDate(formatLocalDateInput(start))
+    setEndDate(formatLocalDateInput(today))
   }, [activePeriod])
 
   useEffect(() => {
@@ -318,7 +310,6 @@ export default function ReportsPage() {
         fallbackMessage: "Erro ao acompanhar a fila do relatório",
         onUpdate: (nextReport) => {
           setCurrentReportId(nextReport.id)
-          setCurrentReportGeneratedAt(nextReport.generatedAt)
 
           if (applySavedReport(nextReport)) {
             setLoadingReportMessage("")
@@ -360,7 +351,6 @@ export default function ReportsPage() {
         objective,
       })
       setCurrentReportId(response.reportId)
-      setCurrentReportGeneratedAt(response.generatedAt)
       setLoadingReportMessage("Relatório em fila. Processando dados da META API...")
       await waitForQueuedReport(response.reportId, sequence)
     } catch (error) {
@@ -463,7 +453,7 @@ export default function ReportsPage() {
 
     saveReportTemplate(selectedClient.id, template)
     setSavedTemplateLabel(template.name)
-    setActionFeedback(`Template "${template.name}" salvo para este cliente.`)
+      setActionFeedback(`Template "${template.name}" salvo para este cliente.`)
   }
 
   function handleLoadTemplate() {
@@ -478,40 +468,11 @@ export default function ReportsPage() {
     }
 
     applyTemplate(template, sendMessage)
-    setActionFeedback(`Template "${template.name}" carregado.`)
-  }
-
-  async function handleGeneratePdf() {
-    const sourceElement = pdfReportRef.current ?? reportRef.current
-
-    if (!sourceElement || !selectedClient) {
-      return
-    }
-
-    setIsExporting(true)
-
-    try {
-      await exportReportPdf({
-        sourceElement,
-        clientName: selectedClient.name,
-        startDate,
-        endDate,
-        objective,
-        generatedAt: currentReportGeneratedAt ?? new Date(),
-        reportId: currentReportId ?? undefined,
-      })
-    } catch (error) {
-      logError("dashboard.reports.page", error)
-      setReportError("Não foi possível gerar o PDF do relatório")
-    } finally {
-      setIsExporting(false)
-    }
+      setActionFeedback(`Template "${template.name}" carregado.`)
   }
 
   async function handleSendReport() {
-    const sourceElement = pdfReportRef.current ?? reportRef.current
-
-    if (!currentReportId || !selectedClient || !sourceElement) {
+    if (!currentReportId || !selectedClient) {
       return
     }
 
@@ -520,25 +481,9 @@ export default function ReportsPage() {
     setActionFeedback("")
 
     try {
-      const pdfAttachment =
-        sendMode === "PDF_ONLY" || sendMode === "PDF_AND_MESSAGE"
-          ? await buildReportPdfFilePayload({
-              sourceElement,
-              clientName: selectedClient.name,
-              startDate,
-              endDate,
-              objective,
-              generatedAt: currentReportGeneratedAt ?? new Date(),
-              reportId: currentReportId,
-            })
-          : null
-
       await sendReportToWhatsApp(currentReportId, {
         mode: sendMode,
-        message:
-          sendMode === "PDF_ONLY" ? undefined : sendMessage,
-        pdfBase64: pdfAttachment?.base64,
-        pdfFileName: pdfAttachment?.fileName,
+        message: sendMode === "PDF_ONLY" ? undefined : sendMessage,
       })
       setActionFeedback("Envio concluído com o formato selecionado.")
     } catch (error) {
@@ -549,6 +494,54 @@ export default function ReportsPage() {
       )
     } finally {
       setIsSending(false)
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (!currentReportId || !selectedClient) {
+      return
+    }
+
+    setIsExporting(true)
+
+    try {
+      const response = await fetch("/api/reports/" + currentReportId + "/pdf", {
+        cache: "no-store",
+      })
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        throw new Error(
+          (body as { error?: string } | null)?.error ??
+            "Não foi possível gerar o PDF (" + response.status + ")"
+        )
+      }
+
+      const blob = await response.blob()
+      const contentDisposition = response.headers.get("content-disposition")
+      const match = contentDisposition?.match(/filename="?([^"]+)"?/i)
+      const fileName =
+        match?.[1] ??
+        (buildReportPdfFileName({
+          clientName: selectedClient.name,
+          startDate,
+          endDate,
+        }) + ".pdf")
+
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = objectUrl
+      anchor.download = fileName
+      anchor.rel = "noreferrer"
+      anchor.click()
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+    } catch (error) {
+      logError("dashboard.reports.download-pdf", error, {
+        reportId: currentReportId,
+      })
+      setReportError("Não foi possível gerar o PDF do relatório")
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -583,7 +576,7 @@ export default function ReportsPage() {
                     : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                Gerar relatorio
+                Gerar relatório
               </button>
               <button
                 type="button"
@@ -721,7 +714,7 @@ export default function ReportsPage() {
                               {client.status === "ACTIVE" ? "Ativo" : "Inativo"}
                             </StatusBadge>
                             <span className="text-sm font-medium text-[#C1121F]">
-                              Ver relatorio
+                              Ver relatório
                             </span>
                           </div>
                         </button>
@@ -1014,23 +1007,20 @@ export default function ReportsPage() {
                   />
                 </div>
               ) : null}
-
-              <div ref={reportRef}>
-                <ReportPreview
-                  client={selectedClient}
-                  reportData={reportData}
-                  startDate={startDate}
-                  endDate={endDate}
-                  objective={objective}
-                  selectedCampaignIds={selectedCampaigns}
-                  insightsEnabled={insightsEnabled}
-                  metricVisibility={metricVisibility}
-                  customTitle={customTitle}
-                  executiveSummary={executiveSummary}
-                  closingNotes={closingNotes}
-                  sectionVisibility={sectionVisibility}
-                />
-              </div>
+              <ReportPreview
+                client={selectedClient}
+                reportData={reportData}
+                startDate={startDate}
+                endDate={endDate}
+                objective={objective}
+                selectedCampaignIds={selectedCampaigns}
+                insightsEnabled={insightsEnabled}
+                metricVisibility={metricVisibility}
+                customTitle={customTitle}
+                executiveSummary={executiveSummary}
+                closingNotes={closingNotes}
+                sectionVisibility={sectionVisibility}
+              />
             </div>
           )}
 
@@ -1073,7 +1063,7 @@ export default function ReportsPage() {
                   {isSending ? "Enviando..." : "Enviar por WhatsApp"}
                 </button>
                 <button
-                  onClick={() => void handleGeneratePdf()}
+                  onClick={() => void handleDownloadPdf()}
                   data-cy="reports-save-pdf"
                   disabled={isExporting}
                   className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
@@ -1086,31 +1076,6 @@ export default function ReportsPage() {
           ) : null}
         </section>
       </div>
-
-      {selectedClient && reportData ? (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none fixed left-[-200vw] top-0 w-[1120px] overflow-hidden bg-white"
-        >
-          <div ref={pdfReportRef}>
-            <ReportPreview
-              client={selectedClient}
-              reportData={reportData}
-              startDate={startDate}
-              endDate={endDate}
-              objective={objective}
-              selectedCampaignIds={selectedCampaigns}
-              insightsEnabled={insightsEnabled}
-              metricVisibility={metricVisibility}
-              customTitle={customTitle}
-              executiveSummary={executiveSummary}
-              closingNotes={closingNotes}
-              sectionVisibility={sectionVisibility}
-              variant="pdf"
-            />
-          </div>
-        </div>
-      ) : null}
 
       <ReportScheduleModal
         open={scheduleModalOpen}
@@ -1142,3 +1107,5 @@ export default function ReportsPage() {
     </>
   )
 }
+
+

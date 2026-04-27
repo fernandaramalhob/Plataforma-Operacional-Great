@@ -1,23 +1,18 @@
+import { readdir } from "node:fs/promises"
+
 process.env.DATABASE_URL ??= "postgresql://test:test@localhost:5432/greatgo_test"
 process.env.DIRECT_URL ??= process.env.DATABASE_URL
 
-await import("./api-client.test.mjs")
-await import("./auth-accounts.test.mjs")
-await import("./admin-user.test.mjs")
-await import("./auth.schema.test.mjs")
-await import("./client.schema.test.mjs")
-await import("./evolution-api.test.mjs")
-await import("./meta-token-status.test.mjs")
-await import("./password.test.mjs")
-await import("./report-automation.test.mjs")
-await import("./report-client.test.mjs")
-await import("./report-domain.test.mjs")
-await import("./report-pdf-server.test.mjs")
-await import("./report-pdf-preview-server.test.mjs")
-await import("./report.schema.test.mjs")
-await import("./settings.test.mjs")
-await import("./session-user.test.mjs")
-await import("./weekly-report-time.test.mjs")
+const testFiles = (await readdir(new URL(".", import.meta.url), {
+  withFileTypes: true,
+}))
+  .filter((entry) => entry.isFile() && entry.name.endsWith(".test.mjs"))
+  .map((entry) => entry.name)
+  .sort((left, right) => left.localeCompare(right))
+
+for (const testFile of testFiles) {
+  await import(new URL(testFile, import.meta.url).href)
+}
 
 const { runRegisteredTests } = await import("./test-helpers.mjs")
 

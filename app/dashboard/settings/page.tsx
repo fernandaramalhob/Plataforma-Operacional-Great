@@ -432,6 +432,7 @@ export default function SettingsPage() {
       (instance) => instance.status === null || instance.status === "open"
     ) ?? []
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function handleValidateAndSave() {
     if (!token) return
     setIsValidating(true)
@@ -839,12 +840,12 @@ export default function SettingsPage() {
                     {evolutionData.detail ? <p className="mt-1 text-xs text-gray-500">{evolutionData.detail}</p> : null}
                   </div>
                   <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Instancias</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Instâncias</p>
                     <p className="mt-2 text-sm font-semibold text-gray-900">
                       {evolutionData.instances.length} conectada(s) ou detectada(s)
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
-                      {evolutionData.instances.map((instance) => instance.name).join(", ") || "Nenhuma instancia listada."}
+                      {evolutionData.instances.map((instance) => instance.name).join(", ") || "Nenhuma instância listada."}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-green-100 bg-green-50 p-4">

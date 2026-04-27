@@ -12,8 +12,6 @@ export type AuthLoginAccount = {
   password: string
 }
 
-export const DEFAULT_LOGIN_PASSWORD = "123456"
-
 function readEnvValue(value: string | undefined) {
   const normalizedValue = value?.trim()
   return normalizedValue ? normalizedValue : ""
@@ -23,39 +21,46 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
 }
 
-function getManagerLoginAccounts(): AuthLoginAccount[] {
+function getManagerLoginAccounts(
+  env: Record<string, string | undefined> = process.env
+): AuthLoginAccount[] {
+  const email = normalizeEmail(readEnvValue(env.DEV_BYPASS_AUTH_EMAIL))
+  const password = readEnvValue(env.DEV_BYPASS_AUTH_PASSWORD)
+  const name = readEnvValue(env.DEV_BYPASS_AUTH_NAME) || "Gestor"
+
+  if (!email || !password) {
+    return []
+  }
+
   return [
     {
-      id: "manager-default",
-      name: readEnvValue(process.env.DEV_BYPASS_AUTH_NAME) || "Isaque Soares",
-      email:
-        readEnvValue(process.env.DEV_BYPASS_AUTH_EMAIL) ||
-        "pedrojuan.mwdigital@gmail.com",
+      id: `manager-${email}`,
+      name,
+      email,
       role: "MANAGER",
-      password: DEFAULT_LOGIN_PASSWORD,
-    },
-    {
-      id: "brayton-maycon",
-      name: "Brayton Maycon",
-      email: "braytonmaycon5@gmail.com",
-      role: "MANAGER",
-      password: DEFAULT_LOGIN_PASSWORD,
+      password,
     },
   ]
 }
 
-export function getAuthLoginAccounts(): AuthLoginAccount[] {
-  const adminCredentials = getAdminBootstrapCredentials()
+export function getAuthLoginAccounts(
+  env: Record<string, string | undefined> = process.env
+): AuthLoginAccount[] {
+  const adminCredentials = getAdminBootstrapCredentials(env)
 
   const accounts: AuthLoginAccount[] = [
-    {
-      id: "admin",
-      name: adminCredentials?.name ?? "Administrador",
-      email: adminCredentials?.email ?? "admin@greatgo.com",
-      role: "ADMIN",
-      password: adminCredentials?.password ?? DEFAULT_LOGIN_PASSWORD,
-    },
-    ...getManagerLoginAccounts(),
+    ...(adminCredentials
+      ? [
+          {
+            id: "admin",
+            name: adminCredentials.name,
+            email: adminCredentials.email,
+            role: "ADMIN",
+            password: adminCredentials.password,
+          } satisfies AuthLoginAccount,
+        ]
+      : []),
+    ...getManagerLoginAccounts(env),
   ]
 
   return accounts.filter((account, index, current) => {
@@ -67,18 +72,24 @@ export function getAuthLoginAccounts(): AuthLoginAccount[] {
   })
 }
 
-export function getBootstrapLoginAccount(email: string) {
+export function getBootstrapLoginAccount(
+  email: string,
+  env: Record<string, string | undefined> = process.env
+) {
   const normalizedEmail = normalizeEmail(email)
 
   return (
-    getAuthLoginAccounts().find(
+    getAuthLoginAccounts(env).find(
       (account) => normalizeEmail(account.email) === normalizedEmail
     ) ?? null
   )
 }
 
-export async function ensureBootstrapLoginAccount(email: string) {
-  const account = getBootstrapLoginAccount(email)
+export async function ensureBootstrapLoginAccount(
+  email: string,
+  env: Record<string, string | undefined> = process.env
+) {
+  const account = getBootstrapLoginAccount(email, env)
 
   if (!account) {
     return null

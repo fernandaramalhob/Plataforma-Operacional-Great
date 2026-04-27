@@ -1,8 +1,8 @@
 import { assert, test } from "./test-helpers.mjs"
-import { buildReportPdfBuffer } from "@/lib/report-pdf-server"
+import { buildStandardReportPdfBuffer } from "@/lib/report-pdf-standard"
 
-test("buildReportPdfBuffer generates a non-empty PDF buffer", () => {
-  const buffer = buildReportPdfBuffer({
+test("buildStandardReportPdfBuffer gera um PDF padrão não vazio", () => {
+  const buffer = buildStandardReportPdfBuffer({
     reportId: "report-1",
     payload: {
       client: {

@@ -132,18 +132,18 @@ function deriveScheduleStatus(client: ClientWithSchedule): Pick<
   let statusLabel = "Agendado"
   let statusDetail =
     schedule.active
-      ? `Proximo envio em ${schedule.nextRunAt.toLocaleString("pt-BR")}.`
-      : "Aguardando uma nova configuracao."
+      ? `Próximo envio em ${schedule.nextRunAt.toLocaleString("pt-BR")}.`
+      : "Aguardando uma nova configuração."
 
   if (relatedReport?.status === "PENDING" && pendingJob) {
     status = "IN_PROGRESS"
     statusLabel = "Em progresso"
     statusDetail =
       pendingJob.lastError && pendingJob.nextAttemptAt
-        ? `Nova tentativa ${pendingJob.kind === "SEND" ? "de envio" : "de geracao"} em ${new Date(pendingJob.nextAttemptAt).toLocaleString("pt-BR")}.`
+        ? `Nova tentativa ${pendingJob.kind === "SEND" ? "de envio" : "de geração"} em ${new Date(pendingJob.nextAttemptAt).toLocaleString("pt-BR")}.`
         : pendingJob.kind === "SEND"
-          ? "Relatorio gerado, preparando envio automatico."
-          : "Relatorio em processamento para envio."
+          ? "Relatório gerado, preparando envio automatico."
+          : "Relatório em processamento para envio."
   } else if (latestSendLog?.status === "FAILED" || relatedReport?.status === "FAILED" || schedule.lastError) {
     status = "FAILED"
     statusLabel = "Falhou"
@@ -189,7 +189,7 @@ export async function GET() {
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const clients = await prisma.client.findMany({

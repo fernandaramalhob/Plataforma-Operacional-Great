@@ -13,6 +13,7 @@ import {
   REPORT_SCHEDULE_WEEKDAYS,
   formatScheduleTime,
 } from "@/lib/report-schedule-shared"
+import { formatLocalDateInput } from "@/lib/date-input"
 import type {
   ReportObjectiveValue,
   ReportScheduleFrequency,
@@ -52,7 +53,7 @@ type ReportScheduleModalProps = {
 }
 
 function getTodayDate() {
-  return new Date().toISOString().slice(0, 10)
+  return formatLocalDateInput(new Date())
 }
 
 function getInitialTime() {
@@ -131,7 +132,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
       setGroupsError(
         loadError instanceof Error
           ? loadError.message
-          : "Nao foi possivel carregar os grupos da Evolution."
+          : "Não foi possível carregar os grupos da Evolution."
       )
       setGroupsResponse(null)
     } finally {
@@ -192,7 +193,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Nao foi possivel carregar o agendamento."
+            : "Não foi possível carregar o agendamento."
         )
       })
       .finally(() => {
@@ -276,7 +277,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Nao foi possivel salvar o agendamento."
+          : "Não foi possível salvar o agendamento."
       )
     } finally {
       setSaving(false)
@@ -296,7 +297,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
       setError(
         disableError instanceof Error
           ? disableError.message
-          : "Nao foi possivel desativar o agendamento."
+          : "Não foi possível desativar o agendamento."
       )
     } finally {
       setDisabling(false)
@@ -325,7 +326,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
                 </>
               ) : (
                 <>
-                  Configure o envio automatico do relatorio para{" "}
+                  Configure o envio automatico do relatório para{" "}
                   <span className="font-medium text-slate-700">
                     {props.clientName || "este cliente"}
                   </span>
@@ -355,7 +356,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
               <p className="font-semibold">Agendamento ativo</p>
               <p className="mt-1">
-                Proximo envio: {new Date(schedule.nextRunAt).toLocaleString("pt-BR")}
+                Próximo envio: {new Date(schedule.nextRunAt).toLocaleString("pt-BR")}
               </p>
               {schedule.lastError ? (
                 <p className="mt-2 text-amber-700">
@@ -530,17 +531,17 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
 
                 {isLoadingGroups ? (
                   <p className="text-xs text-slate-500">
-                    Carregando grupos das instancias conectadas...
+                    Carregando grupos das instâncias conectadas...
                   </p>
                 ) : groupsError ? (
                   <p className="text-xs text-rose-600">{groupsError}</p>
                 ) : !groupsResponse?.configured ? (
                   <p className="text-xs text-slate-500">
-                    Evolution nao configurada neste ambiente.
+                    Evolution não configurada neste ambiente.
                   </p>
                 ) : !groupsResponse.connected ? (
                   <p className="text-xs text-rose-600">
-                    {groupsResponse.detail ?? "Nao foi possivel consultar os grupos."}
+                    {groupsResponse.detail ?? "Não foi possível consultar os grupos."}
                   </p>
                   ) : visibleGroups.length === 0 ? (
                   <p className="text-xs text-slate-500">
@@ -559,7 +560,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
                       }
                       className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#C1121F]"
                     >
-                      <option value="">Usar grupo padrao do cliente</option>
+                      <option value="">Usar grupo padrão do cliente</option>
                       {visibleGroups.map((group) => (
                         <option
                           key={`${group.instance}:${group.id}`}
@@ -571,7 +572,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
                     </select>
                     <p className="text-xs text-slate-500">
                       {activeInstance ? `Instância em uso: ${activeInstance}. ` : ""}
-                      {groupsResponse.instances.length} instancia(s) detectada(s) nesta integracao.
+                      {groupsResponse.instances.length} instância(s) detectada(s) nesta integração.
                     </p>
                   </>
                 )}
@@ -585,11 +586,11 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
                     groupId: event.target.value,
                   }))
                 }
-                placeholder="Usar grupo padrao do cliente"
+                placeholder="Usar grupo padrão do cliente"
                 className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-[#C1121F]"
               />
               <p className="text-xs text-slate-500">
-                Se preferir, voce ainda pode colar manualmente um ID de grupo da Evolution.
+                Se preferir, você ainda pode colar manualmente um ID de grupo da Evolution.
               </p>
             </label>
           </div>
@@ -610,9 +611,9 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
           </label>
 
           <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-            <p className="font-semibold text-slate-800">Base do relatorio agendado</p>
+            <p className="font-semibold text-slate-800">Base do relatório agendado</p>
             <p className="mt-1">
-              Periodo: {props.defaultFilters.since} ate {props.defaultFilters.until}
+              Período: {props.defaultFilters.since} até {props.defaultFilters.until}
             </p>
             <p>Objetivo: {props.defaultFilters.objective}</p>
           </div>

@@ -1,15 +1,5 @@
 /// <reference types="cypress" />
 
-export {}
-
-declare global {
-  namespace Cypress {
-    interface Chainable {
-      login(email?: string, password?: string): Chainable<void>
-    }
-  }
-}
-
 /**
  * Faz login de teste sem depender de request HTTP no bootstrap.
  * O token é gerado no Node do Cypress e o cookie é gravado direto no browser.
@@ -25,7 +15,8 @@ Cypress.Commands.add("login", (email?: string, password?: string) => {
     .then((result) => {
       const token = (result as { token?: string } | undefined)?.token ?? ""
 
-      expect(token).to.be.a("string").and.not.be.empty
+      expect(token).to.be.a("string")
+      expect(token).to.not.equal("")
 
       cy.setCookie("next-auth.session-token", token, {
         path: "/",
@@ -35,5 +26,7 @@ Cypress.Commands.add("login", (email?: string, password?: string) => {
       })
     })
 
-  cy.getCookie("next-auth.session-token").should("exist")
+  cy.getCookie("next-auth.session-token").then((cookie) => {
+    expect(cookie).to.be.an("object")
+  })
 })

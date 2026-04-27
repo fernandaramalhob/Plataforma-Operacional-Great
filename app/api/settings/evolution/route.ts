@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const user = await getCurrentUser()
 
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const requestUrl = new URL(request.url)
@@ -59,8 +59,8 @@ export async function GET(request: Request) {
         selectedInstance
       const detail =
         catalog.groups.length > 0
-          ? `${catalog.groups.length} grupo(s) encontrado(s) em ${connectedInstances.length || 1} instancia(s).`
-          : "Conexao com a Evolution ativa, mas nenhum grupo foi encontrado."
+          ? `${catalog.groups.length} grupo(s) encontrado(s) em ${connectedInstances.length || 1} instância(s).`
+          : "Conexão com a Evolution ativa, mas nenhum grupo foi encontrado."
 
       return NextResponse.json<EvolutionSettingsResponse>({
         configured: true,
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
         previewInstance: resolvedPreviewInstance,
         detail:
           catalog.partialErrors.length > 0
-            ? `${detail} Algumas instancias nao puderam ser consultadas nesta atualizacao.`
+            ? `${detail} Algumas instâncias não puderam ser consultadas nesta atualizacao.`
             : detail,
         groups: catalog.groups,
         instances: catalog.instances,
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     const user = await getCurrentUser()
 
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const body = (await request.json().catch(() => ({}))) as {
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
 
       if (!isAvailable) {
         return NextResponse.json(
-          { error: "Instancia Evolution nao encontrada ou indisponivel" },
+          { error: "Instância Evolution não encontrada ou indisponível" },
           { status: 400 }
         )
       }
@@ -135,8 +135,8 @@ export async function POST(request: Request) {
       instance: null,
       selectedInstance: matchedInstance?.name ?? selectedInstance,
       detail: selectedInstance
-        ? `Instancia ${selectedInstance} salva para esta conta.`
-        : "Instancia padrao da Evolution restaurada para esta conta.",
+        ? `Instância ${selectedInstance} salva para esta conta.`
+        : "Instância padrão da Evolution restaurada para esta conta.",
       groups: [],
       instances: [],
     })

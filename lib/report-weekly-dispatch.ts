@@ -31,7 +31,7 @@ function parseCronNumber(rawValue: string, minimum: number, maximum: number) {
 
   if (!Number.isFinite(value) || value < minimum || value > maximum) {
     throw new Error(
-      `Campo cron invalido '${rawValue}'. Esperado numero entre ${minimum} e ${maximum}.`
+      `Campo cron inválido '${rawValue}'. Esperado numero entre ${minimum} e ${maximum}.`
     )
   }
 
@@ -60,7 +60,7 @@ function parseWeeklySchedule(rawCron: string | undefined): WeeklySchedule {
     : WEEKDAY_LABEL_TO_NUMBER[weekdayLabel]
 
   if (weekday === undefined) {
-    throw new Error(`Dia da semana invalido em REPORT_WEEKLY_CRON: '${weekdayRaw}'.`)
+    throw new Error(`Dia da semana inválido em REPORT_WEEKLY_CRON: '${weekdayRaw}'.`)
   }
 
   return {
@@ -127,7 +127,7 @@ async function resolveWeeklyRequestedByUserId(clientManagerId: string | null) {
   })
 
   if (!admin) {
-    throw new Error("Nenhum administrador disponivel para executar o job semanal")
+    throw new Error("Nenhum administrador disponível para executar o job semanal")
   }
 
   return admin.id
@@ -183,7 +183,7 @@ export async function maybeDispatchWeeklyReports(params?: { now?: Date }) {
   const automationSettings = loadReportAutomationSettings()
   const objective =
     process.env.REPORT_WEEKLY_OBJECTIVE?.trim() || automationSettings.objective
-  const { since, until } = buildLastCompletedWeekRange(now)
+  const { since, until } = buildLastCompletedWeekRange(timeZone, now)
   const referenceWeekDate = buildAutomationReferenceWeekDate({ since, until })
 
   let cursor: string | undefined

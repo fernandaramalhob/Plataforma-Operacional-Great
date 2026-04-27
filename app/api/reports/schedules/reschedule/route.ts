@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const parsed = payloadSchema.safeParse(await request.json())
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
     if (clients.length !== uniqueClientIds.length) {
       return NextResponse.json(
-        { error: "Um ou mais clientes nao foram encontrados" },
+        { error: "Um ou mais clientes não foram encontrados" },
         { status: 404 }
       )
     }
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
     if (unauthorizedClient) {
       return NextResponse.json(
-        { error: "Voce nao tem acesso a um ou mais clientes selecionados" },
+        { error: "Você não tem acesso a um ou mais clientes selecionados" },
         { status: 403 }
       )
     }

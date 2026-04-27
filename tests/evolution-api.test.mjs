@@ -64,7 +64,7 @@ test("loadEvolutionCatalog returns groups from every open instance", async () =>
       )
     }
 
-    throw new Error(`URL nao esperada no teste: ${url}`)
+throw new Error(`URL não esperada no teste: ${url}`)
   }
 
   const catalog = await loadEvolutionCatalog()
@@ -109,7 +109,7 @@ test("loadEvolutionCatalog stays connected when a requested instance returns gro
       )
     }
 
-    throw new Error(`URL nao esperada no teste: ${url}`)
+throw new Error(`URL não esperada no teste: ${url}`)
   }
 
   const catalog = await loadEvolutionCatalog({ groupInstances: ["GreatGo"] })
@@ -147,7 +147,7 @@ test("loadEvolutionCatalog resolves reordered instance names to the canonical Ev
       )
     }
 
-    throw new Error(`URL nao esperada no teste: ${url}`)
+throw new Error(`URL não esperada no teste: ${url}`)
   }
 
   const catalog = await loadEvolutionCatalog({
@@ -213,7 +213,7 @@ test("sendWhatsAppText resolves the instance from the group id", async () => {
       )
     }
 
-    throw new Error(`URL nao esperada no teste: ${url}`)
+throw new Error(`URL não esperada no teste: ${url}`)
   }
 
   await sendWhatsAppText({

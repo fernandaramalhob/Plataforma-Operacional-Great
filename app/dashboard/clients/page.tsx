@@ -9,6 +9,7 @@ import { ClientTable } from "@/components/clients/client-table"
 import { EmptyState } from "@/components/shared/empty-state"
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
 import { fetchJsonOrThrow } from "@/lib/api-client"
+import { formatLocalDateInput } from "@/lib/date-input"
 import type { ClientListItem } from "@/types/client.types"
 
 function buildClientsQueryString(
@@ -104,7 +105,7 @@ export default function ClientsPage() {
       const blob = await response.blob()
       const downloadUrl = window.URL.createObjectURL(blob)
       const link = document.createElement("a")
-      const dateStamp = new Date().toISOString().slice(0, 10)
+      const dateStamp = formatLocalDateInput(new Date())
 
       link.href = downloadUrl
       link.download = `clientes-${dateStamp}.csv`

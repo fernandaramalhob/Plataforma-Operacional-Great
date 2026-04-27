@@ -1,8 +1,5 @@
 import CredentialsProvider from "next-auth/providers/credentials"
 import type { NextAuthOptions } from "next-auth"
-import {
-  getBootstrapLoginAccount,
-} from "@/lib/auth-accounts"
 import { withTimeout } from "@/lib/async"
 import { prisma } from "@/lib/prisma"
 import { verifyPassword } from "@/lib/password"
@@ -45,70 +42,10 @@ async function findUserByNormalizedEmail(email: string) {
 
 async function authorizeWithCredentials(email: string, password: string) {
   const normalizedEmail = normalizeEmail(email)
-  const bootstrapAccount = getBootstrapLoginAccount(normalizedEmail)
 
   logInfo("auth.authorize.start", {
     email: normalizedEmail,
-    bootstrapAccount: bootstrapAccount?.id ?? null,
   })
-
-  if (bootstrapAccount) {
-    logInfo("auth.authorize.bootstrap-account.start", {
-      email: normalizedEmail,
-      accountId: bootstrapAccount.id,
-    })
-    const isValidPassword = verifyPassword(password, bootstrapAccount.password)
-
-    if (!isValidPassword) {
-      logWarn("auth.authorize.invalid-bootstrap-password", {
-        email: normalizedEmail,
-        accountId: bootstrapAccount.id,
-      })
-      return null
-    }
-
-    try {
-      const user = await findUserByNormalizedEmail(normalizedEmail)
-
-      if (user) {
-        const isDbPasswordValid = verifyPassword(password, user.passwordHash)
-
-        if (isDbPasswordValid) {
-          logInfo("auth.authorize.bootstrap-account.db-user", {
-            email: normalizedEmail,
-            userId: user.id,
-            role: user.role,
-          })
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name ?? user.email,
-            role: user.role,
-            evolutionInstance: user.evolutionInstance,
-          } satisfies AuthUser
-        }
-      }
-    } catch (error) {
-      logWarn("auth.authorize.bootstrap-account.db-lookup-failed", {
-        email: normalizedEmail,
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      })
-    }
-
-    logInfo("auth.authorize.bootstrap-account.fallback", {
-      email: normalizedEmail,
-      accountId: bootstrapAccount.id,
-    })
-
-    return {
-      id: bootstrapAccount.id,
-      email: bootstrapAccount.email,
-      name: bootstrapAccount.name ?? bootstrapAccount.email,
-      role: bootstrapAccount.role,
-      evolutionInstance: null,
-    } satisfies AuthUser
-  }
 
   const user = await findUserByNormalizedEmail(normalizedEmail)
 

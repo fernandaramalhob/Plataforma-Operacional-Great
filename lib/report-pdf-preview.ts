@@ -95,7 +95,7 @@ export function verifyReportPdfAccessToken(reportId: string, token: string) {
   return timingSafeEqual(actualBuffer, expectedBuffer)
 }
 
-export async function buildExactReportPdfBuffer(params: { reportId: string }) {
+export async function buildPreviewReportPdfBuffer(params: { reportId: string }) {
   const browserPath = resolveBrowserPath()
   const timeoutMs = getPdfRenderTimeoutMs()
 
@@ -138,7 +138,7 @@ export async function buildExactReportPdfBuffer(params: { reportId: string }) {
 
     return await readFile(pdfPath)
   } catch (error) {
-    logError("report-pdf-preview-server.build", error, {
+    logError("report-pdf-preview.build", error, {
       reportId: params.reportId,
       browserPath,
       reportUrl: reportUrl.toString(),

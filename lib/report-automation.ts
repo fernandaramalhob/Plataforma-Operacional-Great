@@ -4,7 +4,7 @@ import type {
   ReportSendMode,
 } from "@/types/report.types"
 
-export const REPORT_AUTOMATION_DEFAULT_TIMEZONE = "America/Sao_Paulo"
+export const REPORT_AUTOMATION_DEFAULT_TIMEZONE = "America/São_Paulo"
 
 const SUPPORTED_OBJECTIVES = new Set<ReportObjectiveValue>([
   "ALL",
@@ -169,10 +169,23 @@ function readOptionalEmail(
 }
 
 function validateIsoDate(value: string) {
-  const date = new Date(`${value}T00:00:00`)
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
 
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
-    throw new Error(`Data invalida '${value}'. Use o formato YYYY-MM-DD.`)
+  if (!match) {
+    throw new Error(`Data inválida '${value}'. Use o formato YYYY-MM-DD.`)
+  }
+
+  const year = Number.parseInt(match[1], 10)
+  const month = Number.parseInt(match[2], 10)
+  const day = Number.parseInt(match[3], 10)
+  const date = new Date(Date.UTC(year, month - 1, day))
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    throw new Error(`Data inválida '${value}'. Use o formato YYYY-MM-DD.`)
   }
 }
 

@@ -11,7 +11,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   return (
-    <div className="relative isolate flex min-h-screen overflow-hidden bg-[var(--color-app-background)] text-[var(--color-app-text)]">
+    <div className="relative isolaté flex min-h-screen overflow-hidden bg-[var(--color-app-background)] text-[var(--color-app-text)]">
       <div className="pointer-events-none absolute -left-24 top-[-6rem] h-72 w-72 rounded-full bg-[rgba(193,18,31,0.12)] blur-3xl" />
       <div className="pointer-events-none absolute right-[-7rem] top-1/3 h-80 w-80 rounded-full bg-[rgba(59,130,246,0.08)] blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-6rem] left-1/4 h-64 w-64 rounded-full bg-[rgba(15,23,42,0.06)] blur-3xl" />

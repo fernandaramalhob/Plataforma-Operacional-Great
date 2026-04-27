@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { CalendarClock, Loader2, X } from "lucide-react"
-import { rescheduleQueuedReport, rescheduleQueuedReports } from "@/lib/report-client"
+import { rescheduleQueuedReports } from "@/lib/report-client"
 
 type BulkReportResendModalProps = {
   open: boolean
@@ -104,7 +104,7 @@ export function BulkReportResendModal({
               }),
             }).then(async (response) => {
               if (!response.ok) {
-                throw new Error("Nao foi possivel reagendar os agendamentos")
+                throw new Error("Não foi possível reagendar os agendamentos")
               }
 
               return (await response.json()) as {
@@ -124,7 +124,7 @@ export function BulkReportResendModal({
       setError(
         rescheduleError instanceof Error
           ? rescheduleError.message
-          : "Nao foi possivel reagendar os relatorios"
+          : "Não foi possível reagendar os relatórios"
       )
     } finally {
       setSaving(false)

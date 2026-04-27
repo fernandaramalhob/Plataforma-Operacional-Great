@@ -40,7 +40,7 @@ function getToneLabel(tone: DashboardTone) {
   }
 
   if (tone === "warning") {
-    return "Atenção"
+    return "Aténção"
   }
 
   if (tone === "healthy") {

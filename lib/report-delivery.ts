@@ -1,5 +1,5 @@
-import { buildExactReportPdfBuffer } from "@/lib/report-pdf-preview-server"
-import { buildReportPdfBuffer } from "@/lib/report-pdf-server"
+import { buildReportPdfBufferWithFallback } from "@/lib/report-pdf-fallback"
+import { buildStandardReportPdfBuffer } from "@/lib/report-pdf-standard"
 import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
 import {
   buildWhatsAppReportMessage,
@@ -89,7 +89,7 @@ export async function sendPersistedReportNow(
   })
 
   if (currentStatus?.status === "CANCELLED") {
-    throw new Error("Relatorio cancelado")
+    throw new Error("Relatório cancelado")
   }
 
   const mode = options?.mode ?? "PDF_AND_MESSAGE"
@@ -115,21 +115,13 @@ export async function sendPersistedReportNow(
       const pdfBuffer = options?.pdfBase64
         ? Buffer.from(options.pdfBase64, "base64")
         : pdfStrategy === "standard"
-          ? buildReportPdfBuffer({
+          ? buildStandardReportPdfBuffer({
               reportId: report.id,
               payload,
             })
-          : await buildExactReportPdfBuffer({
+          : await buildReportPdfBufferWithFallback({
               reportId: report.id,
-            }).catch((pdfError) => {
-              logError("report-delivery.preview-pdf-fallback", pdfError, {
-                reportId: report.id,
-              })
-
-              return buildReportPdfBuffer({
-                reportId: report.id,
-                payload,
-              })
+              payload,
             })
 
       const fileName =
@@ -187,7 +179,7 @@ export async function sendPersistedReportNow(
         },
       })
 
-      throw new Error("Relatorio cancelado")
+      throw new Error("Relatório cancelado")
     }
 
     const updatedReport = await prisma.report.updateMany({
@@ -211,7 +203,7 @@ export async function sendPersistedReportNow(
         },
       })
 
-      throw new Error("Relatorio cancelado")
+      throw new Error("Relatório cancelado")
     }
 
     await prisma.sendLog.update({
@@ -232,7 +224,7 @@ export async function sendPersistedReportNow(
     const message =
       error instanceof Error ? error.message : "Erro ao enviar relatório"
 
-    if (message === "Relatorio cancelado") {
+    if (message === "Relatório cancelado") {
       throw error
     }
 

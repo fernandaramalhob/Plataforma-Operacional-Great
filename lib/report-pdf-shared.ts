@@ -14,7 +14,7 @@ export function buildReportPdfFileName(input: {
   endDate: string
 }) {
   return [
-    "greatgo-relatorio-meta-ads",
+    "greatgo-relatório-meta-ads",
     sanitizeFileNamePart(input.clientName),
     input.startDate,
     "a",

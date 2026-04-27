@@ -65,7 +65,7 @@ export async function saveSavedReportMessage(
       },
       body: JSON.stringify({ message }),
     },
-    "Nao foi possivel salvar a mensagem"
+    "Não foi possível salvar a mensagem"
   )
 }
 
@@ -134,7 +134,7 @@ export async function rescheduleQueuedReport(
       },
       body: JSON.stringify({ scheduledAt }),
     },
-    "Nao foi possivel reagendar o relatorio"
+    "Não foi possível reagendar o relatório"
   )
 }
 
@@ -212,7 +212,7 @@ export async function saveMultipleClientReportSchedules(
         payload,
       }),
     },
-    "Nao foi possivel salvar o agendamento para os clientes selecionados"
+    "Não foi possível salvar o agendamento para os clientes selecionados"
   )
 
   return response.schedules
@@ -234,7 +234,7 @@ export async function loadReportSchedules() {
     {
       cache: "no-store",
     },
-    "Nao foi possivel carregar os agendamentos"
+    "Não foi possível carregar os agendamentos"
   )
 }
 
@@ -245,6 +245,6 @@ export async function loadEvolutionSettings(options?: { sync?: boolean }) {
     {
       cache: "no-store",
     },
-    "Nao foi possivel carregar os grupos da Evolution"
+    "Não foi possível carregar os grupos da Evolution"
   )
 }

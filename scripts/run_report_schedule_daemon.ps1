@@ -4,7 +4,6 @@ param(
   [string]$RepoRoot = "",
   [string]$EnvFile = "",
   [switch]$Once,
-  [int]$RestartDelaySeconds = 5,
   [string[]]$AdditionalArgs = @()
 )
 
@@ -173,29 +172,20 @@ if ($Once) {
 
 Write-LogLine -Path $stdoutLog -Message "Daemon launcher iniciado em $resolvedRepoRoot usando $nodeExecutable."
 Write-LogLine -Path $stdoutLog -Message "Env file: $resolvedEnvFile"
+Write-LogLine -Path $stdoutLog -Message "Iniciando daemon do agendador..."
 
-while ($true) {
-  Write-LogLine -Path $stdoutLog -Message "Iniciando daemon do agendador..."
+try {
+  & $nodeExecutable @argumentList 1>> $stdoutLog 2>> $stderrLog
+  $exitCode = $LASTEXITCODE
+  Write-LogLine -Path $stdoutLog -Message "Daemon finalizado com exit code $exitCode."
+  exit $exitCode
+} catch {
+  $message = if ($_.Exception.Message) { $_.Exception.Message } else { "Falha inesperada no launcher do daemon" }
+  Write-LogLine -Path $stderrLog -Message $message
 
-  try {
-    & $nodeExecutable @argumentList 1>> $stdoutLog 2>> $stderrLog
-    $exitCode = $LASTEXITCODE
-    Write-LogLine -Path $stdoutLog -Message "Daemon finalizado com exit code $exitCode."
-
-    if ($Once) {
-      exit $exitCode
-    }
-  } catch {
-    $message = if ($_.Exception.Message) { $_.Exception.Message } else { "Falha inesperada no launcher do daemon" }
-    Write-LogLine -Path $stderrLog -Message $message
-
-    if ($Once) {
-      throw
-    }
+  if ($Once) {
+    throw
   }
 
-  if ($RestartDelaySeconds -gt 0) {
-    Write-LogLine -Path $stderrLog -Message "Reiniciando daemon em $RestartDelaySeconds segundos."
-    Start-Sleep -Seconds $RestartDelaySeconds
-  }
+  exit 1
 }

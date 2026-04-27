@@ -19,7 +19,7 @@ export async function GET() {
 
     if (!user) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }

@@ -16,8 +16,8 @@ import { ReportScheduleModal } from "@/components/reports/report-schedule-modal"
 import { SendReportComposer } from "@/components/reports/send-report-composer"
 import { ErrorState } from "@/components/shared/error-state"
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
-import { buildReportPdfFilePayload, exportReportPdf } from "@/lib/report-pdf"
 import { buildReportSendPreview } from "@/lib/report-message"
+import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
 import {
   pollSavedReportUntilReady,
   saveSavedReportMessage,
@@ -29,8 +29,6 @@ import type { ReportSendMode, SavedReportResponse } from "@/types/report.types"
 export default function ReportPreviewPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
-  const reportRef = useRef<HTMLDivElement>(null)
-  const pdfReportRef = useRef<HTMLDivElement>(null)
   const reportPollSequenceRef = useRef(0)
   const initialSendModeRef = useRef<ReportSendMode>("PDF_AND_MESSAGE")
   const initialSendMessageRef = useRef("")
@@ -135,39 +133,8 @@ export default function ReportPreviewPage() {
     )
   }
 
-  async function handleGeneratePDF() {
-    const sourceElement = pdfReportRef.current ?? reportRef.current
-
-    if (!sourceElement || !savedReport?.payload) {
-      return
-    }
-
-    setGenerating(true)
-
-    try {
-      await exportReportPdf({
-        sourceElement,
-        clientName: savedReport.payload.client.name,
-        startDate: savedReport.payload.filters.since,
-        endDate: savedReport.payload.filters.until,
-        objective: savedReport.payload.filters.objective,
-        generatedAt: savedReport.generatedAt,
-        reportId: savedReport.id,
-      })
-    } catch (pdfError) {
-      logError("dashboard.report-preview.page", pdfError, {
-        reportId: savedReport.id,
-      })
-      setError("NÃƒÂ£o foi possÃƒÂ­vel gerar o PDF do relatÃƒÂ³rio")
-    } finally {
-      setGenerating(false)
-    }
-  }
-
   async function handleSendReport() {
-    const sourceElement = pdfReportRef.current ?? reportRef.current
-
-    if (!savedReport?.payload || !sourceElement) {
+    if (!savedReport?.payload) {
       return
     }
 
@@ -180,24 +147,9 @@ export default function ReportPreviewPage() {
     setActionFeedback("")
 
     try {
-      const pdfAttachment =
-        sendMode === "PDF_ONLY" || sendMode === "PDF_AND_MESSAGE"
-          ? await buildReportPdfFilePayload({
-              sourceElement,
-              clientName: savedReport.payload.client.name,
-              startDate: savedReport.payload.filters.since,
-              endDate: savedReport.payload.filters.until,
-              objective: savedReport.payload.filters.objective,
-              generatedAt: savedReport.generatedAt,
-              reportId: savedReport.id,
-            })
-          : null
-
       await sendReportToWhatsApp(savedReport.id, {
         mode: sendMode,
         message: sendMode === "PDF_ONLY" ? undefined : sendMessage,
-        pdfBase64: pdfAttachment?.base64,
-        pdfFileName: pdfAttachment?.fileName,
       })
       initialSendModeRef.current = sendMode
       initialSendMessageRef.current = sendMessage
@@ -210,10 +162,59 @@ export default function ReportPreviewPage() {
       setError(
         sendError instanceof Error
           ? sendError.message
-          : "NÃƒÂ£o foi possÃƒÂ­vel enviar o relatÃƒÂ³rio"
+          : "NÃƒÂ£o foi possÃƒÂ­vel enviar o relatÃ³rio"
       )
     } finally {
       setSending(false)
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (!savedReport?.payload) {
+      return
+    }
+
+    setGenerating(true)
+    setError("")
+
+    try {
+      const response = await fetch(`/api/reports/${savedReport.id}/pdf`, {
+        cache: "no-store",
+      })
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        throw new Error(
+          (body as { error?: string } | null)?.error ??
+            `Não foi possível gerar o PDF (${response.status})`
+        )
+      }
+
+      const blob = await response.blob()
+      const contentDisposition = response.headers.get("content-disposition")
+      const match = contentDisposition?.match(/filename="?([^"]+)"?/i)
+      const fileName =
+        match?.[1] ??
+        `${buildReportPdfFileName({
+          clientName: savedReport.payload.client.name,
+          startDate: savedReport.payload.filters.since,
+          endDate: savedReport.payload.filters.until,
+        })}.pdf`
+
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = objectUrl
+      anchor.download = fileName
+      anchor.rel = "noreferrer"
+      anchor.click()
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+    } catch (pdfError) {
+      logError("dashboard.report-preview.download", pdfError, {
+        reportId: savedReport.id,
+      })
+      setError("Não foi possível gerar o PDF do relatório")
+    } finally {
+      setGenerating(false)
     }
   }
 
@@ -241,7 +242,7 @@ export default function ReportPreviewPage() {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Nao foi possivel salvar a mensagem"
+          : "Não foi possível salvar a mensagem"
       )
     } finally {
       setSavingMessage(false)
@@ -448,17 +449,15 @@ export default function ReportPreviewPage() {
               />
             </div>
 
-            <div ref={reportRef}>
-              <ReportPreview
-                client={payload.client}
-                reportData={payload}
-                startDate={payload.filters.since}
-                endDate={payload.filters.until}
-                objective={payload.filters.objective}
-                selectedCampaignIds={selectedCampaignIds}
-                insightsEnabled={insightsEnabled}
-              />
-            </div>
+            <ReportPreview
+              client={payload.client}
+              reportData={payload}
+              startDate={payload.filters.since}
+              endDate={payload.filters.until}
+              objective={payload.filters.objective}
+              selectedCampaignIds={selectedCampaignIds}
+              insightsEnabled={insightsEnabled}
+            />
           </div>
 
           <div className="sticky bottom-0 z-10 flex flex-col gap-3 border-t border-gray-200 bg-white/95 px-4 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6 md:px-8 print:hidden">
@@ -493,7 +492,7 @@ export default function ReportPreviewPage() {
                 {sending ? "Enviando..." : "Enviar por WhatsApp"}
               </button>
               <button
-                onClick={() => void handleGeneratePDF()}
+                onClick={() => void handleDownloadPdf()}
                 disabled={generating}
                 className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
               >
@@ -503,24 +502,6 @@ export default function ReportPreviewPage() {
             </div>
           </div>
         </section>
-      </div>
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed left-[-200vw] top-0 w-[1120px] overflow-hidden bg-white"
-      >
-        <div ref={pdfReportRef}>
-          <ReportPreview
-            client={payload.client}
-            reportData={payload}
-            startDate={payload.filters.since}
-            endDate={payload.filters.until}
-            objective={payload.filters.objective}
-            selectedCampaignIds={selectedCampaignIds}
-            insightsEnabled={insightsEnabled}
-            variant="pdf"
-          />
-        </div>
       </div>
 
       <ReportScheduleModal
@@ -552,4 +533,3 @@ export default function ReportPreviewPage() {
     </>
   )
 }
-

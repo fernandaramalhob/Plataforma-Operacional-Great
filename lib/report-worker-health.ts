@@ -136,7 +136,7 @@ export async function getReportWorkerHealth(
       severity: "error",
       checkedAt: now.toISOString(),
       detail:
-        "O worker continuo de agendamentos ainda nao enviou heartbeat.",
+        "O worker continuo de agendamentos ainda não enviou heartbeat.",
       lastHeartbeatAt: null,
       lastError: null,
       lastAlertAt: null,

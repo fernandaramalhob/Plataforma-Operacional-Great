@@ -48,23 +48,19 @@ function maskToken(token: string) {
   return `${token.slice(0, 8)}...${token.slice(-6)}`
 }
 
-function isMetaTokenPreset(value: unknown): value is MetaTokenPreset {
-  return value === "ISAQUE" || value === "BRAYTON"
-}
-
 async function inspectSelectedPresetToken(preset: MetaTokenPreset) {
   const token = getMetaAccessTokenFromEnv(preset)
 
   if (!token) {
     throw new Error(
-      `Token META ${getMetaTokenPresetLabel(preset)} nao configurado no ambiente.`
+      `Token META ${getMetaTokenPresetLabel(preset)} não configurado no ambiente.`
     )
   }
 
   const validation = await inspectMetaTokenValue(token)
 
   if (!validation.ok) {
-    throw new Error(validation.detail ?? "Token META invalido")
+    throw new Error(validation.detail ?? "Token META inválido")
   }
 
   return {
@@ -119,7 +115,7 @@ export async function GET() {
 
     if (!context) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -207,7 +203,7 @@ export async function POST(request: Request) {
 
     if (!context) {
       return NextResponse.json<ApiErrorResponse>(
-        { error: "Nao autorizado" },
+        { error: "Não autorizado" },
         { status: 401 }
       )
     }
@@ -217,7 +213,7 @@ export async function POST(request: Request) {
     if (dbError) {
       return NextResponse.json<ApiErrorResponse>(
         {
-          error: "Banco de dados indisponivel",
+          error: "Banco de dados indisponível",
           detail: dbError,
         },
         { status: 503 }

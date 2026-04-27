@@ -157,7 +157,7 @@ export async function generateLiveReportPayload(params: {
       .slice(0, 5)
       .map((ad) => ({
         id: ad.ad_id ?? randomUUID(),
-        name: ad.ad_name ?? "Anuncio sem nome",
+        name: ad.ad_name ?? "Anúncio sem nome",
         impressions: ad.impressions,
         reach: ad.reach,
         clicks: ad.clicks,
@@ -165,7 +165,7 @@ export async function generateLiveReportPayload(params: {
         actions: ad.actions as ReportAction[] | undefined,
       })),
     genderBreakdown: genderBreakdown.map((row) => ({
-      dimension: row.gender ?? "nao informado",
+      dimension: row.gender ?? "não informado",
       spend: row.spend,
       impressions: row.impressions,
       reach: row.reach,

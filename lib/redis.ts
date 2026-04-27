@@ -11,7 +11,7 @@ function getRedisUrl() {
   const redisUrl = process.env.REDIS_URL?.trim()
 
   if (!redisUrl) {
-    throw new Error("Configuracao ausente: REDIS_URL")
+    throw new Error("Configuração ausente: REDIS_URL")
   }
 
   return redisUrl

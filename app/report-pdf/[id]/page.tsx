@@ -2,7 +2,7 @@
 import { ReportPreview } from "@/components/reports/report-preview"
 import { prisma } from "@/lib/prisma"
 import { parseStoredReportPayload } from "@/lib/report-domain"
-import { verifyReportPdfAccessToken } from "@/lib/report-pdf-preview-server"
+import { verifyReportPdfAccessToken } from "@/lib/report-pdf-preview"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0

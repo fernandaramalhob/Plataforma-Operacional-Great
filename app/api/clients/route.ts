@@ -5,6 +5,7 @@ import {
   getCurrentUser,
   scopeClientWhere,
 } from "@/lib/authorization"
+import { formatLocalDateInput } from "@/lib/date-input"
 import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
 import {
@@ -132,7 +133,7 @@ export async function GET(request: Request) {
 
     if (format === "csv") {
       const csv = serializeClientsToCsv(clients)
-      const dateStamp = new Date().toISOString().slice(0, 10)
+      const dateStamp = formatLocalDateInput(new Date())
 
       return new NextResponse(csv, {
         status: 200,

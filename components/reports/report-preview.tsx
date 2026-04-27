@@ -404,7 +404,7 @@ function ScreenCampaignSection({
 
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center text-sm text-gray-400">
-          Nenhuma campanha selecionada para exibir nesta versao do relatório.
+          Nenhuma campanha selecionada para exibir nesta versão do relatório.
         </div>
       ) : (
         <>
@@ -724,7 +724,7 @@ function PdfCampaignSection({
 
       {rows.length === 0 ? (
         <div className="px-6 py-10 text-center text-sm text-gray-400">
-          Nenhuma campanha selecionada para exibir nesta versao do relatório.
+          Nenhuma campanha selecionada para exibir nesta versão do relatório.
         </div>
       ) : (
         <>
@@ -791,7 +791,7 @@ function PdfCampaignSection({
 
           {hiddenRowsCount > 0 ? (
             <div className="border-t border-gray-100 bg-slate-50 px-5 py-3 text-xs font-medium text-slate-500">
-              +{hiddenRowsCount} campanha(s) omitida(s) nesta versao resumida do PDF.
+              +{hiddenRowsCount} campanha(s) omitida(s) nesta versão resumida do PDF.
             </div>
           ) : null}
         </>
@@ -903,7 +903,7 @@ export function ReportPreview({
   ].filter((card) => {
     const metricMap: Record<string, keyof ReportMetricVisibility> = {
       Investimento: "spend",
-      Impressões: "impressions",
+      Impressoes: "impressions",
       Alcance: "reach",
       Cliques: "clicks",
       "Taxa de cliques": "ctr",

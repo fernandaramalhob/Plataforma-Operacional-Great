@@ -69,7 +69,7 @@ async function triggerContinuation(request: Request) {
   if (!secret) {
     return {
       triggered: false,
-      reason: "CRON_SECRET nao configurado",
+      reason: "CRON_SECRET não configurado",
     }
   }
 
@@ -91,14 +91,14 @@ async function triggerContinuation(request: Request) {
     logError("cron.report-jobs.continuation", error)
     return {
       triggered: false,
-      reason: error instanceof Error ? error.message : "Falha ao disparar continuacao",
+      reason: error instanceof Error ? error.message : "Falha ao disparar continuação",
     }
   }
 }
 
 async function handleRequest(request: Request) {
   if (!isAuthorizedCronRequest(request)) {
-    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
   }
 
   const batchSize = getBatchSize()

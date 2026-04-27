@@ -40,7 +40,7 @@ async function readRequestBody(request: Request) {
 
     return JSON.parse(rawBody) as WeeklyReportsRequestBody
   } catch {
-    throw new Error("Corpo JSON invalido para o cron semanal.")
+    throw new Error("Corpo JSON inválido para o cron semanal.")
   }
 }
 
@@ -57,7 +57,7 @@ async function triggerContinuation(params: {
   if (!secret) {
     return {
       triggered: false,
-      reason: "CRON_SECRET nao configurado",
+      reason: "CRON_SECRET não configurado",
     }
   }
 
@@ -94,14 +94,14 @@ async function triggerContinuation(params: {
 
     return {
       triggered: false,
-      reason: error instanceof Error ? error.message : "Falha ao disparar continuacao",
+      reason: error instanceof Error ? error.message : "Falha ao disparar continuação",
     }
   }
 }
 
 async function handleRequest(request: Request) {
   if (!isAuthorizedCronRequest(request)) {
-    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
   }
 
   let body: WeeklyReportsRequestBody
@@ -112,7 +112,7 @@ async function handleRequest(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "Payload invalido",
+        error: error instanceof Error ? error.message : "Payload inválido",
       },
       { status: 400 }
     )

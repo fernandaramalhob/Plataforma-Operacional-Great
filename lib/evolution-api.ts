@@ -48,7 +48,7 @@ function getRequiredEnv(name: "EVOLUTION_API_URL" | "EVOLUTION_API_KEY" | "EVOLU
   const value = normalizeEnvValue(process.env[name])
 
   if (!value) {
-    throw new Error(`Configuracao ausente: ${name}`)
+    throw new Error(`Configuração ausente: ${name}`)
   }
 
   return value
@@ -527,7 +527,7 @@ export async function listEvolutionInstances() {
           data !== null &&
           (("error" in data && typeof data.error === "string" && data.error) ||
             ("message" in data && typeof data.message === "string" && data.message))) ||
-          "Falha ao listar instancias na Evolution API"
+          "Falha ao listar instâncias na Evolution API"
       )
     }
 
@@ -775,7 +775,7 @@ export async function loadEvolutionCatalog(
     instances = await listEvolutionInstances()
   } catch (error) {
     partialErrors.push(
-      error instanceof Error ? error.message : "Falha ao listar instancias na Evolution API"
+      error instanceof Error ? error.message : "Falha ao listar instâncias na Evolution API"
     )
     instances = config.instance
       ? [
@@ -910,7 +910,7 @@ async function resolveEvolutionInstanceForDestination(
       return matchingGroup.instance
     }
   } catch {
-    // Fallback para a instancia padrao quando a consulta de grupos falhar.
+    // Fallback para a instância padrão quando a consulta de grupos falhar.
   }
 
   return configuredInstance

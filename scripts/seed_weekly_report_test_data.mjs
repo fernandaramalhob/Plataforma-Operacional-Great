@@ -44,7 +44,7 @@ function buildClientEmail(name) {
 async function upsertSeedClient(params) {
   const user = await ensureBootstrapLoginAccount(params.managerEmail)
   if (!user?.id) {
-    throw new Error(`Nao foi possivel provisionar ${params.managerEmail}.`)
+  throw new Error(`Não foi possível provisionar ${params.managerEmail}.`)
   }
 
   const existing = await prisma.client.findFirst({

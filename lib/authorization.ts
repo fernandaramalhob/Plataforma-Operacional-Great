@@ -1,5 +1,4 @@
 import type { Prisma, User } from "@prisma/client"
-import { authOptions } from "@/lib/auth"
 import { getSessionUser } from "@/lib/session-user"
 import { getBootstrapLoginAccount } from "@/lib/auth-accounts"
 import { logError, logInfo, logWarn } from "@/lib/safe-logger"

@@ -42,7 +42,7 @@ function getScheduleLabel(schedule: ReportScheduleListItem["schedule"]) {
 
   const weekdayLabel =
     REPORT_SCHEDULE_WEEKDAYS.find((weekday) => weekday.value === schedule.weekday)
-      ?.label ?? "Dia nao definido"
+      ?.label ?? "Dia não definido"
 
   return `${weekdayLabel} as ${time}`
 }
@@ -61,7 +61,7 @@ function getSendModeLabel(sendMode: ReportSendMode) {
 
 function formatGroupDisplay(groupId: string | null | undefined) {
   if (!groupId) {
-    return "Padrao do cliente"
+    return "Padrão do cliente"
   }
 
   const separatorIndex = groupId.indexOf("::")
@@ -101,13 +101,13 @@ function getInitials(name: string) {
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) {
-    return "Nao informado"
+    return "Não informado"
   }
 
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
-    return "Nao informado"
+    return "Não informado"
   }
 
   return date.toLocaleString("pt-BR")
@@ -277,7 +277,7 @@ function ScheduleDetailsModal({
 
               <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  Proxima execucao
+                  Próxima execucao
                 </p>
                 <div className="mt-3 flex items-start gap-3">
                   <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-[#C1121F]">
@@ -290,7 +290,7 @@ function ScheduleDetailsModal({
                         : formatDateTime(item.schedule.lastRunAt)}
                     </p>
                     <p className="text-sm text-slate-500">
-                      {item.schedule.active ? "Proximo evento" : "Ultima execucao"}
+                      {item.schedule.active ? "Próximo evento" : "Ultima execucao"}
                     </p>
                     {item.lastSendAttemptAt ? (
                       <p className="text-sm text-slate-500">
@@ -320,9 +320,9 @@ function ScheduleDetailsModal({
                   Cliente
                 </p>
                 <div className="mt-3 space-y-2 text-sm text-slate-600">
-                  <p>Grupo do cliente: {item.clientWhatsappGroupId ?? "Nao informado"}</p>
-                  <p>E-mail: {client?.email ?? "Nao informado"}</p>
-                  <p>Conta: {client?.adAccountId ?? "Nao informada"}</p>
+                  <p>Grupo do cliente: {item.clientWhatsappGroupId ?? "Não informado"}</p>
+                  <p>E-mail: {client?.email ?? "Não informado"}</p>
+                  <p>Conta: {client?.adAccountId ?? "Não informada"}</p>
                 </div>
               </div>
 
@@ -331,7 +331,7 @@ function ScheduleDetailsModal({
                   Ultimo envio
                 </p>
                 <div className="mt-3 space-y-2 text-sm text-slate-600">
-                  <p>Relatorio: {item.lastReportId ?? "Nao vinculado"}</p>
+                  <p>Relatório: {item.lastReportId ?? "Não vinculado"}</p>
                   <p>Gerado em: {formatDateTime(item.lastReportGeneratedAt)}</p>
                   <p>Ultimo erro: {item.lastSendError ?? "Sem erro registrado"}</p>
                 </div>
@@ -402,7 +402,7 @@ export function ReportSchedulesPanel({
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Nao foi possivel carregar os agendamentos."
+          : "Não foi possível carregar os agendamentos."
       )
     } finally {
       setLoading(false)
@@ -437,7 +437,7 @@ export function ReportSchedulesPanel({
       setError(
         deleteError instanceof Error
           ? deleteError.message
-          : "Nao foi possivel excluir o agendamento."
+          : "Não foi possível excluir o agendamento."
       )
     } finally {
       setDeletingClientId(null)
@@ -475,7 +475,7 @@ export function ReportSchedulesPanel({
 
         {error ? (
           <ErrorState
-            title="Nao foi possivel carregar os agendamentos"
+            title="Não foi possível carregar os agendamentos"
             message={error}
             action={
               <button
@@ -496,7 +496,7 @@ export function ReportSchedulesPanel({
         ) : schedules.length === 0 ? (
           <EmptyState
             title="Nenhum agendamento encontrado"
-            description="Assim que voce criar um agendamento, ele aparecera aqui com o status de execucao."
+            description="Assim que você criar um agendamento, ele aparecera aqui com o status de execucao."
             className="rounded-[32px] border-slate-200 bg-white py-20"
           />
         ) : (
@@ -594,7 +594,7 @@ export function ReportSchedulesPanel({
 
                       <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                          {item.schedule.active ? "Proximo evento" : "Ultima execucao"}
+                          {item.schedule.active ? "Próximo evento" : "Ultima execucao"}
                         </p>
                         <div className="mt-3 flex items-start gap-3">
                           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-[#C1121F]">
@@ -719,7 +719,7 @@ export function ReportSchedulesPanel({
 
           if (savedSchedule) {
             setActionFeedback(
-              `Agendamento de ${editingItem?.clientName ?? "cliente"} atualizado. Proximo envio em ${new Date(savedSchedule.nextRunAt).toLocaleString("pt-BR")}.`
+              `Agendamento de ${editingItem?.clientName ?? "cliente"} atualizado. Próximo envio em ${new Date(savedSchedule.nextRunAt).toLocaleString("pt-BR")}.`
             )
           }
 

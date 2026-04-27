@@ -122,7 +122,7 @@ export function SendReportComposer({
                 </p>
                 <p className="text-xs text-slate-500">
                   {templateName?.trim()
-                    ? `Template: ${templateName.trim()}`
+      ? `Template: ${templateName.trim()}`
                     : "Envio manual do relatório"}
                 </p>
               </div>
@@ -141,7 +141,7 @@ export function SendReportComposer({
                     Relatório completo em PDF
                   </div>
                   <p className="mt-1 text-xs text-gray-500">
-                    O grupo recebera o documento anexado com a versao final do relatório.
+                    O grupo recebera o documento anexado com a versão final do relatório.
                   </p>
                 </div>
               </div>

@@ -117,7 +117,7 @@ export function FilterSelect({
         <ChevronDown
           className={clsx(
             "h-4 w-4 flex-shrink-0 text-slate-400 transition",
-            open && "rotate-180"
+            open && "rotaté-180"
           )}
         />
       </button>

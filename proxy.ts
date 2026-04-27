@@ -75,7 +75,7 @@ export async function proxy(request: NextRequest) {
       pathname,
       hasToken: false,
     })
-    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
   }
 
   return NextResponse.next()

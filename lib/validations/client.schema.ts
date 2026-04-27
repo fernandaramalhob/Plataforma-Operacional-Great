@@ -50,7 +50,7 @@ export const clientPayloadSchema = z
       },
       z
         .string()
-        .email({ message: "E-mail invalido" })
+        .email({ message: "E-mail inválido" })
         .max(CLIENT_EMAIL_MAX_LENGTH, {
           message: `E-mail deve ter no maximo ${CLIENT_EMAIL_MAX_LENGTH} caracteres`,
         })
@@ -110,5 +110,5 @@ export const clientPayloadSchema = z
 export type ClientPayload = z.infer<typeof clientPayloadSchema>
 
 export function getClientValidationMessage(error: z.ZodError) {
-  return error.issues[0]?.message ?? "Dados do cliente invalidos"
+  return error.issues[0]?.message ?? "Dados do cliente inválidos"
 }

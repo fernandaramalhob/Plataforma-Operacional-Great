@@ -15,7 +15,7 @@ export const maxDuration = 300
 
 async function handleRequest(request: Request) {
   if (!isAuthorizedCronRequest(request)) {
-    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
   }
 
   try {

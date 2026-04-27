@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
   if (!account) {
     return NextResponse.json(
-      { error: "Conta de teste indisponivel" },
+      { error: "Conta de teste indisponível" },
       { status: 404 }
     )
   }
