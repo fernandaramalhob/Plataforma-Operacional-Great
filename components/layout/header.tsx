@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
-import { Bell, CalendarDays, CheckCheck, ChevronDown } from "lucide-react"
+import { Bell, CalendarDays, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
@@ -95,15 +95,6 @@ export function Header({ title }: HeaderProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [isDateFilterOpen, setIsDateFilterOpen] = useState(false)
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
-  const [notifications, setNotifications] = useState([
-    {
-      id: "system-status",
-      title: "Caixa limpa",
-      description: "Quando houver avisos importantes do sistema, eles aparecerão aqui.",
-      read: true,
-    },
-  ])
 
   const [currentRange, setCurrentRange] = useState<DashboardRangeState>(() =>
     typeof window === "undefined"
@@ -129,8 +120,6 @@ export function Header({ title }: HeaderProps) {
   }, [pathname])
 
   const isDashboardHome = pathname === "/dashboard"
-  const unreadCount = notifications.filter((notification) => !notification.read).length
-
   const initials =
     session?.user?.name
       ?.split(" ")
@@ -140,8 +129,6 @@ export function Header({ title }: HeaderProps) {
       .toUpperCase() ?? "GG"
 
   function toggleDateFilter() {
-    setIsNotificationsOpen(false)
-
     if (isDateFilterOpen) {
       setIsDateFilterOpen(false)
       return
@@ -191,35 +178,24 @@ export function Header({ title }: HeaderProps) {
     setIsDateFilterOpen(false)
   }
 
-  function toggleNotifications() {
-    setIsDateFilterOpen(false)
-    setIsNotificationsOpen((current) => !current)
-  }
-
-  function markAllNotificationsAsRead() {
-    setNotifications((current) =>
-      current.map((notification) => ({ ...notification, read: true }))
-    )
-  }
-
   return (
-    <header className="sticky top-0 z-20 px-8 pt-5">
+    <header className="sticky top-0 z-20 px-6 pt-4 sm:px-8">
       <div className="mx-auto max-w-[1480px]">
-        <div className="rounded-[30px] border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-elevatéd)] px-6 py-4 shadow-[0_22px_44px_-34px_rgba(15,23,42,0.38)] backdrop-blur-xl">
-          <div className="grid min-h-11 grid-cols-[1.15fr_auto_1fr] items-center gap-4">
-            <div className="flex items-center gap-4">
-              <div className="h-10 w-1.5 rounded-full bg-gradient-to-b from-[#C1121F] to-[#F59E0B]" />
+        <div className="rounded-[30px] border border-[#e5e7eb] bg-white px-6 py-4 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.18)]">
+          <div className="grid min-h-[52px] grid-cols-1 items-center gap-5 lg:grid-cols-[1fr_auto_1fr]">
+            <div className="flex items-start gap-4">
+              <div className="mt-1 h-11 w-1.5 rounded-full bg-[#df2531]" />
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--color-app-text-faint)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#94a3b8]">
                   {title ?? "Dashboard"}
                 </p>
-                <p className="mt-1 text-sm text-[color:var(--color-app-text-soft)]">
+                <p className="mt-1 text-[15px] text-[#6b7280]">
                   Operação central da plataforma
                 </p>
               </div>
             </div>
 
-            <div className="flex justify-center">
+            <div className="flex justify-start lg:justify-center">
               {isDashboardHome ? (
                 <div className="relative">
                   {isDateFilterOpen ? (
@@ -233,10 +209,10 @@ export function Header({ title }: HeaderProps) {
 
                   <button
                     type="button"
-                    className="relative z-20 flex min-w-[272px] items-center justify-center gap-2 rounded-full border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] px-4 py-2 text-xs font-medium text-[color:var(--color-app-text-muted)] shadow-[0_12px_28px_-24px_rgba(15,23,42,0.42)] transition hover:border-[color:var(--color-app-border-strong)] hover:bg-[var(--color-app-surface)]"
+                    className="inline-flex min-w-[318px] items-center justify-center gap-2 rounded-full border border-[#e5e7eb] bg-white px-4 py-2 text-[14px] text-[#4b5563] shadow-[0_8px_18px_-16px_rgba(15,23,42,0.18)] transition hover:border-[#d1d5db]"
                     onClick={toggleDateFilter}
                   >
-                    <CalendarDays className="h-3.5 w-3.5 text-[color:var(--color-app-text-faint)]" />
+                    <CalendarDays className="h-4 w-4 text-[#9ca3af]" />
                     <span>
                       Período:{" "}
                       {isAllTime
@@ -245,47 +221,43 @@ export function Header({ title }: HeaderProps) {
                             currentRange.weekEnd
                           )}`}
                     </span>
-                    <ChevronDown
-                      className={`h-3.5 w-3.5 text-[color:var(--color-app-text-faint)] transition ${
-                        isDateFilterOpen ? "rotaté-180" : ""
-                      }`}
-                    />
+                    <ChevronDown className="h-4 w-4 text-[#9ca3af]" />
                   </button>
 
                   {isDateFilterOpen ? (
-                    <div className="dashboard-panel-solid absolute left-1/2 top-full z-20 mt-3 w-[320px] -translate-x-1/2 rounded-2xl border p-4">
+                    <div className="absolute left-1/2 top-full z-20 mt-3 w-[320px] -translate-x-1/2 rounded-[28px] border border-[#e5e7eb] bg-white p-4 shadow-[0_18px_48px_-32px_rgba(15,23,42,0.25)]">
                       <div className="space-y-4">
                         <div>
-                          <p className="text-sm font-semibold text-[color:var(--color-app-text)]">
+                          <p className="text-sm font-semibold text-[#111827]">
                             Filtrar período
                           </p>
-                          <p className="mt-1 text-xs text-[color:var(--color-app-text-faint)]">
+                          <p className="mt-1 text-xs text-[#9ca3af]">
                             Escolha um intervalo de datas para atualizar o período exibido.
                           </p>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <label className="space-y-1.5">
-                            <span className="text-xs font-medium text-[color:var(--color-app-text-soft)]">
+                            <span className="text-xs font-medium text-[#6b7280]">
                               De
                             </span>
                             <input
                               type="date"
                               value={draftStart}
                               onChange={(event) => setDraftStart(event.target.value)}
-                              className="w-full rounded-xl border border-[color:var(--color-app-border)] bg-[var(--color-app-surface)] px-3 py-2 text-sm text-[color:var(--color-app-text-muted)] outline-none transition focus:border-[#C1121F]"
+                              className="w-full rounded-2xl border border-[#e5e7eb] bg-white px-3 py-2 text-sm text-[#374151] outline-none transition focus:border-[#df2531]"
                             />
                           </label>
 
                           <label className="space-y-1.5">
-                            <span className="text-xs font-medium text-[color:var(--color-app-text-soft)]">
+                            <span className="text-xs font-medium text-[#6b7280]">
                               Até
                             </span>
                             <input
                               type="date"
                               value={draftEnd}
                               onChange={(event) => setDraftEnd(event.target.value)}
-                              className="w-full rounded-xl border border-[color:var(--color-app-border)] bg-[var(--color-app-surface)] px-3 py-2 text-sm text-[color:var(--color-app-text-muted)] outline-none transition focus:border-[#C1121F]"
+                              className="w-full rounded-2xl border border-[#e5e7eb] bg-white px-3 py-2 text-sm text-[#374151] outline-none transition focus:border-[#df2531]"
                             />
                           </label>
                         </div>
@@ -299,7 +271,7 @@ export function Header({ title }: HeaderProps) {
                         <div className="flex items-center justify-between gap-3">
                           <button
                             type="button"
-                            className="text-sm font-medium text-[color:var(--color-app-text-soft)] transition hover:text-[color:var(--color-app-text)]"
+                            className="text-sm font-medium text-[#6b7280] transition hover:text-[#111827]"
                             onClick={resetDateFilter}
                           >
                             Semana atual
@@ -307,7 +279,7 @@ export function Header({ title }: HeaderProps) {
 
                           <button
                             type="button"
-                            className="text-sm font-medium text-[color:var(--color-app-text-soft)] transition hover:text-[color:var(--color-app-text)]"
+                            className="text-sm font-medium text-[#6b7280] transition hover:text-[#111827]"
                             onClick={applyAllTimeFilter}
                           >
                             Todo o tempo
@@ -315,7 +287,7 @@ export function Header({ title }: HeaderProps) {
 
                           <button
                             type="button"
-                            className="rounded-xl bg-[#C1121F] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-2xl bg-[#df2531] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c81f2a] disabled:cursor-not-allowed disabled:opacity-60"
                             onClick={applyDateFilter}
                             disabled={hasDraftError}
                           >
@@ -327,94 +299,24 @@ export function Header({ title }: HeaderProps) {
                   ) : null}
                 </div>
               ) : (
-                <div className="h-9 w-[272px]" aria-hidden="true" />
+                <div className="h-9 w-[318px]" aria-hidden="true" />
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-start gap-2 lg:justify-end">
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#e5e7eb] bg-white text-[#6b7280] shadow-[0_8px_18px_-16px_rgba(15,23,42,0.16)]"
+              >
+                <Bell className="h-4 w-4" />
+              </button>
+
               <ThemeToggle />
-
-              <div className="relative">
-                {isNotificationsOpen ? (
-                  <button
-                    type="button"
-                    aria-label="Fechar notificações"
-                    className="fixed inset-0 z-10 cursor-default"
-                    onClick={() => setIsNotificationsOpen(false)}
-                  />
-                ) : null}
-
-                <button
-                  type="button"
-                  onClick={toggleNotifications}
-                  className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] transition hover:border-[color:var(--color-app-border-strong)] hover:bg-[var(--color-app-surface)]"
-                >
-                  {unreadCount > 0 ? (
-                    <span className="absolute right-1.5 top-1.5 z-10 h-2.5 w-2.5 rounded-full bg-[#C1121F]" />
-                  ) : null}
-                  <Bell className="h-4 w-4 text-[color:var(--color-app-text-soft)]" />
-                </button>
-
-                {isNotificationsOpen ? (
-                  <div className="dashboard-panel-solid absolute right-0 top-full z-20 mt-3 w-[340px] rounded-2xl border p-4">
-                    <div className="mb-4 flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-[color:var(--color-app-text)]">
-                          Notificações
-                        </p>
-                        <p className="mt-1 text-xs text-[color:var(--color-app-text-faint)]">
-                          {unreadCount > 0
-                            ? `${unreadCount} item(ns) pendente(s)`
-                            : "Tudo em dia por enquanto"}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={markAllNotificationsAsRead}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-[color:var(--color-app-border)] px-3 py-2 text-xs font-medium text-[color:var(--color-app-text-soft)] transition hover:border-[color:var(--color-app-border-strong)] hover:text-[color:var(--color-app-text)]"
-                      >
-                        <CheckCheck className="h-3.5 w-3.5" />
-                        Marcar lidas
-                      </button>
-                    </div>
-
-                    <div className="space-y-2">
-                      {notifications.map((notification) => (
-                        <button
-                          key={notification.id}
-                          type="button"
-                          onClick={() =>
-                            setNotifications((current) =>
-                              current.map((item) =>
-                                item.id === notification.id
-                                  ? { ...item, read: true }
-                                  : item
-                              )
-                            )
-                          }
-                          className={`w-full rounded-xl border px-3 py-3 text-left transition ${
-                            notification.read
-                              ? "border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)]"
-                              : "border-[#C1121F]/20 bg-[#FFF5F6]"
-                          }`}
-                        >
-                          <p className="text-sm font-medium text-[color:var(--color-app-text)]">
-                            {notification.title}
-                          </p>
-                          <p className="mt-1 text-xs text-[color:var(--color-app-text-soft)]">
-                            {notification.description}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
 
               {session?.user ? (
                 <Link
                   href="/dashboard/profile"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] text-sm font-semibold text-[color:var(--color-app-text)] transition hover:border-[color:var(--color-app-border-strong)] hover:bg-[var(--color-app-surface)]"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[#e5e7eb] bg-white text-sm font-semibold text-[#111827] shadow-[0_8px_18px_-16px_rgba(15,23,42,0.16)]"
                 >
                   {(initials || "GG").slice(0, 2)}
                 </Link>

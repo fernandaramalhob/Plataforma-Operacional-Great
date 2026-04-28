@@ -128,72 +128,83 @@ export default function LoginForm({ initialCallbackUrl }: LoginFormProps) {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#f5f5f7] px-4 py-4 text-slate-900 sm:px-6 sm:py-6">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(193,18,31,0.06),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(15,23,42,0.05),transparent_34%)]" />
+    <main className="relative min-h-screen overflow-hidden bg-[var(--color-app-background)] px-4 py-4 text-[color:var(--color-app-text)] sm:px-6 sm:py-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(223,37,49,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.05),transparent_34%)]" />
 
       <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
         <ThemeToggle />
       </div>
 
       <div className="relative mx-auto flex min-h-[calc(100vh-2rem)] max-w-7xl items-center justify-center">
-        <div className="w-full max-w-[740px] rounded-[34px] border border-[#e7ebf3] bg-white px-6 py-8 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.35)] sm:px-10 sm:py-10">
+        <div className="glass-card w-full max-w-[760px] rounded-[36px] px-6 py-8 sm:px-10 sm:py-10">
           <div className="mx-auto flex max-w-[600px] flex-col items-center text-center">
             <div className="flex h-24 w-24 items-center justify-center">
-              <Image src="/logo.png" alt="GreatGo" width={96} height={96} className="h-24 w-24 object-contain" priority />
+              <Image
+                src="/logo.png"
+                alt="GreatGo"
+                width={96}
+                height={96}
+                className="h-24 w-24 object-contain brightness-0 invert"
+                priority
+              />
             </div>
 
-            <h1 className="mt-2 text-[42px] font-bold tracking-[-0.05em] text-slate-900 sm:text-[48px]">
+            <h1 className="mt-2 text-[42px] font-semibold tracking-[-0.06em] text-[color:var(--color-app-text)] sm:text-[48px]">
               GreatGo
             </h1>
-            <p className="mt-2 text-[18px] font-medium text-slate-400">
+            <p className="mt-2 text-[18px] font-medium text-[color:var(--color-app-text-soft)]">
               Operação de relatórios para META Ads
             </p>
 
-            <div className="mt-5 rounded-full bg-[#fff1f2] px-5 py-2 text-[18px] font-medium text-[#C1121F]">
+            <div className="mt-5 rounded-full border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] px-5 py-2 text-[18px] font-medium text-[#df2531] backdrop-blur-xl">
               Acesso para usuários cadastrados
             </div>
           </div>
 
           {error ? (
-            <div className="mx-auto mt-8 max-w-[600px] rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="mx-auto mt-8 max-w-[600px] rounded-[24px] border border-[#df2531]/15 bg-[rgba(223,37,49,0.08)] px-4 py-3 text-sm text-[#df2531]">
               {error}
             </div>
           ) : null}
 
           <form onSubmit={handleSubmit(onSubmit)} className="mx-auto mt-10 max-w-[600px] space-y-6">
             <div>
-              <label className="mb-2 block text-[18px] font-medium text-slate-700">E-mail</label>
+              <label className="mb-2 block text-[18px] font-medium text-[color:var(--color-app-text-muted)]">
+                E-mail
+              </label>
               <div
                 className={
-                  `flex items-center rounded-[22px] border bg-white px-4 py-4 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.35)] transition ` +
-                  `${errors.email ? "border-[#C1121F] ring-1 ring-[#C1121F]" : "border-[#e1e6ef]"}`
+                  `glass-input flex items-center rounded-[24px] px-4 py-4 transition ` +
+                  `${errors.email ? "border-[#df2531] ring-1 ring-[#df2531]" : "border-[color:var(--color-app-border)]"}`
                 }
               >
-                <Mail className="mr-4 h-5 w-5 shrink-0 text-slate-400" />
+                <Mail className="mr-4 h-5 w-5 shrink-0 text-[color:var(--color-app-text-faint)]" />
                 <input
                   {...register("email")}
                   type="email"
                   placeholder="seuemail@empresa.com"
-                  className="w-full bg-transparent text-[18px] text-slate-600 placeholder:text-slate-400 focus:outline-none"
+                  className="w-full bg-transparent text-[18px] text-[color:var(--color-app-text-muted)] placeholder:text-[color:var(--color-app-text-faint)] focus:outline-none"
                 />
               </div>
               {errors.email ? <p className="mt-2 text-xs text-red-500">{errors.email.message}</p> : null}
             </div>
 
             <div>
-              <label className="mb-2 block text-[18px] font-medium text-slate-700">Senha</label>
-              <div className="flex items-center rounded-[22px] border border-[#e1e6ef] bg-white px-4 py-4 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.35)] transition focus-within:ring-1 focus-within:ring-[#C1121F]">
-                <Lock className="mr-4 h-5 w-5 shrink-0 text-slate-400" />
+              <label className="mb-2 block text-[18px] font-medium text-[color:var(--color-app-text-muted)]">
+                Senha
+              </label>
+              <div className="glass-input flex items-center rounded-[24px] px-4 py-4 transition focus-within:ring-1 focus-within:ring-[#df2531]">
+                <Lock className="mr-4 h-5 w-5 shrink-0 text-[color:var(--color-app-text-faint)]" />
                 <input
                   {...register("password")}
                   type={showPassword ? "text" : "password"}
                   placeholder="*******"
-                  className="w-full bg-transparent text-[18px] text-slate-600 placeholder:text-slate-400 focus:outline-none"
+                  className="w-full bg-transparent text-[18px] text-[color:var(--color-app-text-muted)] placeholder:text-[color:var(--color-app-text-faint)] focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((current) => !current)}
-                  className="ml-3 text-slate-400 transition hover:text-slate-600"
+                  className="ml-3 text-[color:var(--color-app-text-faint)] transition hover:text-[color:var(--color-app-text-muted)]"
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -207,7 +218,7 @@ export default function LoginForm({ initialCallbackUrl }: LoginFormProps) {
             <button
               type="submit"
               disabled={isLoading}
-              className="flex w-full items-center justify-center gap-2 rounded-[20px] bg-[#C1121F] px-5 py-4 text-[26px] font-semibold text-white shadow-[0_18px_36px_-24px_rgba(193,18,31,0.72)] transition hover:bg-[#a50f1a] disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-[24px] bg-[#df2531] px-5 py-4 text-[26px] font-semibold text-white shadow-[0_18px_36px_-24px_rgba(223,37,49,0.7)] transition hover:bg-[#c81f2a] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? (
                 <>
@@ -222,7 +233,7 @@ export default function LoginForm({ initialCallbackUrl }: LoginFormProps) {
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-4 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-[#2b2b2b] text-lg font-medium text-white shadow-[0_8px_20px_-10px_rgba(15,23,42,0.6)]">
+      <div className="absolute bottom-4 left-4 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-[rgba(255,255,255,0.05)] text-lg font-medium text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)]">
         N
       </div>
     </main>

@@ -12,8 +12,8 @@ export function LoadingSkeleton({
 }: LoadingSkeletonProps) {
   return (
     <div className={cn("flex items-center justify-center py-20", className)}>
-      <div className="flex items-center gap-2 text-sm text-gray-500">
-        <Loader2 className="h-5 w-5 animate-spin text-[#C1121F]" />
+      <div className="flex items-center gap-2 text-sm text-[color:var(--color-app-text-soft)]">
+        <Loader2 className="h-5 w-5 animate-spin text-[#df2531]" />
         <span>{label}</span>
       </div>
     </div>

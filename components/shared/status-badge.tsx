@@ -10,11 +10,11 @@ type StatusBadgeProps = {
 }
 
 const toneClasses: Record<StatusBadgeTone, string> = {
-  neutral: "bg-gray-100 text-gray-500",
-  success: "bg-green-50 text-green-600",
-  danger: "bg-red-50 text-red-500",
-  warning: "bg-yellow-50 text-yellow-700",
-  info: "bg-blue-50 text-blue-600",
+  neutral: "border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] text-[color:var(--color-app-text-soft)]",
+  success: "border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] text-[color:var(--color-app-text-muted)]",
+  danger: "border border-[#df2531]/15 bg-[rgba(223,37,49,0.08)] text-[#df2531]",
+  warning: "border border-[#df2531]/15 bg-[rgba(223,37,49,0.08)] text-[#9f1239]",
+  info: "border border-[color:var(--color-app-border)] bg-[var(--color-app-surface-muted)] text-[color:var(--color-app-text-muted)]",
 }
 
 export function StatusBadge({
