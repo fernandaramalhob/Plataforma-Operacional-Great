@@ -520,43 +520,41 @@ export function ReportSchedulesPanel({
                       setDetailsItem(item)
                     }
                   }}
-                  className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_24px_70px_-46px_rgba(15,23,42,0.46)] transition hover:-translate-y-0.5 hover:shadow-[0_30px_80px_-44px_rgba(15,23,42,0.52)] focus:outline-none focus:ring-4 focus:ring-[#C1121F]/10"
+                  className="overflow-hidden rounded-[30px] border border-slate-200/80 bg-white/80 shadow-[0_24px_70px_-46px_rgba(15,23,42,0.42)] transition hover:-translate-y-0.5 hover:shadow-[0_30px_80px_-44px_rgba(15,23,42,0.48)] focus:outline-none focus:ring-4 focus:ring-[#C1121F]/10 backdrop-blur-sm"
                 >
-                  <div className="border-b border-slate-100 bg-[linear-gradient(135deg,#fff8f8_0%,#ffffff_52%,#f6f9ff_100%)] px-5 py-4 sm:px-6 sm:py-5">
-                    <div className="min-w-0">
-                      <div className="flex items-start gap-4">
-                        <div
-                          className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${getAvatarAccent(item.clientName)} text-base font-bold text-white shadow-[0_18px_40px_-26px_rgba(15,23,42,0.65)]`}
-                        >
-                          {getInitials(item.clientName)}
-                        </div>
+                  <div className="px-5 py-5 sm:px-6 sm:py-6">
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${getAvatarAccent(item.clientName)} text-base font-bold text-white shadow-[0_18px_40px_-26px_rgba(15,23,42,0.45)]`}
+                      >
+                        {getInitials(item.clientName)}
+                      </div>
 
-                        <div className="min-w-0">
-                          <p className="truncate text-[22px] font-semibold tracking-tight text-slate-950 sm:text-[24px]">
-                            {item.clientName}
-                          </p>
-                          <p className="mt-1 text-sm text-slate-500">
-                            {item.clientCompany ?? "Sem empresa cadastrada"}
-                          </p>
-                          <div className="mt-3 flex flex-wrap items-center gap-2.5">
-                            <StatusBadge
-                              tone={item.clientStatus === "ACTIVE" ? "success" : "neutral"}
-                            >
-                              {item.clientStatus === "ACTIVE" ? "Ativo" : "Inativo"}
-                            </StatusBadge>
-                            <StatusBadge tone={getStatusTone(item.status)}>
-                              {item.statusLabel}
-                            </StatusBadge>
-                          </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[22px] font-semibold tracking-tight text-slate-950 sm:text-[24px]">
+                          {item.clientName}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {item.clientCompany ?? "Sem empresa cadastrada"}
+                        </p>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                            <span className="h-2 w-2 rounded-full bg-[#df2531]" />
+                            {item.clientStatus === "ACTIVE" ? "Ativo" : "Inativo"}
+                          </span>
+                          <span className="inline-flex items-center gap-2 rounded-full border border-[#f3d3d6] bg-[#fff5f6] px-3 py-1 text-xs font-semibold text-[#df2531]">
+                            <span className="h-2 w-2 rounded-full bg-[#df2531]" />
+                            {item.statusLabel}
+                          </span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
-                    <div className="rounded-[28px] border border-slate-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 sm:p-4">
+                  <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+                    <div className="space-y-4">
                       <div className="grid gap-3 lg:grid-cols-2">
-                        <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
+                        <div className="space-y-2">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                           Frequência
                         </p>
@@ -570,7 +568,7 @@ export function ReportSchedulesPanel({
                         </div>
                       </div>
 
-                      <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
+                      <div className="space-y-2">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                           Envio
                         </p>
@@ -592,7 +590,7 @@ export function ReportSchedulesPanel({
                         </div>
                       </div>
 
-                      <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
+                      <div className="space-y-2">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                           {item.schedule.active ? "Próximo evento" : "Última execução"}
                         </p>
