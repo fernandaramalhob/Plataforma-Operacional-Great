@@ -39,26 +39,26 @@ export function ClientTable({
   return (
     <table className="w-full">
       <thead>
-        <tr className="border-b border-gray-100">
+        <tr className="border-b border-[color:var(--color-app-border)]">
           <th className="w-10 px-4 py-4">
-            <input type="checkbox" className="rounded" />
+            <input type="checkbox" className="rounded border-[color:var(--color-app-border)]" />
           </th>
-          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--color-app-text-faint)]">
             Cliente
           </th>
-          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--color-app-text-faint)]">
             Empresa
           </th>
-          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--color-app-text-faint)]">
             Status META
           </th>
-          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--color-app-text-faint)]">
             Campanhas
           </th>
-          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--color-app-text-faint)]">
             Cadastrado em
           </th>
-          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--color-app-text-faint)]">
             Ações
           </th>
         </tr>
@@ -67,10 +67,10 @@ export function ClientTable({
         {clients.map((client) => (
           <tr
             key={client.id}
-            className="border-b border-gray-50 transition hover:bg-gray-50"
+            className="border-b border-[color:var(--color-app-border)]/70 transition hover:bg-[var(--color-app-surface-muted)]"
           >
             <td className="px-4 py-4">
-              <input type="checkbox" className="rounded" />
+              <input type="checkbox" className="rounded border-[color:var(--color-app-border)]" />
             </td>
             <td className="px-4 py-4">
               <div className="flex items-center gap-3">
@@ -82,14 +82,14 @@ export function ClientTable({
                   </span>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-[color:var(--color-app-text)]">
                     {client.name}
                   </p>
-                  <p className="text-xs text-gray-400">{client.email ?? "-"}</p>
+                  <p className="text-xs text-[color:var(--color-app-text-soft)]">{client.email ?? "-"}</p>
                 </div>
               </div>
             </td>
-            <td className="px-4 py-4 text-sm text-gray-600">
+            <td className="px-4 py-4 text-sm text-[color:var(--color-app-text-soft)]">
               {client.company ?? "-"}
             </td>
             <td className="px-4 py-4">
@@ -97,19 +97,19 @@ export function ClientTable({
                 {client.adAccountId ? "Conectado" : "Não conectado"}
               </StatusBadge>
             </td>
-            <td className="px-4 py-4 text-sm text-gray-600">
+            <td className="px-4 py-4 text-sm text-[color:var(--color-app-text-soft)]">
               <span className="whitespace-nowrap">
                 {client.campaigns.length} campanhas
               </span>
             </td>
-            <td className="px-4 py-4 text-sm text-gray-600">
+            <td className="px-4 py-4 text-sm text-[color:var(--color-app-text-soft)]">
               {new Date(client.createdAt).toLocaleDateString("pt-BR")}
             </td>
             <td className="px-4 py-4">
               <div className="flex items-center gap-3">
                 <Link
                   href={`/dashboard/clients/${client.id}`}
-                  className="text-sm font-medium text-[#C1121F] hover:underline"
+                  className="text-sm font-medium text-[#df2531] hover:underline"
                 >
                   Ver
                 </Link>
@@ -118,7 +118,7 @@ export function ClientTable({
                   type="button"
                   onClick={() => onDeleteClient?.(client)}
                   disabled={deletingClientId === client.id}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--color-app-text-faint)] transition hover:bg-[rgba(223,37,49,0.08)] hover:text-[#df2531] disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label={`Excluir cliente ${client.name}`}
                   title="Excluir cliente"
                 >

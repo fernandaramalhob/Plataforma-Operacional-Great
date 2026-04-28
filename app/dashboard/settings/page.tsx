@@ -48,6 +48,8 @@ const META_TOKEN_PRESET_LABELS: Record<MetaTokenPreset, string> = {
   BRAYTON: "Brayton",
 }
 
+type SettingsTab = "meta-ads" | "whatsapp"
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -120,6 +122,7 @@ function getConnectedMetaDisplayName(
 
 
 export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState<SettingsTab>("meta-ads")
   const [token, setToken] = useState("")
   const [showToken, setShowToken] = useState(false)
   const [isValidating, setIsValidating] = useState(false)
@@ -159,6 +162,13 @@ export default function SettingsPage() {
       currentTokenPreset === preset
         ? "border-[#C1121F] bg-[#fff3f4] text-[#C1121F] shadow-sm"
         : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+    }`
+
+  const tabButtonClass = (tab: SettingsTab) =>
+    `flex items-center justify-between rounded-2xl border px-4 py-4 text-left transition ${
+      activeTab === tab
+        ? "border-[#C1121F] bg-[#fff3f4] text-[#C1121F] shadow-sm"
+        : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
     }`
 
   const isPresetSelected = (preset: MetaTokenPreset) => currentTokenPreset === preset
@@ -499,7 +509,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Header title="Configurações" subtitle="Gerencie as integrações da plataforma" />
+      <Header title="Integrações" subtitle="Gerencie as integrações da plataforma" />
       <div className="mx-auto max-w-[1480px] px-8 pb-10 pt-6">
         <div className="space-y-6">
           <div className="flex justify-end">
@@ -513,6 +523,54 @@ export default function SettingsPage() {
             </button>
           </div>
 
+          <div className="grid gap-2 rounded-[28px] border border-slate-200 bg-slate-50 p-2 md:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab("meta-ads")}
+              aria-pressed={activeTab === "meta-ads"}
+              className={tabButtonClass("meta-ads")}
+            >
+              <div className="flex items-center gap-3">
+                <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-white bg-white shadow-sm">
+                  <Image
+                    src="/meta-logo-blue.png"
+                    alt="Meta"
+                    width={1365}
+                    height={768}
+                    className="absolute left-0 top-1/2 h-9 w-auto max-w-none -translate-y-1/2 origin-left scale-[2.4]"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-inherit">Meta Ads</p>
+                  <p className="text-xs text-inherit opacity-70">
+                    Token, contas de anúncio e importações.
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("whatsapp")}
+              aria-pressed={activeTab === "whatsapp"}
+              className={tabButtonClass("whatsapp")}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white bg-white shadow-sm">
+                  <MessageCircle className="h-5 w-5 text-[#25D366]" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-inherit">WhatsApp</p>
+                  <p className="text-xs text-inherit opacity-70">
+                    Conexão com a Evolution e grupos.
+                  </p>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {activeTab === "meta-ads" ? (
+            <>
           <div className="grid gap-4 md:grid-cols-2">
             <div className={overviewCard}>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Sessão atual</p>
@@ -806,7 +864,11 @@ export default function SettingsPage() {
               </div>
             </div>
           ) : null}
+            </>
+          ) : null}
 
+          {activeTab === "whatsapp" ? (
+            <>
           <div id="settings-evolution" className={`${overviewCard} p-8`}>
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
@@ -1099,6 +1161,8 @@ export default function SettingsPage() {
               </>
             ) : null}
           </div>
+          </>
+        ) : null}
         </div>
       </div>
     </>

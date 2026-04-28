@@ -36,5 +36,5 @@ export const reportSchedulePayloadSchema = z
   })
 
 export function getReportScheduleValidationMessage(error: z.ZodError) {
-  return error.issues[0]?.message || "Dados do agendamento invÃ¡lidos."
+  return error.issues[0]?.message || "Dados do agendamento inválidos."
 }

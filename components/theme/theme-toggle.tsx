@@ -17,7 +17,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       type="button"
       onClick={toggleTheme}
       className={cn(
-        "theme-toggle inline-flex h-10 w-10 items-center justify-center rounded-full border",
+        "theme-toggle inline-flex h-11 w-11 items-center justify-center rounded-full border",
         className
       )}
       role="switch"

@@ -494,7 +494,7 @@ async function processSendJob(params: {
       }
     }
 
-    const message = "Relatório gerado não encontrado para envio automatico"
+    const message = "Relatório gerado não encontrado para envio automático"
     await handleSendFailure({
       reportId: params.reportId,
       pendingJob: params.pendingJob,

@@ -236,7 +236,7 @@ function ScheduleDetailsModal({
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  Frequencia
+                  Frequência
                 </p>
                 <div className="mt-3 flex items-start gap-3">
                   <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-[#C1121F]">
@@ -248,8 +248,8 @@ function ScheduleDetailsModal({
                     </p>
                     <p className="text-sm text-slate-500">
                       {item.schedule.frequency === "ONCE"
-                        ? "Execucao unica"
-                        : "Execucao recorrente semanal"}
+                        ? "Execução unica"
+                        : "Execução recorrente semanal"}
                     </p>
                   </div>
                 </div>
@@ -277,7 +277,7 @@ function ScheduleDetailsModal({
 
               <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  Próxima execucao
+                  Próxima execução
                 </p>
                 <div className="mt-3 flex items-start gap-3">
                   <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-[#C1121F]">
@@ -290,11 +290,11 @@ function ScheduleDetailsModal({
                         : formatDateTime(item.schedule.lastRunAt)}
                     </p>
                     <p className="text-sm text-slate-500">
-                      {item.schedule.active ? "Próximo evento" : "Ultima execucao"}
+                      {item.schedule.active ? "Próximo evento" : "Última execução"}
                     </p>
                     {item.lastSendAttemptAt ? (
                       <p className="text-sm text-slate-500">
-                        Ultima tentativa: {formatDateTime(item.lastSendAttemptAt)}
+                        Última tentativa: {formatDateTime(item.lastSendAttemptAt)}
                       </p>
                     ) : null}
                   </div>
@@ -328,12 +328,12 @@ function ScheduleDetailsModal({
 
               <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  Ultimo envio
+                  Último envio
                 </p>
                 <div className="mt-3 space-y-2 text-sm text-slate-600">
                   <p>Relatório: {item.lastReportId ?? "Não vinculado"}</p>
                   <p>Gerado em: {formatDateTime(item.lastReportGeneratedAt)}</p>
-                  <p>Ultimo erro: {item.lastSendError ?? "Sem erro registrado"}</p>
+                  <p>Último erro: {item.lastSendError ?? "Sem erro registrado"}</p>
                 </div>
               </div>
             </div>
@@ -416,7 +416,7 @@ export function ReportSchedulesPanel({
 
   async function handleDelete(item: ReportScheduleListItem) {
     const confirmed = window.confirm(
-      `Excluir o agendamento automatico de ${item.clientName}?`
+      `Excluir o agendamento automático de ${item.clientName}?`
     )
 
     if (!confirmed) {
@@ -496,7 +496,7 @@ export function ReportSchedulesPanel({
         ) : schedules.length === 0 ? (
           <EmptyState
             title="Nenhum agendamento encontrado"
-            description="Assim que você criar um agendamento, ele aparecera aqui com o status de execucao."
+            description="Assim que você criar um agendamento, ele aparecera aqui com o status de execução."
             className="rounded-[32px] border-slate-200 bg-white py-20"
           />
         ) : (
@@ -558,7 +558,7 @@ export function ReportSchedulesPanel({
                       <div className="grid gap-3 lg:grid-cols-2">
                         <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                          Frequencia
+                          Frequência
                         </p>
                         <div className="mt-3 flex items-start gap-3">
                           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-[#C1121F]">
@@ -594,7 +594,7 @@ export function ReportSchedulesPanel({
 
                       <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                          {item.schedule.active ? "Próximo evento" : "Ultima execucao"}
+                          {item.schedule.active ? "Próximo evento" : "Última execução"}
                         </p>
                         <div className="mt-3 flex items-start gap-3">
                           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-[#C1121F]">
@@ -608,7 +608,7 @@ export function ReportSchedulesPanel({
                             </p>
                             {item.lastSendAttemptAt ? (
                               <p className="text-sm leading-6 text-slate-500">
-                                Ultima tentativa:{" "}
+                                Última tentativa:{" "}
                                 {new Date(item.lastSendAttemptAt).toLocaleString("pt-BR")}
                               </p>
                             ) : null}
@@ -620,7 +620,7 @@ export function ReportSchedulesPanel({
 
                     {item.lastSendError ? (
                       <div className="rounded-[24px] border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700">
-                        <p className="font-semibold">Ultimo erro</p>
+                        <p className="font-semibold">Último erro</p>
                         <p className="mt-1 leading-6">{item.lastSendError}</p>
                       </div>
                     ) : null}

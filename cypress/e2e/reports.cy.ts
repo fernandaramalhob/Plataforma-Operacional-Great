@@ -126,7 +126,7 @@ const readyReport = {
     topAds: [
       {
         id: "ad-1",
-        name: "Anuncio principal",
+        name: "Anúncio principal",
         impressions: "5400",
         reach: "2200",
         clicks: "92",
@@ -163,7 +163,7 @@ const clientSchedule = {
   filtersUntil: "2026-04-20",
   objective: "ALL",
   sendMode: "PDF_AND_MESSAGE",
-  message: "Relatorio automatico",
+  message: "Relatório automático",
   groupId: "evo-main::group-paula",
   active: true,
   nextRunAt: "2026-04-27T12:30:00.000Z",
@@ -200,7 +200,7 @@ const evolutionGroups = {
   configured: true,
   connected: true,
   instance: "evo-main",
-  detail: "2 grupo(s) encontrado(s) em 1 instancia(s).",
+  detail: "2 grupo(s) encontrado(s) em 1 instância(s).",
   groups: [
     {
       id: "group-paula",
@@ -314,7 +314,7 @@ describe("Reports", () => {
     cy.login()
   })
 
-  it("deve gerar o relatorio e manter os controles principais visiveis", () => {
+  it("deve gerar o relatório e manter os controles principais visíveis", () => {
     mockReportGeneration()
 
     cy.visit("/dashboard/reports")
@@ -342,7 +342,7 @@ describe("Reports", () => {
     cy.get('[data-cy="reports-open-schedule"]').should("be.visible")
   })
 
-  it("deve abrir o agendamento do relatorio e salvar uma programacao", () => {
+  it("deve abrir o agendamento do relatório e salvar uma programação", () => {
     mockReportGeneration()
     mockReportScheduleModal()
 

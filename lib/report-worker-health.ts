@@ -136,7 +136,7 @@ export async function getReportWorkerHealth(
       severity: "error",
       checkedAt: now.toISOString(),
       detail:
-        "O worker continuo de agendamentos ainda não enviou heartbeat.",
+        "O worker contínuo de agendamentos ainda não enviou heartbeat.",
       lastHeartbeatAt: null,
       lastError: null,
       lastAlertAt: null,
@@ -168,7 +168,7 @@ export async function getReportWorkerHealth(
       severity: "warning",
       checkedAt: now.toISOString(),
       detail:
-        `O worker continuo respondeu recentemente, mas o ultimo ciclo registrou erro: ${lastError}`,
+        `O worker contínuo respondeu recentemente, mas o último ciclo registrou erro: ${lastError}`,
       lastHeartbeatAt: heartbeatAt?.toISOString() ?? null,
       lastError,
       lastAlertAt,
@@ -182,7 +182,7 @@ export async function getReportWorkerHealth(
     status: "RUNNING",
     severity: null,
     checkedAt: now.toISOString(),
-    detail: "O worker continuo de agendamentos esta respondendo normalmente.",
+    detail: "O worker contínuo de agendamentos está respondendo normalmente.",
     lastHeartbeatAt: heartbeatAt?.toISOString() ?? null,
     lastError: null,
     lastAlertAt,

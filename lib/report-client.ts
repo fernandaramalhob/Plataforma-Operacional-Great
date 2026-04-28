@@ -171,7 +171,7 @@ export async function loadClientReportSchedule(clientId: string) {
     {
       cache: "no-store",
     },
-    "NÃ£o foi possÃ­vel carregar o agendamento"
+    "Não foi possível carregar o agendamento"
   )
 }
 
@@ -188,7 +188,7 @@ export async function saveClientReportSchedule(
       },
       body: JSON.stringify(payload),
     },
-    "NÃ£o foi possÃ­vel salvar o agendamento"
+    "Não foi possível salvar o agendamento"
   )
 }
 
@@ -224,7 +224,7 @@ export async function disableClientSavedReportSchedule(clientId: string) {
     {
       method: "DELETE",
     },
-    "NÃ£o foi possÃ­vel desativar o agendamento"
+    "Não foi possível desativar o agendamento"
   )
 }
 

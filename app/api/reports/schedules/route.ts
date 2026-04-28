@@ -142,12 +142,12 @@ function deriveScheduleStatus(client: ClientWithSchedule): Pick<
       pendingJob.lastError && pendingJob.nextAttemptAt
         ? `Nova tentativa ${pendingJob.kind === "SEND" ? "de envio" : "de geração"} em ${new Date(pendingJob.nextAttemptAt).toLocaleString("pt-BR")}.`
         : pendingJob.kind === "SEND"
-          ? "Relatório gerado, preparando envio automatico."
+          ? "Relatório gerado, preparando envio automático."
           : "Relatório em processamento para envio."
   } else if (latestSendLog?.status === "FAILED" || relatedReport?.status === "FAILED" || schedule.lastError) {
     status = "FAILED"
     statusLabel = "Falhou"
-    statusDetail = lastSendError || "O ultimo envio automatico falhou."
+    statusDetail = lastSendError || "O último envio automático falhou."
   } else if (latestSendLog?.status === "PENDING") {
     status = "IN_PROGRESS"
     statusLabel = "Em progresso"
@@ -160,10 +160,10 @@ function deriveScheduleStatus(client: ClientWithSchedule): Pick<
     statusLabel = "Enviado"
     statusDetail =
       latestSendLog?.sentAt
-        ? `Ultimo envio em ${latestSendLog.sentAt.toLocaleString("pt-BR")}.`
+        ? `Último envio em ${latestSendLog.sentAt.toLocaleString("pt-BR")}.`
         : schedule.lastRunAt
           ? `Executado em ${schedule.lastRunAt.toLocaleString("pt-BR")}.`
-          : "Ultimo envio concluido com sucesso."
+          : "Último envio concluido com sucesso."
   } else if (!schedule.active && schedule.lastRunAt) {
     status = "SENT"
     statusLabel = "Enviado"

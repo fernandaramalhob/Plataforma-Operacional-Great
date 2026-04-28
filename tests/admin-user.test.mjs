@@ -32,7 +32,7 @@ test("getAdminBootstrapCredentials usa SEED_ como fallback", () => {
   })
 })
 
-test("getAdminBootstrapCredentials usa email padrao quando so a senha existe", () => {
+test("getAdminBootstrapCredentials usa email padrão quando so a senha existe", () => {
   const result = getAdminBootstrapCredentials({
     ADMIN_PASSWORD: "senha-forte",
   })

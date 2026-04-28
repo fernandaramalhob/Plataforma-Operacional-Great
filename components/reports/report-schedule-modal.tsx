@@ -326,7 +326,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
                 </>
               ) : (
                 <>
-                  Configure o envio automatico do relatório para{" "}
+                  Configure o envio automático do relatório para{" "}
                   <span className="font-medium text-slate-700">
                     {props.clientName || "este cliente"}
                   </span>
@@ -360,7 +360,7 @@ export function ReportScheduleModal(props: ReportScheduleModalProps) {
               </p>
               {schedule.lastError ? (
                 <p className="mt-2 text-amber-700">
-                  Ultimo erro: {schedule.lastError}
+                  Último erro: {schedule.lastError}
                 </p>
               ) : null}
             </div>

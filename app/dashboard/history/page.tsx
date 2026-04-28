@@ -325,7 +325,7 @@ export default function HistoryPage() {
         {historyLoadError ? (
           <ErrorState
             message={historyLoadError}
-            title="Falha ao carregar histÃ³rico"
+            title="Falha ao carregar histórico"
             action={
               <button
                 type="button"

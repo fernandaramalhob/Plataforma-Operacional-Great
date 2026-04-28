@@ -209,7 +209,7 @@ export function buildEmptyDashboardData(dateRange: DashboardDateRange): Dashboar
     operational: {
       mode: "manager",
       title: "Status operacional",
-      description: "Entre para visualizar a saÃºde da operaÃ§Ã£o.",
+      description: "Entre para visualizar a saúde da operação.",
       tone: "neutral",
       checkedAt: null,
       metrics: [],
@@ -529,7 +529,7 @@ function buildConfigIndicators(
 
     if (!hasMetaToken) {
       withoutMetaToken += 1
-      issues.push("Sem token META do responsÃ¡vel")
+      issues.push("Sem token META do responsável")
     }
 
     if (!hasWhatsappGroup) {
@@ -585,7 +585,7 @@ function buildClientSendStatus(clients: ClientWithCampaigns[]) {
         name: client.name,
         company: client.company,
         status,
-        time: activityDate ? formatRelativeTime(activityDate) : "Sem histÃ³rico",
+        time: activityDate ? formatRelativeTime(activityDate) : "Sem histórico",
         referenceWeek: report ? formatReferenceWeek(report.referenceWeek) : null,
         attempts,
         errorMessage,
@@ -650,7 +650,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
         id: alert.id,
         source:
           "integration" in alert
-            ? `IntegraÃ§Ã£o ${alert.integration}`
+            ? `Integração ${alert.integration}`
             : `Fila ${alert.queueName ?? alert.source}`,
         message: alert.message,
         severity: alert.severity,
@@ -661,18 +661,18 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
       mode: "admin",
       title:
         tone === "critical"
-          ? "OperaÃ§Ã£o requer aténÃ§Ã£o imediata"
+          ? "Operação requer aténção imediata"
           : tone === "warning"
-            ? "OperaÃ§Ã£o com pontos de aténÃ§Ã£o"
-            : "OperaÃ§Ã£o estÃ¡vel",
+            ? "Operação com pontos de aténção"
+            : "Operação estável",
       description: health.ok
-        ? "Filas, agendamento e integraÃ§Ãµes estÃ£o respondendo dentro do esperado."
+        ? "Filas, agendamento e integrações estão respondendo dentro do esperado."
         : "Existem alertas recentes ou filas pendentes exigindo acompanhamento.",
       tone,
       checkedAt: health.checkedAt,
       metrics: [
         {
-          label: "Fila de geraÃ§Ã£o",
+          label: "Fila de geração",
           value: `${health.queues.generation.waiting ?? 0} aguardando / ${failedGeneration} falhas`,
           tone: failedGeneration > 0 ? "critical" : "healthy",
         },
@@ -688,7 +688,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
         },
         {
           label: "Alertas ativos",
-          value: `${errorAlerts} crÃ­ticos / ${warningAlerts} avisos`,
+          value: `${errorAlerts} críticos / ${warningAlerts} avisos`,
           tone: normalizeToneFromCounts({
             errors: errorAlerts,
             warnings: warningAlerts,
@@ -707,7 +707,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
   } catch (error) {
     return {
       mode: "admin",
-      title: "NÃ£o foi possÃ­vel verificar a saÃºde operacional",
+      title: "Não foi possível verificar a saúde operacional",
       description:
         error instanceof Error
           ? error.message
@@ -717,7 +717,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
       metrics: [
         {
           label: "Painel operacional",
-          value: "IndisponÃ­vel",
+          value: "Indisponível",
           tone: "warning",
         },
       ],
@@ -725,7 +725,7 @@ async function buildAdminOperationalPanel(): Promise<DashboardOperationalPanel> 
         {
           id: "operational-health-unavailable",
           source: "Sistema",
-          message: "O health check dos jobs nÃ£o respondeu nesta consulta.",
+          message: "O health check dos jobs não respondeu nesta consulta.",
           severity: "warning",
           createdAt: new Date().toISOString(),
         },
@@ -758,7 +758,7 @@ function buildManagerOperationalPanel(params: {
     alerts.unshift({
       id: "failed-reports-30d",
       source: "Envios",
-      message: `${failedReportsLast30Days} relatÃ³rio(s) falharam nos Ãºltimos 30 dias.`,
+      message: `${failedReportsLast30Days} relatório(s) falharam nos últimos 30 dias.`,
       severity: "error",
       createdAt: null,
     })
@@ -770,11 +770,11 @@ function buildManagerOperationalPanel(params: {
       tone === "critical"
         ? "Sua carteira precisa de acompanhamento"
         : tone === "warning"
-          ? "Sua carteira tem pendÃªncias operacionais"
-          : "Sua carteira estÃ¡ pronta para operar",
+          ? "Sua carteira tem pendências operacionais"
+          : "Sua carteira está pronta para operar",
     description:
       configIndicators.readyClients > 0
-        ? `${configIndicators.readyClients} cliente(s) estÃ£o prontos para gerar e enviar relatÃ³rios.`
+        ? `${configIndicators.readyClients} cliente(s) estão prontos para gerar e enviar relatórios.`
         : "Ajuste token META e grupos de WhatsApp para liberar os envios.",
     tone,
     checkedAt: new Date().toISOString(),
@@ -828,10 +828,10 @@ function buildLightOperationalPanel(params: {
     mode: "admin",
     title:
       tone === "critical"
-        ? "OperaÃ§Ã£o requer aténÃ§Ã£o"
+        ? "Operação requer aténção"
         : tone === "warning"
-          ? "OperaÃ§Ã£o com pontos de aténÃ§Ã£o"
-          : "OperaÃ§Ã£o estÃ¡vel",
+          ? "Operação com pontos de aténção"
+          : "Operação estável",
     description:
       "Resumo leve carregado sem consultar filas externas. Ative o painel operacional completo apenas quando ele for exibido.",
     tone,

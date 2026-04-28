@@ -21,7 +21,7 @@ export async function GET(
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "NÃ£o autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -35,7 +35,7 @@ export async function GET(
     })
 
     if (!client) {
-      return NextResponse.json({ error: "Cliente nÃ£o encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     if (!canAccessClient(user, client.managerId)) {
@@ -60,7 +60,7 @@ export async function PUT(
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "NÃ£o autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -73,7 +73,7 @@ export async function PUT(
     })
 
     if (!client) {
-      return NextResponse.json({ error: "Cliente nÃ£o encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     if (!canAccessClient(user, client.managerId)) {
@@ -129,7 +129,7 @@ export async function DELETE(
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "NÃ£o autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -147,7 +147,7 @@ export async function DELETE(
     })
 
     if (!client) {
-      return NextResponse.json({ error: "Cliente nÃ£o encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
     }
 
     if (!canAccessClient(user, client.managerId)) {

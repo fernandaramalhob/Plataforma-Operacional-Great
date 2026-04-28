@@ -35,7 +35,7 @@ const evolutionResponse = {
   configured: true,
   connected: true,
   instance: "evo-main",
-  detail: "2 grupo(s) encontrado(s) em 2 instancia(s).",
+  detail: "2 grupo(s) encontrado(s) em 2 instância(s).",
   groups: [
     {
       id: "evo-main::group-a",

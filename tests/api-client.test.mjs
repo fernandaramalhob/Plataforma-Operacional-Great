@@ -22,7 +22,7 @@ test("getApiErrorMessage prefers detail over error", () => {
   assert.equal(
     getApiErrorMessage(
       { error: "Fallback", detail: "Mensagem detalhada" },
-      "Padrao"
+      "Padrão"
     ),
     "Mensagem detalhada"
   )
@@ -49,7 +49,7 @@ test("fetchJsonOrThrow throws API detail on failure", async () => {
     })
 
   await assert.rejects(
-    () => fetchJsonOrThrow("/api/test", undefined, "Erro padrao"),
+    () => fetchJsonOrThrow("/api/test", undefined, "Erro padrão"),
     /Token invalido/
   )
 

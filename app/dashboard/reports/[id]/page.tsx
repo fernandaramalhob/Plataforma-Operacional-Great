@@ -78,7 +78,7 @@ export default function ReportPreviewPage() {
 
           if (!report.payload && report.status !== "FAILED") {
             setActionFeedback(
-              "RelatÃƒÂ³rio em processamento na fila. Atualizando automaticamente."
+              "Relatório em processamento na fila. Atualizando automaticamente."
             )
             return
           }
@@ -96,7 +96,7 @@ export default function ReportPreviewPage() {
     reportPollSequenceRef.current = sequence
 
     if (!reportId) {
-      setError("RelatÃƒÂ³rio invÃƒÂ¡lido")
+      setError("Relatório inválido")
       setLoading(false)
       return
     }
@@ -115,7 +115,7 @@ export default function ReportPreviewPage() {
         setError(
           fetchError instanceof Error
             ? fetchError.message
-            : "NÃƒÂ£o foi possÃƒÂ­vel carregar o relatÃƒÂ³rio"
+            : "Não foi possível carregar o relatório"
         )
       })
       .finally(() => {
@@ -162,7 +162,7 @@ export default function ReportPreviewPage() {
       setError(
         sendError instanceof Error
           ? sendError.message
-          : "NÃƒÂ£o foi possÃƒÂ­vel enviar o relatÃ³rio"
+          : "Não foi possível enviar o relatório"
       )
     } finally {
       setSending(false)
@@ -254,11 +254,11 @@ export default function ReportPreviewPage() {
       <div>
         <div className="print:hidden">
           <Header
-            title="RelatÃƒÂ³rio salvo"
-            subtitle="Carregando relatÃƒÂ³rio persistido"
+            title="Relatório salvo"
+            subtitle="Carregando relatório persistido"
           />
         </div>
-        <LoadingSkeleton label="Carregando relatÃƒÂ³rio salvo..." />
+        <LoadingSkeleton label="Carregando relatório salvo..." />
       </div>
     )
   }
@@ -268,21 +268,21 @@ export default function ReportPreviewPage() {
       <div>
         <div className="print:hidden">
           <Header
-            title="RelatÃƒÂ³rio salvo"
-            subtitle="NÃƒÂ£o foi possÃƒÂ­vel abrir este relatÃƒÂ³rio"
+            title="Relatório salvo"
+            subtitle="Não foi possível abrir este relatório"
           />
         </div>
         <div className="p-8">
           <ErrorState
-            title="RelatÃƒÂ³rio indisponÃƒÂ­vel"
-            message={error || "RelatÃƒÂ³rio nÃƒÂ£o encontrado"}
+            title="Relatório indisponível"
+            message={error || "Relatório não encontrado"}
             action={
               <button
                 onClick={() => router.push("/dashboard/history")}
                 className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Voltar para o histÃƒÂ³rico
+                Voltar para o histórico
               </button>
             }
           />
@@ -298,7 +298,7 @@ export default function ReportPreviewPage() {
       <div>
         <div className="print:hidden">
           <Header
-            title="RelatÃƒÂ³rio salvo"
+            title="Relatório salvo"
             subtitle={isCancelled ? "Envio cancelado" : "Aguardando processamento do job"}
           />
         </div>
@@ -307,11 +307,11 @@ export default function ReportPreviewPage() {
             {isCancelled ? (
               <p>{savedReport.errorMessage || "O envio foi cancelado com sucesso."}</p>
             ) : savedReport.status === "FAILED" ? (
-              <p>{savedReport.errorMessage || "NÃƒÂ£o foi possÃƒÂ­vel gerar este relatÃƒÂ³rio."}</p>
+              <p>{savedReport.errorMessage || "Não foi possível gerar este relatório."}</p>
             ) : (
               <div className="flex items-center gap-3">
                 <Loader2 className="h-5 w-5 animate-spin text-[#C1121F]" />
-                <p>RelatÃƒÂ³rio em fila. Esta pÃƒÂ¡gina atualiza automaticamente.</p>
+                <p>Relatório em fila. Esta página atualiza automaticamente.</p>
               </div>
             )}
             <button
@@ -319,7 +319,7 @@ export default function ReportPreviewPage() {
               className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
             >
               <ChevronLeft className="h-4 w-4" />
-              Voltar para o histÃƒÂ³rico
+              Voltar para o histórico
             </button>
           </div>
         </div>
@@ -338,8 +338,8 @@ export default function ReportPreviewPage() {
     <>
       <div className="print:hidden">
         <Header
-          title="RelatÃƒÂ³rio salvo"
-          subtitle={`${payload.client.name} Ã‚Â· ${payload.filters.since} atÃƒÂ© ${payload.filters.until}`}
+          title="Relatório salvo"
+          subtitle={`${payload.client.name} · ${payload.filters.since} até ${payload.filters.until}`}
         />
       </div>
 
@@ -350,7 +350,7 @@ export default function ReportPreviewPage() {
             className="mb-5 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
           >
             <ChevronLeft className="h-4 w-4" />
-            Voltar para o histÃƒÂ³rico
+            Voltar para o histórico
           </button>
 
           <div className="mb-5 rounded-2xl border border-gray-100 bg-gray-50 p-4">
@@ -361,7 +361,7 @@ export default function ReportPreviewPage() {
               {payload.client.name}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {payload.client.company ?? "Marca nÃƒÂ£o informada"}
+              {payload.client.company ?? "Marca não informada"}
             </p>
           </div>
 
@@ -371,7 +371,7 @@ export default function ReportPreviewPage() {
             </p>
             <div className="mt-3 space-y-2 text-sm text-gray-600">
               <p>De: {payload.filters.since}</p>
-              <p>AtÃƒÂ©: {payload.filters.until}</p>
+              <p>Até: {payload.filters.until}</p>
               <p>Objetivo: {payload.filters.objective}</p>
               <p>
                 Gerado em:{" "}
@@ -406,7 +406,7 @@ export default function ReportPreviewPage() {
                 }`}
               />
             </div>
-            Insights automÃƒÂ¡ticos
+            Insights automáticos
           </label>
         </aside>
 
@@ -497,7 +497,7 @@ export default function ReportPreviewPage() {
                 className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
               >
                 <Download className="h-4 w-4" />
-                {generating ? "Gerando PDF..." : "Salvar relatÃƒÂ³rio em PDF"}
+                {generating ? "Gerando PDF..." : "Salvar relatório em PDF"}
               </button>
             </div>
           </div>
@@ -522,12 +522,12 @@ export default function ReportPreviewPage() {
             return
           }
           setActionFeedback(
-            `Agendamento salvo. PrÃƒÂ³ximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
+            `Agendamento salvo. Próximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
           )
           setScheduleModalOpen(false)
         }}
         onDisabled={() => {
-          setActionFeedback("Agendamento automÃƒÂ¡tico desativado com sucesso.")
+          setActionFeedback("Agendamento automático desativado com sucesso.")
         }}
       />
     </>

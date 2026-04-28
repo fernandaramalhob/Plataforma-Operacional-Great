@@ -27,11 +27,11 @@ function getReportScheduleTimeZone() {
 export const REPORT_SCHEDULE_WEEKDAYS = [
   { value: 0, label: "Domingo" },
   { value: 1, label: "Segunda-feira" },
-  { value: 2, label: "TerÃ§a-feira" },
+  { value: 2, label: "Terça-feira" },
   { value: 3, label: "Quarta-feira" },
   { value: 4, label: "Quinta-feira" },
   { value: 5, label: "Sexta-feira" },
-  { value: 6, label: "SÃ¡bado" },
+  { value: 6, label: "Sábado" },
 ] as const
 
 export function formatScheduleTime(hour: number, minute: number) {
@@ -64,7 +64,7 @@ function buildSaoPauloDateTime(date: string, hour: number, minute: number) {
   )
 
   if (Number.isNaN(candidate.getTime())) {
-    throw new Error("NÃ£o foi possÃ­vel interpretar a data do agendamento.")
+    throw new Error("Não foi possível interpretar a data do agendamento.")
   }
 
   return candidate
@@ -96,13 +96,13 @@ export function buildNextWeeklyRunAt(params: {
     }
   }
 
-  throw new Error("NÃ£o foi possÃ­vel calcular a prÃ³xima execuÃ§Ã£o semanal.")
+  throw new Error("Não foi possível calcular a próxima execução semanal.")
 }
 
 export function buildScheduleNextRunAt(payload: ReportSchedulePayload, now = new Date()) {
   if (payload.frequency === "ONCE") {
     if (!payload.scheduledDate) {
-      throw new Error("Selecione a data da execuÃ§Ã£o.")
+      throw new Error("Selecione a data da execução.")
     }
 
     return buildSaoPauloDateTime(payload.scheduledDate, payload.hour, payload.minute)

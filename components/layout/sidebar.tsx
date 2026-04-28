@@ -12,7 +12,7 @@ const navItems = [
   { label: "Clientes", href: "/dashboard/clients", icon: Users },
   { label: "Relatórios", href: "/dashboard/reports", icon: FileText },
   { label: "Histórico", href: "/dashboard/history", icon: History },
-  { label: "Configurações", href: "/dashboard/settings", icon: Settings },
+  { label: "Integrações", href: "/dashboard/settings", icon: Settings },
 ]
 
 type SidebarProps = {
