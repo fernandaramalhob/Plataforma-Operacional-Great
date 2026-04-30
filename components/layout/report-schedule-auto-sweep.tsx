@@ -4,8 +4,16 @@ import { useEffect } from "react"
 
 const SWEEP_INTERVAL_MS = 30_000
 
-export function ReportScheduleAutoSweep() {
+type ReportScheduleAutoSweepProps = {
+  enabled: boolean
+}
+
+export function ReportScheduleAutoSweep({ enabled }: ReportScheduleAutoSweepProps) {
   useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
     let cancelled = false
 
     async function sweep() {
@@ -40,7 +48,7 @@ export function ReportScheduleAutoSweep() {
       window.removeEventListener("focus", onFocus)
       document.removeEventListener("visibilitychange", onFocus)
     }
-  }, [])
+  }, [enabled])
 
   return null
 }

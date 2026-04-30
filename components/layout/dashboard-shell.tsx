@@ -8,7 +8,12 @@ const SIDEBAR_MIN_WIDTH = 88
 const SIDEBAR_MAX_WIDTH = 360
 const SIDEBAR_DEFAULT_WIDTH = 292
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+type DashboardShellProps = {
+  children: React.ReactNode
+  isAdmin: boolean
+}
+
+export function DashboardShell({ children, isAdmin }: DashboardShellProps) {
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH)
   const resizingRef = useRef(false)
 
@@ -61,7 +66,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           marginLeft: `${sidebarWidth}px`,
         }}
       >
-        <ReportScheduleAutoSweep />
+        <ReportScheduleAutoSweep enabled={isAdmin} />
         {children}
       </main>
     </div>
