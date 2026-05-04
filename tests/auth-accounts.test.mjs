@@ -1,14 +1,30 @@
 import { assert, test } from "./test-helpers.mjs"
 import {
+  DEFAULT_LOGIN_PASSWORD,
   getAuthLoginAccounts,
   getBootstrapLoginAccount,
 } from "@/lib/auth-accounts"
 
-test("getAuthLoginAccounts não expõe contas hardcoded sem configuração", () => {
-  assert.deepEqual(getAuthLoginAccounts({}), [])
+test("getAuthLoginAccounts inclui a conta bootstrap do Brayton", () => {
+  assert.deepEqual(
+    getAuthLoginAccounts({}).map(({ email, name, role, password }) => ({
+      email,
+      name,
+      role,
+      password,
+    })),
+    [
+      {
+        email: "braytonmaycon5@gmail.com",
+        name: "Brayton Maycon",
+        role: "MANAGER",
+        password: DEFAULT_LOGIN_PASSWORD,
+      },
+    ]
+  )
 })
 
-test("getAuthLoginAccounts inclui apenas contas explicitamente configuradas", () => {
+test("getAuthLoginAccounts inclui contas explicitamente configuradas", () => {
   const accounts = getAuthLoginAccounts({
     ADMIN_EMAIL: " admin@greatgo.com ",
     ADMIN_PASSWORD: "senha-admin",
@@ -37,11 +53,27 @@ test("getAuthLoginAccounts inclui apenas contas explicitamente configuradas", ()
         role: "MANAGER",
         password: "senha-dev",
       },
+      {
+        email: "braytonmaycon5@gmail.com",
+        name: "Brayton Maycon",
+        role: "MANAGER",
+        password: DEFAULT_LOGIN_PASSWORD,
+      },
     ]
   )
 })
 
-test("getBootstrapLoginAccount retorna null sem credenciais explicitas", () => {
+test("getBootstrapLoginAccount retorna a conta bootstrap do Brayton", () => {
+  assert.deepEqual(getBootstrapLoginAccount("braytonmaycon5@gmail.com", {}), {
+    id: "brayton-maycon",
+    name: "Brayton Maycon",
+    email: "braytonmaycon5@gmail.com",
+    role: "MANAGER",
+    password: DEFAULT_LOGIN_PASSWORD,
+  })
+})
+
+test("getBootstrapLoginAccount retorna null para contas nao configuradas", () => {
   assert.equal(getBootstrapLoginAccount("admin@greatgo.com", {}), null)
   assert.equal(getBootstrapLoginAccount("gestor@empresa.com", {}), null)
 })

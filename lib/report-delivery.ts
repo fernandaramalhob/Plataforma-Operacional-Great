@@ -6,13 +6,27 @@ import {
 } from "@/lib/report-message"
 import { parseStoredReportPayload } from "@/lib/report-domain"
 import {
+  resolveEvolutionInstanceForDestination,
   sendWhatsAppDocument,
   sendWhatsAppText,
 } from "@/lib/evolution-api"
 import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
 import { normalizeWhatsAppGroupId } from "@/lib/whatsapp-group"
-import type { ReportSendMode, ReportStatusValue } from "@/types/report.types"
+import type {
+  PendingReportSource,
+  ReportSendMode,
+  ReportStatusValue,
+} from "@/types/report.types"
+
+export type ReportSendAuthorization =
+  | {
+      type: "manual-whatsapp-button"
+    }
+  | {
+      type: "scheduled-automation"
+      source: PendingReportSource
+    }
 
 type SendPersistedReportOptions = {
   mode?: ReportSendMode
@@ -24,6 +38,7 @@ type SendPersistedReportOptions = {
   pdfStrategy?: "auto" | "preview" | "standard"
   deferReportStatusUpdate?: boolean
   preventDuplicateSends?: boolean
+  authorization: ReportSendAuthorization
 }
 
 type SendPersistedReportResult = {
@@ -51,10 +66,34 @@ function resolveReportMessage(params: {
   })
 }
 
+export function isAutomaticSendAllowed(source: PendingReportSource) {
+  return source === "schedule" || source === "weekly"
+}
+
+export function assertReportSendAuthorized(
+  authorization: ReportSendAuthorization
+) {
+  if (authorization.type === "manual-whatsapp-button") {
+    return
+  }
+
+  if (!isAutomaticSendAllowed(authorization.source)) {
+    throw new Error(
+      "Envio automatico bloqueado: so e permitido para relatorios agendados."
+    )
+  }
+}
+
 export async function sendPersistedReportNow(
   reportId: string,
   options?: SendPersistedReportOptions
 ): Promise<SendPersistedReportResult> {
+  if (!options?.authorization) {
+    throw new Error("Origem do envio nao informada.")
+  }
+
+  assertReportSendAuthorized(options.authorization)
+
   const report = await prisma.report.findUnique({
     where: { id: reportId },
     include: {
@@ -110,6 +149,10 @@ export async function sendPersistedReportNow(
 
   const mode = options?.mode ?? "PDF_AND_MESSAGE"
   const pdfStrategy = options?.pdfStrategy ?? "auto"
+  const resolvedInstance = await resolveEvolutionInstanceForDestination(
+    targetGroupId,
+    options?.instance ?? null
+  )
   const latestSuccessfulSend = report.sendLogs.find(
     (sendLog) => sendLog.status === "OK" && Boolean(sendLog.sentAt)
   )
@@ -182,6 +225,7 @@ export async function sendPersistedReportNow(
         fileName,
         contentBase64: pdfBuffer.toString("base64"),
         instance: options?.instance ?? null,
+        resolvedInstance,
       })
     }
 
@@ -190,6 +234,7 @@ export async function sendPersistedReportNow(
         number: targetGroupId,
         text: message,
         instance: options?.instance ?? null,
+        resolvedInstance,
       })
     }
 

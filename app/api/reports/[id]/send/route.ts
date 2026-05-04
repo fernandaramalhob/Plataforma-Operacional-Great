@@ -7,6 +7,10 @@ import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
 import type { ReportSendRequest } from "@/types/report.types"
 
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
+export const maxDuration = 300
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -82,6 +86,9 @@ export async function POST(
       pdfFileName: body.pdfFileName,
       groupId: body.groupId,
       instance: evolutionInstance,
+      authorization: {
+        type: "manual-whatsapp-button",
+      },
     })
 
     return NextResponse.json(

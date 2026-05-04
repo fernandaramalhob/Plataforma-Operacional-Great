@@ -50,6 +50,12 @@ function buildPreparationDueThreshold(now = new Date()) {
   )
 }
 
+function buildDeferredScheduleRetryAt(retryMinutes: number, now = new Date()) {
+  const holdMinutes = retryMinutes + getReportSchedulePreparationLeadMinutes() + 1
+
+  return new Date(now.getTime() + holdMinutes * 60_000)
+}
+
 export const REPORT_SCHEDULE_WEEKDAYS = [
   { value: 0, label: "Domingo" },
   { value: 1, label: "Segunda-feira" },
@@ -378,7 +384,7 @@ async function executeReportSchedule(schedule: DueSchedule) {
 }
 
 async function claimDueSchedule(schedule: DueSchedule, retryMinutes: number) {
-  const provisionalNextRunAt = new Date(Date.now() + retryMinutes * 60_000)
+  const provisionalNextRunAt = buildDeferredScheduleRetryAt(retryMinutes)
   const updateResult = await prisma.reportSchedule.updateMany({
     where: {
       id: schedule.id,
@@ -492,7 +498,7 @@ export async function processDueReportSchedules(params?: {
         },
         data: {
           lastError: message,
-          nextRunAt: new Date(Date.now() + retryMinutes * 60_000),
+          nextRunAt: buildDeferredScheduleRetryAt(retryMinutes),
         },
       })
     }

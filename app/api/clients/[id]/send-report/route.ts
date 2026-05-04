@@ -14,6 +14,10 @@ import {
 } from "@/lib/validations/report.schema"
 import type { ReportSendRequest, ReportSendResponse } from "@/types/report.types"
 
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
+export const maxDuration = 300
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -87,6 +91,9 @@ export async function POST(
       mode: requestBody.mode,
       message: requestBody.message,
       instance: evolutionInstance,
+      authorization: {
+        type: "manual-whatsapp-button",
+      },
     })
 
     return NextResponse.json<ReportSendResponse>({

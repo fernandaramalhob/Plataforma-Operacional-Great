@@ -3,6 +3,7 @@ import { hashPassword, verifyPassword } from "@/lib/password"
 import { prisma } from "@/lib/prisma"
 
 export type AuthRole = "ADMIN" | "MANAGER"
+export const DEFAULT_LOGIN_PASSWORD = "123456"
 
 export type AuthLoginAccount = {
   id: string
@@ -25,22 +26,29 @@ function getManagerLoginAccounts(
   env: Record<string, string | undefined> = process.env
 ): AuthLoginAccount[] {
   const email = normalizeEmail(readEnvValue(env.DEV_BYPASS_AUTH_EMAIL))
-  const password = readEnvValue(env.DEV_BYPASS_AUTH_PASSWORD)
+  const password = readEnvValue(env.DEV_BYPASS_AUTH_PASSWORD) || DEFAULT_LOGIN_PASSWORD
   const name = readEnvValue(env.DEV_BYPASS_AUTH_NAME) || "Gestor"
+  const accounts: AuthLoginAccount[] = []
 
-  if (!email || !password) {
-    return []
-  }
-
-  return [
-    {
+  if (email) {
+    accounts.push({
       id: `manager-${email}`,
       name,
       email,
       role: "MANAGER",
       password,
-    },
-  ]
+    })
+  }
+
+  accounts.push({
+    id: "brayton-maycon",
+    name: "Brayton Maycon",
+    email: "braytonmaycon5@gmail.com",
+    role: "MANAGER",
+    password: DEFAULT_LOGIN_PASSWORD,
+  })
+
+  return accounts
 }
 
 export function getAuthLoginAccounts(

@@ -237,6 +237,7 @@ function buildSendPendingJob(params: {
   baseJob: PendingReportJob
   storedPayload: StoredReportPayload
   now: Date
+  keepLease?: boolean
 }) {
   const normalizedJob = normalizePendingJob(params.baseJob as ParsedPendingReportJob)
   const scheduledSendAt =
@@ -250,7 +251,7 @@ function buildSendPendingJob(params: {
     nextAttemptAt: scheduledSendAt,
     lastAttemptAt: null,
     lastError: null,
-    lease: null,
+    lease: params.keepLease ? normalizedJob.lease ?? null : null,
     attemptCount: 0,
   } satisfies PendingReportJob
 }
@@ -923,6 +924,10 @@ async function processSendJob(params: {
       pdfStrategy: "auto",
       deferReportStatusUpdate: true,
       preventDuplicateSends: true,
+      authorization: {
+        type: "scheduled-automation",
+        source: params.pendingJob.source,
+      },
     })
 
     if (delivery.duplicatePrevented && delivery.duplicateReason === "in-flight") {
@@ -1169,6 +1174,7 @@ async function processGenerationJob(params: {
       baseJob: params.pendingJob,
       storedPayload,
       now: generatedAt,
+      keepLease: true,
     })
 
     const updated = await prisma.report.updateMany({
@@ -1201,12 +1207,28 @@ async function processGenerationJob(params: {
     }
 
     if (!isPendingJobDue(sendPendingJob, generatedAt)) {
+      await prisma.report.updateMany({
+        where: {
+          id: params.reportId,
+          status: "PENDING",
+        },
+        data: {
+          payloadJson: buildPendingReportJobPayload({
+            ...sendPendingJob,
+            lease: null,
+          }),
+        },
+      })
+
       logReportWorkerEvent({
         event: "generation.completed-awaiting-send",
         reportId: params.reportId,
         clientId: params.clientId,
         clientName: params.clientName,
-        pendingJob: sendPendingJob,
+        pendingJob: {
+          ...sendPendingJob,
+          lease: null,
+        },
       })
 
       return {

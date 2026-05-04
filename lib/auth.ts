@@ -1,5 +1,9 @@
 import CredentialsProvider from "next-auth/providers/credentials"
 import type { NextAuthOptions } from "next-auth"
+import {
+  ensureBootstrapLoginAccount,
+  getBootstrapLoginAccount,
+} from "@/lib/auth-accounts"
 import { withTimeout } from "@/lib/async"
 import { prisma } from "@/lib/prisma"
 import { verifyPassword } from "@/lib/password"
@@ -20,9 +24,13 @@ function normalizeEmail(email: string) {
 }
 
 async function findUserByNormalizedEmail(email: string) {
-  const normalizedEmail = normalizeEmail(email)
-
-  const users = await prisma.user.findMany({
+  return prisma.user.findFirst({
+    where: {
+      email: {
+        equals: normalizeEmail(email),
+        mode: "insensitive",
+      },
+    },
     select: {
       id: true,
       email: true,
@@ -32,22 +40,96 @@ async function findUserByNormalizedEmail(email: string) {
       evolutionInstance: true,
     },
   })
+}
 
-  return (
-    users.find(
-      (user) => normalizeEmail(user.email) === normalizedEmail
-    ) ?? null
-  )
+function buildAuthorizedUser(user: {
+  id: string
+  email: string
+  name: string | null
+  role: Role
+  evolutionInstance?: string | null
+}) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name ?? user.email,
+    role: user.role,
+    evolutionInstance: user.evolutionInstance ?? null,
+  } satisfies AuthUser
 }
 
 async function authorizeWithCredentials(email: string, password: string) {
   const normalizedEmail = normalizeEmail(email)
+  const bootstrapAccount = getBootstrapLoginAccount(normalizedEmail)
 
   logInfo("auth.authorize.start", {
     email: normalizedEmail,
+    bootstrapAccount: bootstrapAccount?.id ?? null,
   })
 
-  const user = await findUserByNormalizedEmail(normalizedEmail)
+  let user:
+    | Awaited<ReturnType<typeof findUserByNormalizedEmail>>
+    | null = null
+  let lookupFailed = false
+
+  try {
+    user = await findUserByNormalizedEmail(normalizedEmail)
+  } catch (error) {
+    lookupFailed = true
+    logWarn("auth.authorize.user-lookup-failed", {
+      email: normalizedEmail,
+      error: error instanceof Error ? error.message : "Erro desconhecido",
+    })
+  }
+
+  if (user && verifyPassword(password, user.passwordHash)) {
+    logInfo("auth.authorize.success", {
+      email: normalizedEmail,
+      userId: user.id,
+      role: user.role,
+    })
+
+    return buildAuthorizedUser(user)
+  }
+
+  if (bootstrapAccount && verifyPassword(password, bootstrapAccount.password)) {
+    try {
+      const ensuredUser = await ensureBootstrapLoginAccount(normalizedEmail)
+
+      if (ensuredUser) {
+        logInfo("auth.authorize.bootstrap-account.provisioned", {
+          email: normalizedEmail,
+          userId: ensuredUser.id,
+          role: ensuredUser.role,
+        })
+
+        return buildAuthorizedUser(ensuredUser)
+      }
+    } catch (error) {
+      logWarn("auth.authorize.bootstrap-account.provision-failed", {
+        email: normalizedEmail,
+        accountId: bootstrapAccount.id,
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      })
+    }
+
+    logWarn("auth.authorize.bootstrap-account.fallback", {
+      email: normalizedEmail,
+      accountId: bootstrapAccount.id,
+    })
+
+    return buildAuthorizedUser({
+      id: bootstrapAccount.id,
+      email: bootstrapAccount.email,
+      name: bootstrapAccount.name,
+      role: bootstrapAccount.role,
+      evolutionInstance: null,
+    })
+  }
+
+  if (lookupFailed) {
+    throw new Error("Nao foi possivel validar as credenciais agora.")
+  }
 
   if (!user) {
     logWarn("auth.authorize.user-not-found", {
@@ -56,29 +138,12 @@ async function authorizeWithCredentials(email: string, password: string) {
     return null
   }
 
-  const isValidPassword = verifyPassword(password, user.passwordHash)
-
-  if (!isValidPassword) {
-    logWarn("auth.authorize.invalid-password", {
-      email: normalizedEmail,
-      userId: user.id,
-    })
-    return null
-  }
-
-  logInfo("auth.authorize.success", {
+  logWarn("auth.authorize.invalid-password", {
     email: normalizedEmail,
     userId: user.id,
-    role: user.role,
   })
 
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name ?? user.email,
-    role: user.role,
-    evolutionInstance: user.evolutionInstance,
-  } satisfies AuthUser
+  return null
 }
 
 export const authOptions: NextAuthOptions = {
