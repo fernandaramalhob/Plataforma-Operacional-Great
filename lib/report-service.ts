@@ -446,6 +446,10 @@ export async function queueReportGeneration(params: QueueReportGenerationParams)
     })
 
     if (shouldReuseAutomatedQueuedReport(existing, pendingJob)) {
+      if (!existing) {
+        throw new Error("Falha ao reaproveitar o relatorio pendente.")
+      }
+
       return existing
     }
 

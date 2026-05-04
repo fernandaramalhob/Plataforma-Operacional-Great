@@ -64,6 +64,10 @@ type Runtime = {
     options: {
       mode: "PDF_AND_MESSAGE" | "PDF_ONLY" | "MESSAGE_ONLY"
       groupId: string | null
+      authorization: {
+        type: "scheduled-automation"
+        source: "weekly"
+      }
     }
   ): Promise<unknown>
 }
@@ -510,6 +514,10 @@ export async function runWeeklyDoctorReports(
       await runtime.sendPersistedReportNow(persistedReport.reportId, {
         mode: settings.sendMode,
         groupId: settings.groupId,
+        authorization: {
+          type: "scheduled-automation",
+          source: "weekly",
+        },
       })
 
       sentCount += 1
