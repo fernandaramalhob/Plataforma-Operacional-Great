@@ -11,7 +11,8 @@ import {
 } from "@/lib/evolution-api"
 import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
-import type { ReportSendMode } from "@/types/report.types"
+import { normalizeWhatsAppGroupId } from "@/lib/whatsapp-group"
+import type { ReportSendMode, ReportStatusValue } from "@/types/report.types"
 
 type SendPersistedReportOptions = {
   mode?: ReportSendMode
@@ -22,6 +23,15 @@ type SendPersistedReportOptions = {
   instance?: string | null
   pdfStrategy?: "auto" | "preview" | "standard"
   deferReportStatusUpdate?: boolean
+  preventDuplicateSends?: boolean
+}
+
+type SendPersistedReportResult = {
+  reportId: string
+  status: ReportStatusValue
+  mode: ReportSendMode
+  duplicatePrevented?: boolean
+  duplicateReason?: "already-sent" | "in-flight"
 }
 
 function resolveReportMessage(params: {
@@ -44,7 +54,7 @@ function resolveReportMessage(params: {
 export async function sendPersistedReportNow(
   reportId: string,
   options?: SendPersistedReportOptions
-) {
+): Promise<SendPersistedReportResult> {
   const report = await prisma.report.findUnique({
     where: { id: reportId },
     include: {
@@ -58,11 +68,13 @@ export async function sendPersistedReportNow(
       sendLogs: {
         select: {
           attemptNumber: true,
+          status: true,
+          sentAt: true,
         },
         orderBy: {
           attemptNumber: "desc",
         },
-        take: 1,
+        take: 5,
       },
     },
   })
@@ -77,7 +89,11 @@ export async function sendPersistedReportNow(
     throw new Error("Relatório ainda não foi gerado")
   }
 
-  const targetGroupId = options?.groupId?.trim() || report.client.whatsappGroupId
+  const targetGroupId =
+    normalizeWhatsAppGroupId(options?.groupId)
+    || normalizeWhatsAppGroupId(report.client.whatsappGroupId)
+    || options?.groupId?.trim()
+    || report.client.whatsappGroupId
 
   if (!targetGroupId) {
     throw new Error("Cliente sem grupo de WhatsApp configurado")
@@ -94,6 +110,35 @@ export async function sendPersistedReportNow(
 
   const mode = options?.mode ?? "PDF_AND_MESSAGE"
   const pdfStrategy = options?.pdfStrategy ?? "auto"
+  const latestSuccessfulSend = report.sendLogs.find(
+    (sendLog) => sendLog.status === "OK" && Boolean(sendLog.sentAt)
+  )
+  const hasPendingSend = report.sendLogs.some(
+    (sendLog) => sendLog.status === "PENDING"
+  )
+
+  if (options?.preventDuplicateSends) {
+    if (currentStatus?.status === "SENT" || latestSuccessfulSend) {
+      return {
+        reportId: report.id,
+        status: "SENT",
+        mode,
+        duplicatePrevented: true,
+        duplicateReason: "already-sent",
+      }
+    }
+
+    if (hasPendingSend) {
+      return {
+        reportId: report.id,
+        status: "PENDING",
+        mode,
+        duplicatePrevented: true,
+        duplicateReason: "in-flight",
+      }
+    }
+  }
+
   const attemptNumber = (report.sendLogs[0]?.attemptNumber ?? 0) + 1
   const sendLog = await prisma.sendLog.create({
     data: {

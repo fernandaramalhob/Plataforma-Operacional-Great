@@ -3,7 +3,7 @@ import { canAccessClient, getCurrentUser } from "@/lib/authorization"
 import { prisma } from "@/lib/prisma"
 import { processPendingReportBatch } from "@/lib/report-processing"
 import {
-  disableClientReportSchedule,
+  deleteClientReportSchedule,
   processDueReportSchedules,
   serializeReportSchedule,
   upsertClientReportSchedule,
@@ -158,11 +158,12 @@ export async function DELETE(
       return NextResponse.json({ schedule: null })
     }
 
-    const schedule = await disableClientReportSchedule(id)
+    const result = await deleteClientReportSchedule(id)
 
     return NextResponse.json({
       ok: true,
-      schedule: serializeReportSchedule(schedule),
+      schedule: null,
+      cancelledReportsCount: result.cancelledReportsCount,
     })
   } catch (error) {
     logError("client.report-schedule.delete", error)

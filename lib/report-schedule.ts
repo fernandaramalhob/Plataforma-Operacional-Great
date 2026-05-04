@@ -2,6 +2,7 @@ import type {
   Prisma,
   ReportSchedule,
 } from "@prisma/client"
+import { buildReportJobErrorPayload, parsePendingReportJobPayload } from "@/lib/report-domain"
 import { prisma } from "@/lib/prisma"
 import { queueReportGeneration } from "@/lib/report-service"
 import { logError } from "@/lib/safe-logger"
@@ -13,6 +14,9 @@ import type {
 
 export const REPORT_SCHEDULE_TIMEZONE = "America/Recife"
 const REPORT_SCHEDULE_OFFSET = "-03:00"
+const DEFAULT_REPORT_PREPARATION_LEAD_MINUTES = 15
+const SCHEDULE_DELETION_CANCEL_MESSAGE =
+  "Envio cancelado porque o agendamento foi excluido."
 
 function getReportScheduleTimeZone() {
   return (
@@ -21,6 +25,28 @@ function getReportScheduleTimeZone() {
     || process.env.REPORT_AUTOMATION_TIMEZONE?.trim()
     || process.env.REPORT_WEEKLY_TZ?.trim()
     || REPORT_SCHEDULE_TIMEZONE
+  )
+}
+
+export function getReportSchedulePreparationLeadMinutes() {
+  const rawValue = process.env.REPORT_SCHEDULE_PREPARATION_LEAD_MINUTES?.trim()
+
+  if (!rawValue) {
+    return DEFAULT_REPORT_PREPARATION_LEAD_MINUTES
+  }
+
+  const parsed = Number.parseInt(rawValue, 10)
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DEFAULT_REPORT_PREPARATION_LEAD_MINUTES
+  }
+
+  return parsed
+}
+
+function buildPreparationDueThreshold(now = new Date()) {
+  return new Date(
+    now.getTime() + getReportSchedulePreparationLeadMinutes() * 60_000
   )
 }
 
@@ -229,14 +255,65 @@ export async function upsertClientReportSchedule(params: {
   })
 }
 
-export async function disableClientReportSchedule(clientId: string) {
-  return prisma.reportSchedule.update({
-    where: {
-      clientId,
-    },
-    data: {
-      active: false,
-    },
+export async function deleteClientReportSchedule(clientId: string) {
+  return prisma.$transaction(async (tx) => {
+    const schedule = await tx.reportSchedule.delete({
+      where: {
+        clientId,
+      },
+    })
+
+    const pendingReports = await tx.report.findMany({
+      where: {
+        clientId,
+        status: "PENDING",
+      },
+      select: {
+        id: true,
+        payloadJson: true,
+      },
+    })
+
+    const reportsToCancel = pendingReports.flatMap((report) => {
+      const pendingJob = parsePendingReportJobPayload(report.payloadJson)
+
+      if (pendingJob?.source !== "schedule") {
+        return []
+      }
+
+      return [
+        {
+          id: report.id,
+          payloadJson: buildReportJobErrorPayload(
+            SCHEDULE_DELETION_CANCEL_MESSAGE,
+            pendingJob.kind === "SEND" ? "SEND" : "GENERATION",
+            {
+              scheduledAt: pendingJob.scheduledSendAt ?? pendingJob.queuedAt,
+              nextAttemptAt: pendingJob.nextAttemptAt ?? pendingJob.queuedAt,
+              groupId: pendingJob.sendOptions?.groupId ?? null,
+              groupName: null,
+            }
+          ),
+        },
+      ]
+    })
+
+    for (const report of reportsToCancel) {
+      await tx.report.update({
+        where: {
+          id: report.id,
+        },
+        data: {
+          status: "CANCELLED",
+          payloadJson: report.payloadJson,
+        },
+      })
+    }
+
+    return {
+      schedule,
+      cancelledReportsCount: reportsToCancel.length,
+    }
   })
 }
 
@@ -266,10 +343,24 @@ type DueSchedule = Prisma.ReportScheduleGetPayload<{
 }>
 
 async function executeReportSchedule(schedule: DueSchedule) {
+  const latestScheduleState = await prisma.reportSchedule.findUnique({
+    where: {
+      id: schedule.id,
+    },
+    select: {
+      active: true,
+    },
+  })
+
+  if (!latestScheduleState?.active) {
+    return false
+  }
+
   await queueReportGeneration({
     clientId: schedule.clientId,
     requestedByUserId: schedule.createdByUser.id,
     source: "schedule",
+    scheduledSendAt: schedule.nextRunAt.toISOString(),
     filters: {
       since: schedule.filtersSince,
       until: schedule.filtersUntil,
@@ -282,6 +373,8 @@ async function executeReportSchedule(schedule: DueSchedule) {
       groupId: schedule.groupId || schedule.client.whatsappGroupId,
     },
   })
+
+  return true
 }
 
 async function claimDueSchedule(schedule: DueSchedule, retryMinutes: number) {
@@ -307,11 +400,12 @@ export async function processDueReportSchedules(params?: {
 }) {
   const retryMinutes = params?.retryMinutes ?? 15
   const dryRun = params?.dryRun ?? false
+  const dueThreshold = buildPreparationDueThreshold()
   const dueSchedules = await prisma.reportSchedule.findMany({
     where: {
       active: true,
       nextRunAt: {
-        lte: new Date(),
+        lte: dueThreshold,
       },
     },
     orderBy: {
@@ -358,7 +452,11 @@ export async function processDueReportSchedules(params?: {
     }
 
     try {
-      await executeReportSchedule(schedule)
+      const executed = await executeReportSchedule(schedule)
+
+      if (!executed) {
+        continue
+      }
 
       await prisma.reportSchedule.update({
         where: {
