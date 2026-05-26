@@ -48,6 +48,30 @@ function maskToken(token: string) {
   return `${token.slice(0, 8)}...${token.slice(-6)}`
 }
 
+function storeMetaTokenValue(token: string) {
+  try {
+    return {
+      token: encryptMetaToken(token),
+      storedAs: "encrypted" as const,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+
+    if (
+      /META_TOKEN_ENCRYPTION_KEY|NEXTAUTH_SECRET|proteger tokens META/i.test(
+        message
+      )
+    ) {
+      return {
+        token,
+        storedAs: "plain" as const,
+      }
+    }
+
+    throw error
+  }
+}
+
 async function inspectSelectedPresetToken(preset: MetaTokenPreset) {
   const token = getMetaAccessTokenFromEnv(preset)
 
@@ -306,10 +330,10 @@ export async function POST(request: Request) {
     }
 
     const sanitizedToken = payload.token?.trim() ?? ""
-    const encryptedToken = encryptMetaToken(sanitizedToken)
+    const storedToken = storeMetaTokenValue(sanitizedToken)
 
     await persistMetaTokenState({
-      token: encryptedToken,
+      token: storedToken.token,
       expiresAt: null,
     })
 
@@ -327,7 +351,7 @@ export async function POST(request: Request) {
 
       if (validation.ok) {
         await persistMetaTokenState({
-          token: encryptedToken,
+          token: storedToken.token,
           expiresAt: validation.expiresAt,
         })
       }
@@ -338,7 +362,7 @@ export async function POST(request: Request) {
     return NextResponse.json<MetaTokenSaveResponse>({
       success: true,
       tokenStatus: validation.status,
-      tokenMasked: maskToken(sanitizedToken),
+      tokenMasked: maskToken(storedToken.token),
       selectedPreset: null,
       metaUser: validation.metaUser,
       expiresAt: validation.expiresAt?.toISOString() ?? null,

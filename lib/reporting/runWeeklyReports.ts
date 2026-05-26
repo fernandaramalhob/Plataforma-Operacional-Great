@@ -627,6 +627,10 @@ async function processSingleClient(params: {
       mode: params.sendMode,
       groupId: effectiveGroupId,
       pdfStrategy: "standard",
+      authorization: {
+        type: "scheduled-automation",
+        source: "weekly",
+      },
     })
 
     await markDispatchAsSent({

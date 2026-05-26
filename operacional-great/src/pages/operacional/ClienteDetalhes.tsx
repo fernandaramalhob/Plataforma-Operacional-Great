@@ -156,6 +156,24 @@ export default function ClienteDetalhes() {
     enabled: !!clientId,
   });
 
+  const { data: formResponseBackup } = useQuery({
+    queryKey: ['client-form-response-backup', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('client_start_form_response_backups')
+        .select('snapshot')
+        .eq('client_id', clientId!)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.snapshot as Record<string, string | null> | null;
+    },
+    enabled: !!clientId,
+  });
+
+  const accessResponse = formResponse || formResponseBackup;
+
   // --- Mutations ---
   const updateField = (field: string, successMsg: string, onDone: () => void) =>
     useMutation({
@@ -609,16 +627,16 @@ export default function ClienteDetalhes() {
                   <Badge variant={(client as any)?.has_recharge ? 'default' : 'secondary'} className="text-[10px]">{(client as any)?.has_recharge ? 'Sim' : 'Não'}</Badge>
                   {(client as any)?.has_recharge && (client as any)?.recharge_value > 0 && <span className="text-sm font-medium text-foreground">R$ {Number((client as any)?.recharge_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
                 </div>
-                {formResponse?.instagram_login && (
+                {accessResponse?.instagram_login && (
                   <div className="flex items-start gap-2">
                     <span className="text-muted-foreground text-xs whitespace-nowrap">Instagram:</span>
-                    <span className="text-foreground text-sm font-medium break-all">{formResponse.instagram_login}</span>
+                    <span className="text-foreground text-sm font-medium break-all">{accessResponse.instagram_login}</span>
                   </div>
                 )}
-                {formResponse?.facebook_login && (
+                {accessResponse?.facebook_login && (
                   <div className="flex items-start gap-2">
                     <span className="text-muted-foreground text-xs whitespace-nowrap">Facebook / Meta Ads:</span>
-                    <span className="text-foreground text-sm font-medium break-all">{formResponse.facebook_login}</span>
+                    <span className="text-foreground text-sm font-medium break-all">{accessResponse.facebook_login}</span>
                   </div>
                 )}
               </div>

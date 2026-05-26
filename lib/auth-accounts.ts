@@ -44,7 +44,7 @@ function getManagerLoginAccounts(
     id: "brayton-maycon",
     name: "Brayton Maycon",
     email: "braytonmaycon5@gmail.com",
-    role: "MANAGER",
+    role: "ADMIN",
     password: DEFAULT_LOGIN_PASSWORD,
   })
 

@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import type { Client, User } from "@prisma/client"
 import {
   buildMetaTimeRange,
@@ -17,6 +18,7 @@ import {
   buildStoredReportPayload,
   parsePendingReportJobPayload,
   serializeStoredReportPayload,
+  parseStoredReportPayload,
 } from "@/lib/report-domain"
 import { resolveReportAutomationWindow } from "@/lib/report-automation"
 import { logWarn } from "@/lib/safe-logger"
@@ -79,6 +81,57 @@ function sameSendOptions(
     (left?.message ?? null) === (right?.message ?? null) &&
     (left?.groupId ?? null) === (right?.groupId ?? null)
   )
+}
+
+function sameReportFilters(
+  left:
+    | {
+        since: string
+        until: string
+        objective: string
+      }
+    | null
+    | undefined,
+  right: {
+    since: string
+    until: string
+    objective: string
+  }
+) {
+  return (
+    left?.since === right.since &&
+    left?.until === right.until &&
+    left?.objective === right.objective
+  )
+}
+
+export function shouldReuseExistingReportByFilters(
+  existing:
+    | {
+        status: "PENDING" | "SENT" | "FAILED" | "CANCELLED"
+        payloadJson: unknown
+      }
+    | null,
+  candidateFilters: {
+    since: string
+    until: string
+    objective: string
+  }
+) {
+  if (!existing || existing.status === "FAILED" || existing.status === "CANCELLED") {
+    return false
+  }
+
+  const existingStoredPayload = parseStoredReportPayload(
+    existing.payloadJson as Prisma.JsonValue | null
+  )
+  const existingPendingJob = parsePendingReportJobPayload(
+    existing.payloadJson as Prisma.JsonValue | null
+  )
+  const existingFilters =
+    existingStoredPayload?.filters ?? existingPendingJob?.filters ?? null
+
+  return sameReportFilters(existingFilters, candidateFilters)
 }
 
 export function shouldReuseAutomatedQueuedReport(
@@ -444,6 +497,14 @@ export async function queueReportGeneration(params: QueueReportGenerationParams)
         payloadJson: true,
       },
     })
+
+    if (shouldReuseExistingReportByFilters(existing, pendingJob.filters)) {
+      if (!existing) {
+        throw new Error("Falha ao reaproveitar o relatorio existente.")
+      }
+
+      return existing
+    }
 
     if (shouldReuseAutomatedQueuedReport(existing, pendingJob)) {
       if (!existing) {

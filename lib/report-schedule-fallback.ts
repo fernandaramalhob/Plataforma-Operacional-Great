@@ -8,29 +8,30 @@ export async function runDueReportScheduleSweep(params?: {
   limit?: number
 }) {
   const source = params?.source?.trim() || "unknown"
-  const dueSchedules = await prisma.reportSchedule.count({
-    where: {
-      active: true,
-      nextRunAt: {
-        lte: new Date(),
-      },
-    },
-  })
-
-  if (dueSchedules === 0) {
-    return {
-      dueSchedules,
-      processed: 0,
-      ran: false,
-    }
-  }
-
-  logInfo("report-schedule.fallback.start", {
-    source,
-    dueSchedules,
-  })
 
   try {
+    const dueSchedules = await prisma.reportSchedule.count({
+      where: {
+        active: true,
+        nextRunAt: {
+          lte: new Date(),
+        },
+      },
+    })
+
+    if (dueSchedules === 0) {
+      return {
+        dueSchedules,
+        processed: 0,
+        ran: false,
+      }
+    }
+
+    logInfo("report-schedule.fallback.start", {
+      source,
+      dueSchedules,
+    })
+
     const processed = await processDueReportSchedules({
       limit: params?.limit,
     })
@@ -55,11 +56,11 @@ export async function runDueReportScheduleSweep(params?: {
   } catch (error) {
     logError("report-schedule.fallback", error, {
       source,
-      dueSchedules,
+      stage: "count-or-process",
     })
 
     return {
-      dueSchedules,
+      dueSchedules: 0,
       processed: 0,
       ran: false,
     }

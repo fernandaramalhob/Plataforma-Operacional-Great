@@ -272,6 +272,10 @@ export function parsePendingReportJobPayload(
   return {
     kind: isPendingReportJobKind(pendingJob.kind) ? pendingJob.kind : "GENERATION",
     queuedAt: pendingJob.queuedAt,
+    scheduledSendAt:
+      typeof pendingJob.scheduledSendAt === "string"
+        ? pendingJob.scheduledSendAt
+        : null,
     requestedByUserId: pendingJob.requestedByUserId,
     source: pendingJob.source,
     filters: {

@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 import { MetaTokenInput } from "@/components/clients/meta-token-input"
 import { Header } from "@/components/layout/header"
@@ -10,6 +11,7 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import {
   CheckCircle,
   Copy,
+  Download,
   Loader2,
   MessageCircle,
   Plus,
@@ -521,6 +523,31 @@ export default function SettingsPage() {
               <RefreshCw className="h-4 w-4" />
               Atualizar tudo
             </button>
+          </div>
+
+          <div className="rounded-[28px] border border-amber-200 bg-amber-50/80 p-5 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.35)]">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
+                  Backup da plataforma
+                </p>
+                <h2 className="mt-1 text-lg font-bold text-amber-950">
+                  Download do backup com os dados atuais disponíveis
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm text-amber-900/80">
+                  Esse arquivo fica protegido por login e contém o snapshot salvo da plataforma que
+                  estava no workspace no momento do backup.
+                </p>
+              </div>
+
+              <Link
+                href="/api/backup/greatgo"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#C1121F] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#9f0e19]"
+              >
+                <Download className="h-4 w-4" />
+                Baixar backup
+              </Link>
+            </div>
           </div>
 
           <div className="grid gap-2 rounded-[28px] border border-slate-200 bg-slate-50 p-2 md:grid-cols-2">

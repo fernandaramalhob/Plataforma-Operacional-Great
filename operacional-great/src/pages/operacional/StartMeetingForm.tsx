@@ -38,6 +38,15 @@ interface FormData {
   restricao_comunicacao: string;
 }
 
+interface StartFormBackup {
+  id: string;
+  client_id: string;
+  response_id: string;
+  backup_reason: string;
+  created_at: string;
+  snapshot: Partial<Record<keyof FormData, string | null>> & Record<string, any>;
+}
+
 const initialFormData: FormData = {
   nome_empresa: '',
   responsavel_projeto: '',
@@ -121,17 +130,39 @@ export default function StartMeetingForm() {
     enabled: !!clientId,
   });
 
+  const { data: backupResponse } = useQuery({
+    queryKey: ['start-form-response-backup', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('client_start_form_response_backups')
+        .select('*')
+        .eq('client_id', clientId!)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as StartFormBackup | null;
+    },
+    enabled: !!clientId,
+  });
+
+  const sourceResponse = existingResponse ?? backupResponse;
+  const recoveredFromBackup = !existingResponse && !!backupResponse;
+
   useEffect(() => {
-    if (existingResponse) {
+    if (sourceResponse) {
       const mapped: FormData = { ...initialFormData };
       (Object.keys(initialFormData) as (keyof FormData)[]).forEach((key) => {
-        if ((existingResponse as any)[key]) {
-          mapped[key] = (existingResponse as any)[key];
+        const sourceValue = recoveredFromBackup
+          ? sourceResponse.snapshot?.[key]
+          : (sourceResponse as any)[key];
+        if (sourceValue) {
+          mapped[key] = sourceValue as string;
         }
       });
       setFormData(mapped);
     }
-  }, [existingResponse]);
+  }, [sourceResponse, recoveredFromBackup]);
 
   const updateField = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -389,9 +420,14 @@ export default function StartMeetingForm() {
             Cancelar
           </Button>
           <Button onClick={handleSubmit} disabled={submitting} className="min-w-[140px]">
-            {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : existingResponse ? 'Atualizar Respostas' : 'Enviar Respostas'}
+            {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : sourceResponse ? 'Atualizar Respostas' : 'Enviar Respostas'}
           </Button>
         </div>
+        {recoveredFromBackup && (
+          <p className="text-xs text-muted-foreground">
+            Recuperamos a última versão salva automaticamente como backup para este formulário.
+          </p>
+        )}
       </div>
     </div>
   );

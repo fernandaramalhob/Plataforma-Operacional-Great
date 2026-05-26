@@ -655,6 +655,51 @@ export type Database = {
           },
         ]
       }
+      client_start_form_response_backups: {
+        Row: {
+          backed_up_by_user_id: string | null
+          backup_reason: string
+          client_id: string
+          created_at: string
+          id: string
+          response_id: string
+          snapshot: Json
+        }
+        Insert: {
+          backed_up_by_user_id?: string | null
+          backup_reason?: string
+          client_id: string
+          created_at?: string
+          id?: string
+          response_id: string
+          snapshot: Json
+        }
+        Update: {
+          backed_up_by_user_id?: string | null
+          backup_reason?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          response_id?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_start_form_response_backups_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "operational_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_start_form_response_backups_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "client_start_form_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commercial_goals: {
         Row: {
           created_at: string

@@ -1,6 +1,9 @@
 import { assert, test } from "./test-helpers.mjs"
 import { buildPendingReportJobPayload } from "@/lib/report-domain"
-import { shouldReuseAutomatedQueuedReport } from "@/lib/report-service"
+import {
+  shouldReuseAutomatedQueuedReport,
+  shouldReuseExistingReportByFilters,
+} from "@/lib/report-service"
 
 function buildCandidate(overrides = {}) {
   return {
@@ -87,6 +90,53 @@ test("shouldReuseAutomatedQueuedReport nao interfere em filas manuais", () => {
         payloadJson: null,
       },
       candidate
+    ),
+    false
+  )
+})
+
+test("shouldReuseExistingReportByFilters reaproveita relatorio concluido com os mesmos filtros", () => {
+  const existing = {
+    status: "SENT",
+    payloadJson: {
+      client: {
+        id: "client-1",
+        name: "Cliente Teste",
+        company: "Empresa",
+        adAccountId: "123456",
+      },
+      campaigns: [],
+      filters: {
+        since: "2026-04-28",
+        until: "2026-05-04",
+        objective: "ALL",
+        generatedAt: "2026-05-04T13:00:00.000Z",
+      },
+    },
+  }
+
+  assert.equal(
+    shouldReuseExistingReportByFilters(existing, {
+      since: "2026-04-28",
+      until: "2026-05-04",
+      objective: "ALL",
+    }),
+    true
+  )
+})
+
+test("shouldReuseExistingReportByFilters nao reaproveita relatorio falho", () => {
+  assert.equal(
+    shouldReuseExistingReportByFilters(
+      {
+        status: "FAILED",
+        payloadJson: null,
+      },
+      {
+        since: "2026-04-28",
+        until: "2026-05-04",
+        objective: "ALL",
+      }
     ),
     false
   )

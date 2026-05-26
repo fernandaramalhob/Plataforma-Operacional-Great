@@ -4,6 +4,7 @@ import { hasConfiguredMetaToken } from "@/lib/meta-token"
 import { prisma } from "@/lib/prisma"
 import { parseStoredReportPayload } from "@/lib/report-domain"
 import { getReportQueuesHealth } from "@/lib/report-monitoring"
+import { logWarn } from "@/lib/safe-logger"
 
 const RECENT_ACTIVITY_LIMIT = 5
 const CLIENT_SEND_STATUS_LIMIT = 8
@@ -875,6 +876,14 @@ export async function getDashboardData(
   const isAllTime = Boolean(dateRange.allTime)
 
   if (!user) {
+    return buildEmptyDashboardData(dateRange)
+  }
+
+  if (!process.env.DATABASE_URL?.trim()) {
+    logWarn("dashboard.database-missing", {
+      userId: user.id,
+      role: user.role,
+    })
     return buildEmptyDashboardData(dateRange)
   }
 

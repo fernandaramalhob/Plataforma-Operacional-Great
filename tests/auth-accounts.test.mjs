@@ -17,7 +17,7 @@ test("getAuthLoginAccounts inclui a conta bootstrap do Brayton", () => {
       {
         email: "braytonmaycon5@gmail.com",
         name: "Brayton Maycon",
-        role: "MANAGER",
+        role: "ADMIN",
         password: DEFAULT_LOGIN_PASSWORD,
       },
     ]
@@ -56,7 +56,7 @@ test("getAuthLoginAccounts inclui contas explicitamente configuradas", () => {
       {
         email: "braytonmaycon5@gmail.com",
         name: "Brayton Maycon",
-        role: "MANAGER",
+        role: "ADMIN",
         password: DEFAULT_LOGIN_PASSWORD,
       },
     ]
@@ -68,7 +68,7 @@ test("getBootstrapLoginAccount retorna a conta bootstrap do Brayton", () => {
     id: "brayton-maycon",
     name: "Brayton Maycon",
     email: "braytonmaycon5@gmail.com",
-    role: "MANAGER",
+    role: "ADMIN",
     password: DEFAULT_LOGIN_PASSWORD,
   })
 })

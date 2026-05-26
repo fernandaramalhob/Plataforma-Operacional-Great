@@ -300,6 +300,7 @@ export async function sendWhatsAppText(params: {
   number: string
   text: string
   instance?: string | null
+  resolvedInstance?: string | null
 }) {
   const parsedDestination = parseEvolutionDestination(params.number)
   const startedAt = Date.now()
@@ -307,10 +308,12 @@ export async function sendWhatsAppText(params: {
   const apiUrl = getRequiredEnv("EVOLUTION_API_URL").replace(/\/+$/, "")
   const apiKey = getRequiredEnv("EVOLUTION_API_KEY")
   const timeoutMs = getEvolutionApiTimeoutMs()
-  const instance = await resolveEvolutionInstanceForDestination(
-    parsedDestination.destination,
-    params.instance ?? parsedDestination.instance
-  )
+  const instance =
+    params.resolvedInstance ??
+    (await resolveEvolutionInstanceForDestination(
+      parsedDestination.destination,
+      params.instance ?? parsedDestination.instance
+    ))
   let response: Response | null = null
   let data:
     | EvolutionSendTextResponse
@@ -397,6 +400,7 @@ export async function sendWhatsAppDocument(params: {
   contentBase64: string
   caption?: string | null
   instance?: string | null
+  resolvedInstance?: string | null
 }) {
   const parsedDestination = parseEvolutionDestination(params.number)
   const startedAt = Date.now()
@@ -404,10 +408,12 @@ export async function sendWhatsAppDocument(params: {
   const apiUrl = getRequiredEnv("EVOLUTION_API_URL").replace(/\/+$/, "")
   const apiKey = getRequiredEnv("EVOLUTION_API_KEY")
   const timeoutMs = getEvolutionApiTimeoutMs()
-  const instance = await resolveEvolutionInstanceForDestination(
-    parsedDestination.destination,
-    params.instance ?? parsedDestination.instance
-  )
+  const instance =
+    params.resolvedInstance ??
+    (await resolveEvolutionInstanceForDestination(
+      parsedDestination.destination,
+      params.instance ?? parsedDestination.instance
+    ))
   let response: Response | null = null
   let data:
     | EvolutionSendMediaResponse
@@ -929,7 +935,7 @@ export async function syncEvolutionInstance(instance?: string | null) {
   await restartEvolutionInstance(config, targetInstance)
 }
 
-async function resolveEvolutionInstanceForDestination(
+export async function resolveEvolutionInstanceForDestination(
   destination: string,
   preferredInstance?: string | null
 ) {

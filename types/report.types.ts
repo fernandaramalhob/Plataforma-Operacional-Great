@@ -81,6 +81,7 @@ export type PendingReportJobLease = {
 export type PendingReportJob = {
   kind?: PendingReportJobKind
   queuedAt: string
+  scheduledSendAt?: string | null
   requestedByUserId: string
   source: PendingReportSource
   filters: {
