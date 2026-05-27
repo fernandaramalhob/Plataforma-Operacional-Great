@@ -1,6 +1,9 @@
 import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
-import { getCurrentUser, scopeClientWhere } from "@/lib/authorization"
+import {
+  getCurrentUser,
+  scopeSharedReportClientWhere,
+} from "@/lib/authorization"
 import { listEvolutionGroups } from "@/lib/evolution-api"
 import { prisma } from "@/lib/prisma"
 import { parsePendingReportJobPayload } from "@/lib/report-domain"
@@ -193,7 +196,7 @@ export async function GET() {
     }
 
     const clients = await prisma.client.findMany({
-      where: scopeClientWhere(user, {
+      where: scopeSharedReportClientWhere(user, {
         reportSchedule: {
           isNot: null,
         },

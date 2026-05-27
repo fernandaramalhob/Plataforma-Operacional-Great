@@ -1,5 +1,8 @@
 import { after, NextResponse } from "next/server"
-import { canAccessClient, getCurrentUser } from "@/lib/authorization"
+import {
+  canAccessReportClient,
+  getCurrentUser,
+} from "@/lib/authorization"
 import { prisma } from "@/lib/prisma"
 import { processQueuedReportSafely } from "@/lib/report-processing"
 import {
@@ -55,7 +58,7 @@ export async function GET(request: Request) {
       )
     }
 
-    if (!canAccessClient(user, client.managerId)) {
+    if (!canAccessReportClient(user, client.managerId)) {
       return NextResponse.json<ApiErrorResponse>(
         { error: "Acesso negado a este cliente" },
         { status: 403 }
@@ -114,7 +117,7 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!canAccessClient(user, client.managerId)) {
+    if (!canAccessReportClient(user, client.managerId)) {
       return NextResponse.json<ApiErrorResponse>(
         { error: "Acesso negado a este cliente" },
         { status: 403 }

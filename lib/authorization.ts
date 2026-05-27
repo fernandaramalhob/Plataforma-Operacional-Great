@@ -17,6 +17,19 @@ export type AuthenticatedUser = Pick<
 > & {
 }
 
+function parseSharedReportManagerIds(
+  value: string | undefined = process.env.REPORT_SHARED_MANAGER_IDS
+) {
+  return new Set(
+    (value ?? "")
+      .split(/[,\n;]+/)
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+  )
+}
+
+const SHARED_REPORT_MANAGER_IDS = parseSharedReportManagerIds()
+
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   try {
     const { session, user } = await getSessionUser({
@@ -88,6 +101,21 @@ export function canAccessClient(
   return isAdmin(user) || managerId === user.id
 }
 
+export function canAccessReportClient(
+  user: Pick<AuthenticatedUser, "id" | "role">,
+  managerId: string | null
+) {
+  if (canAccessClient(user, managerId)) {
+    return true
+  }
+
+  if (user.role !== "MANAGER" || !managerId) {
+    return false
+  }
+
+  return SHARED_REPORT_MANAGER_IDS.has(managerId)
+}
+
 export function canManageUserProfile(
   user: Pick<AuthenticatedUser, "role">,
   target: Pick<User, "role">
@@ -105,5 +133,60 @@ export function scopeClientWhere(
 
   return {
     AND: [where, { managerId: user.id }],
+  }
+}
+
+export function scopeReportClientWhere(
+  user: Pick<AuthenticatedUser, "id" | "role">,
+  where: Prisma.ReportWhereInput = {}
+): Prisma.ReportWhereInput {
+  if (isAdmin(user)) {
+    return where
+  }
+
+  const sharedManagerIds = Array.from(SHARED_REPORT_MANAGER_IDS)
+
+  if (!sharedManagerIds.length) {
+    return {
+      AND: [where, { client: { managerId: user.id } }],
+    }
+  }
+
+  return {
+    AND: [
+      where,
+      {
+        OR: [
+          { client: { managerId: user.id } },
+          { client: { managerId: { in: sharedManagerIds } } },
+        ],
+      },
+    ],
+  }
+}
+
+export function scopeSharedReportClientWhere(
+  user: Pick<AuthenticatedUser, "id" | "role">,
+  where: Prisma.ClientWhereInput = {}
+): Prisma.ClientWhereInput {
+  if (isAdmin(user)) {
+    return where
+  }
+
+  const sharedManagerIds = Array.from(SHARED_REPORT_MANAGER_IDS)
+
+  if (!sharedManagerIds.length) {
+    return {
+      AND: [where, { managerId: user.id }],
+    }
+  }
+
+  return {
+    AND: [
+      where,
+      {
+        OR: [{ managerId: user.id }, { managerId: { in: sharedManagerIds } }],
+      },
+    ],
   }
 }

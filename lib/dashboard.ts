@@ -1,5 +1,10 @@
 ﻿import { Prisma, ReportStatus, SendLogStatus } from "@prisma/client"
-import { getCurrentUser, isAdmin, scopeClientWhere } from "@/lib/authorization"
+import {
+  getCurrentUser,
+  isAdmin,
+  scopeClientWhere,
+  scopeReportClientWhere,
+} from "@/lib/authorization"
 import { hasConfiguredMetaToken } from "@/lib/meta-token"
 import { prisma } from "@/lib/prisma"
 import { parseStoredReportPayload } from "@/lib/report-domain"
@@ -896,13 +901,7 @@ export async function getDashboardData(
         lte: rangeEnd,
       }
 
-  const reportScopeWhere: Prisma.ReportWhereInput = isAdmin(user)
-    ? {}
-    : {
-        client: {
-          managerId: user.id,
-        },
-      }
+  const reportScopeWhere: Prisma.ReportWhereInput = scopeReportClientWhere(user)
 
   const environmentMetaTokenAvailable = hasConfiguredMetaToken()
   const adminFallbackTokenPromise = environmentMetaTokenAvailable

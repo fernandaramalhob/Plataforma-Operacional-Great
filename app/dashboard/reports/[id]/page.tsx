@@ -6,7 +6,6 @@ import {
   Calendar,
   ChevronLeft,
   Download,
-  Loader2,
   Send,
 } from "lucide-react"
 import { CampaignSelector } from "@/components/clients/campaign-selector"
@@ -19,7 +18,7 @@ import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
 import { buildReportSendPreview } from "@/lib/report-message"
 import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
 import {
-  pollSavedReportUntilReady,
+  loadSavedReport,
   saveSavedReportMessage,
   sendReportToWhatsApp,
 } from "@/lib/report-client"
@@ -29,7 +28,6 @@ import type { ReportSendMode, SavedReportResponse } from "@/types/report.types"
 export default function ReportPreviewPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
-  const reportPollSequenceRef = useRef(0)
   const initialSendModeRef = useRef<ReportSendMode>("PDF_AND_MESSAGE")
   const initialSendMessageRef = useRef("")
   const [savedReport, setSavedReport] = useState<SavedReportResponse | null>(null)
@@ -45,55 +43,33 @@ export default function ReportPreviewPage() {
   const [sendMessage, setSendMessage] = useState("")
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
 
-  const sleep = useCallback(
-    (milliseconds: number) =>
-      new Promise<void>((resolve) => {
-        window.setTimeout(resolve, milliseconds)
-      }),
-    []
-  )
-
   const loadReport = useCallback(
-    async (reportId: string, sequence: number) => {
-      await pollSavedReportUntilReady({
-        reportId,
-        sequence,
-        getCurrentSequence: () => reportPollSequenceRef.current,
-        sleep,
-        onUpdate: (report) => {
-          setSavedReport(report)
-          setSelectedCampaignIds(
-            report.payload?.campaigns.map((campaign) => campaign.id) ?? []
-          )
-          if (report.payload) {
-            const previewMessage = buildReportSendPreview({
-              reportId: report.id,
-              payload: report.payload,
-            })
+    async (reportId: string) => {
+      const report = await loadSavedReport(reportId)
 
-            setSendMessage(previewMessage)
-            initialSendModeRef.current = "PDF_AND_MESSAGE"
-            initialSendMessageRef.current = previewMessage
-          }
+      setSavedReport(report)
+      setSelectedCampaignIds(
+        report.payload?.campaigns.map((campaign) => campaign.id) ?? []
+      )
 
-          if (!report.payload && report.status !== "FAILED") {
-            setActionFeedback(
-              "Relatório em processamento na fila. Atualizando automaticamente."
-            )
-            return
-          }
+      if (report.payload) {
+        const previewMessage = buildReportSendPreview({
+          reportId: report.id,
+          payload: report.payload,
+        })
 
-          setActionFeedback("")
-        },
-      })
+        setSendMessage(previewMessage)
+        initialSendModeRef.current = "PDF_AND_MESSAGE"
+        initialSendMessageRef.current = previewMessage
+      }
+
+      setActionFeedback("")
     },
-    [sleep]
+    []
   )
 
   useEffect(() => {
     const reportId = Array.isArray(params.id) ? params.id[0] : params.id
-    const sequence = reportPollSequenceRef.current + 1
-    reportPollSequenceRef.current = sequence
 
     if (!reportId) {
       setError("Relatório inválido")
@@ -105,12 +81,8 @@ export default function ReportPreviewPage() {
     setError("")
     setActionFeedback("")
 
-    void loadReport(reportId, sequence)
+    void loadReport(reportId)
       .catch((fetchError: unknown) => {
-        if (sequence !== reportPollSequenceRef.current) {
-          return
-        }
-
         setSavedReport(null)
         setError(
           fetchError instanceof Error
@@ -119,9 +91,7 @@ export default function ReportPreviewPage() {
         )
       })
       .finally(() => {
-        if (sequence === reportPollSequenceRef.current) {
-          setLoading(false)
-        }
+        setLoading(false)
       })
   }, [loadReport, params.id])
 
@@ -299,7 +269,11 @@ export default function ReportPreviewPage() {
         <div className="print:hidden">
           <Header
             title="Relatório salvo"
-            subtitle={isCancelled ? "Envio cancelado" : "Aguardando processamento do job"}
+            subtitle={
+              isCancelled
+                ? "Envio cancelado"
+                : "Relatório ainda sem dados salvos"
+            }
           />
         </div>
         <div className="p-8">
@@ -309,10 +283,10 @@ export default function ReportPreviewPage() {
             ) : savedReport.status === "FAILED" ? (
               <p>{savedReport.errorMessage || "Não foi possível gerar este relatório."}</p>
             ) : (
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-5 w-5 animate-spin text-[#C1121F]" />
-                <p>Relatório em fila. Esta página atualiza automaticamente.</p>
-              </div>
+              <p>
+                Este relatório ainda não concluiu o processamento no banco. Se
+                ele tiver dados salvos, a página o exibirá sem depender da Meta.
+              </p>
             )}
             <button
               onClick={() => router.push("/dashboard/history")}

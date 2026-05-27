@@ -138,6 +138,7 @@ Variaveis de ambiente:
 - `REPORT_WEEKLY_OBJECTIVE`: objetivo padrao usado no job semanal
 - `REPORT_ALERTS_RETENTION`: quantidade de alertas operacionais mantidos no Redis
 - `CRON_SECRET`: segredo usado pelo Vercel Cron em `/api/cron/report-jobs`
+- `REPORT_SHARED_MANAGER_IDS`: lista separada por virgulas ou ponto e virgula com os `managerId` que podem visualizar relatórios compartilhados sem acesso total ao sistema
 
 Operacao:
 
