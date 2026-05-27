@@ -1,13 +1,14 @@
 import type { Prisma } from "@prisma/client"
-import { after, NextResponse } from "next/server"
-import { canAccessClient, getCurrentUser } from "@/lib/authorization"
+import { NextResponse } from "next/server"
 import {
-  parsePendingReportJobPayload,
+  canAccessReportClient,
+  getCurrentUser,
+} from "@/lib/authorization"
+import {
   parseReportJobErrorPayload,
   parseStoredReportPayload,
 } from "@/lib/report-domain"
 import { prisma } from "@/lib/prisma"
-import { processQueuedReportSafely } from "@/lib/report-processing"
 import { logError } from "@/lib/safe-logger"
 import type { SavedReportMessageResponse } from "@/types/report.types"
 
@@ -26,7 +27,7 @@ export async function GET(
     }
 
     const { id } = await params
-    const report = await prisma.report.findUnique({
+    let report = await prisma.report.findUnique({
       where: { id },
       include: {
         client: {
@@ -50,18 +51,13 @@ export async function GET(
       return NextResponse.json({ error: "Relatório não encontrado" }, { status: 404 })
     }
 
-    if (!canAccessClient(user, report.client.managerId)) {
+    if (!canAccessReportClient(user, report.client.managerId)) {
       return NextResponse.json({ error: "Acesso negado a este relatório" }, { status: 403 })
     }
 
     const payload = parseStoredReportPayload(report.payloadJson)
     const jobError = parseReportJobErrorPayload(report.payloadJson)
-    const pendingJob = parsePendingReportJobPayload(report.payloadJson)
     const errorMessage = report.sendLogs[0]?.errorMessage ?? jobError?.message ?? null
-
-    if (report.status === "PENDING" && pendingJob) {
-      after(() => processQueuedReportSafely(report.id))
-    }
 
     if (!payload) {
       return NextResponse.json(
@@ -120,7 +116,7 @@ export async function PUT(
       )
     }
 
-    if (!canAccessClient(user, report.client.managerId)) {
+    if (!canAccessReportClient(user, report.client.managerId)) {
       return NextResponse.json(
         { error: "Acesso negado a este relatório" },
         { status: 403 }
