@@ -1,14 +1,16 @@
 import type { Prisma } from "@prisma/client"
-import { NextResponse } from "next/server"
+import { after, NextResponse } from "next/server"
 import {
   canAccessReportClient,
   getCurrentUser,
 } from "@/lib/authorization"
 import {
+  parsePendingReportJobPayload,
   parseReportJobErrorPayload,
   parseStoredReportPayload,
 } from "@/lib/report-domain"
 import { prisma } from "@/lib/prisma"
+import { processQueuedReportSafely } from "@/lib/report-processing"
 import { logError } from "@/lib/safe-logger"
 import type { SavedReportMessageResponse } from "@/types/report.types"
 
@@ -55,9 +57,43 @@ export async function GET(
       return NextResponse.json({ error: "Acesso negado a este relatório" }, { status: 403 })
     }
 
+    const initialPendingJob = parsePendingReportJobPayload(report.payloadJson)
+    if (report.status === "PENDING" && initialPendingJob) {
+      await processQueuedReportSafely(report.id)
+
+      const refreshedReport = await prisma.report.findUnique({
+        where: { id },
+        include: {
+          client: {
+            select: {
+              managerId: true,
+            },
+          },
+          sendLogs: {
+            select: {
+              errorMessage: true,
+            },
+            orderBy: {
+              attemptNumber: "desc",
+            },
+            take: 1,
+          },
+        },
+      })
+
+      if (refreshedReport) {
+        report = refreshedReport
+      }
+    }
+
     const payload = parseStoredReportPayload(report.payloadJson)
     const jobError = parseReportJobErrorPayload(report.payloadJson)
+    const pendingJob = parsePendingReportJobPayload(report.payloadJson)
     const errorMessage = report.sendLogs[0]?.errorMessage ?? jobError?.message ?? null
+
+    if (report.status === "PENDING" && pendingJob) {
+      after(() => processQueuedReportSafely(report.id))
+    }
 
     if (!payload) {
       return NextResponse.json(
