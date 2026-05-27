@@ -1,11 +1,13 @@
 ﻿import {
   debugMetaToken,
   getMetaAppAccessToken,
+  getMetaAppAccessTokenCandidates,
   getMetaMeProfile,
   MetaApiError,
 } from "@/lib/meta-api"
 import { recordIntegrationAlertSafely } from "@/lib/integration-monitoring"
 import {
+  getMetaTokenPresetFromStoredToken,
   resolveMetaToken,
   resolveMetaTokenCandidate,
   type MetaTokenSource,
@@ -85,10 +87,36 @@ function buildEnvironmentTokenDetail(detail?: string | null) {
   const baseDetail = detail?.trim()
 
   if (!baseDetail) {
-    return "Token META carregado de META_ACCESS_TOKEN."
+    return "Token META carregado de uma credencial configurada no ambiente."
   }
 
-  return `${baseDetail} (via META_ACCESS_TOKEN).`
+  return `${baseDetail} (via credencial configurada no ambiente).`
+}
+
+type InspectMetaTokenValueOptions = {
+  appAccessToken?: string | null
+  appAccessTokens?: string[] | null
+}
+
+function resolveInspectionAppAccessTokens(
+  options?: InspectMetaTokenValueOptions
+) {
+  if (options?.appAccessToken?.trim()) {
+    return [options.appAccessToken.trim()]
+  }
+
+  const providedTokens =
+    options?.appAccessTokens
+      ?.map((token) => token.trim())
+      .filter((token) => token.length > 0) ?? []
+
+  if (providedTokens.length > 0) {
+    return Array.from(new Set(providedTokens))
+  }
+
+  return getMetaAppAccessTokenCandidates()
+    .map((candidate) => candidate.token.trim())
+    .filter((token) => token.length > 0)
 }
 
 function isNearExpiry(expiresAt: Date | null) {
@@ -115,40 +143,72 @@ function pickNearestExpiry(
 }
 
 export async function inspectMetaTokenValue(
-  token: string
+  token: string,
+  options?: InspectMetaTokenValueOptions
 ): Promise<Omit<MetaTokenHealth, "token" | "encryptedToken" | "source">> {
   try {
     const profile = await getMetaMeProfile(token)
+    const appAccessTokens = resolveInspectionAppAccessTokens(options)
 
     let expiresAt: Date | null = null
-    const appAccessToken = getMetaAppAccessToken()
+    let lastInvalidMessage: string | null = null
+    let lastInvalidExpiresAt: Date | null = null
+    let lastDebugError: unknown = null
 
-    if (appAccessToken) {
+    for (const appAccessToken of appAccessTokens) {
       try {
         const debugData = await debugMetaToken(token, appAccessToken)
 
         if (debugData.is_valid === false) {
-          const message =
-            debugData.error?.message ?? "Token META invÃ¡lido ou expirado"
-
-          return {
-            ok: false,
-            status: inferMetaTokenStatus(message),
-            detail: message,
-            expiresAt: pickNearestExpiry(
-              debugData.expires_at,
-              debugData.data_access_expires_at
-            ),
-            metaUser: null,
-          }
+          lastInvalidMessage =
+            debugData.error?.message ?? "Token META inválido ou expirado"
+          lastInvalidExpiresAt = pickNearestExpiry(
+            debugData.expires_at,
+            debugData.data_access_expires_at
+          )
+          continue
         }
 
         expiresAt = pickNearestExpiry(
           debugData.expires_at,
           debugData.data_access_expires_at
         )
+        lastInvalidMessage = null
+        lastInvalidExpiresAt = null
+        lastDebugError = null
+        break
       } catch (error) {
-        logError("meta-token.inspect.debug", error)
+        lastDebugError = error
+        logError("meta-token.inspect.debug", error, {
+          hasAppAccessToken: Boolean(appAccessToken),
+        })
+      }
+    }
+
+    if (!expiresAt && lastInvalidMessage) {
+      return {
+        ok: false,
+        status: inferMetaTokenStatus(lastInvalidMessage),
+        detail: lastInvalidMessage,
+        expiresAt: lastInvalidExpiresAt,
+        metaUser: null,
+      }
+    }
+
+    if (!expiresAt && lastDebugError) {
+      const message =
+        lastDebugError instanceof MetaApiError
+          ? lastDebugError.message
+          : lastDebugError instanceof Error
+            ? lastDebugError.message
+            : "Falha ao validar token META"
+
+      return {
+        ok: false,
+        status: "unknown",
+        detail: message,
+        expiresAt: null,
+        metaUser: null,
       }
     }
 
@@ -160,11 +220,11 @@ export async function inspectMetaTokenValue(
     const detail = expiresAt
       ? buildExpiryDetail(
           expiresAt,
-          status === "expiring_soon" ? "Token META expira" : "Token META valido atÃ©"
+          status === "expiring_soon" ? "Token META expira" : "Token META valido até"
         )
-      : appAccessToken
+      : appAccessTokens.length > 0
         ? "Token META ativo"
-        : "Token META ativo. Configure META_APP_ID e META_APP_SECRET para rastrear a expiracao."
+        : "Token META ativo. Configure as credenciais da META para rastrear a expiracao."
 
     return {
       ok: true,
@@ -202,6 +262,7 @@ export async function getStoredMetaTokenHealth(params: {
 }): Promise<MetaTokenHealth> {
   const { storedToken, storedExpiresAt, forceRemote = false } = params
   const candidate = resolveMetaTokenCandidate(storedToken)
+  const storedPreset = getMetaTokenPresetFromStoredToken(storedToken)
 
   if (!candidate) {
     return {
@@ -294,7 +355,42 @@ export async function getStoredMetaTokenHealth(params: {
     }
   }
 
-  const inspected = await inspectMetaTokenValue(token)
+  if (storedPreset) {
+    const presetAppAccessToken = getMetaAppAccessToken(storedPreset)
+
+    if (!presetAppAccessToken) {
+      const presetLabel = storedPreset === "ISAQUE" ? "Isaque" : "Brayton"
+
+      return {
+        ok: false,
+        status: "missing",
+        detail: `Token META ${presetLabel} não configurado no ambiente.`,
+        expiresAt: storedExpiresAt,
+        token,
+        encryptedToken,
+        source: "database",
+        metaUser: null,
+      }
+    }
+
+    const inspected = await inspectMetaTokenValue(token, {
+      appAccessToken: presetAppAccessToken,
+    })
+
+    return {
+      ...inspected,
+      expiresAt: inspected.expiresAt ?? storedExpiresAt,
+      token,
+      encryptedToken,
+      source: "database",
+    }
+  }
+
+  const inspected = await inspectMetaTokenValue(token, {
+    appAccessTokens: getMetaAppAccessTokenCandidates().map(
+      (candidate) => candidate.token
+    ),
+  })
 
   return {
     ...inspected,

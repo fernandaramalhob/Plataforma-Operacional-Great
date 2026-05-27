@@ -85,6 +85,13 @@ Este projeto e destinado ao **uso interno da operacao da empresa**, com foco na 
 
 Use os arquivos `.env.example` e `.env.local.example` como referencia e mantenha os segredos reais apenas em `.env.local` ou no provedor de ambiente do deploy.
 
+Para integracao META com perfis separados, use:
+
+- `META_APP_ID_ISAQUE` e `META_APP_SECRET_ISAQUE`
+- `META_APP_ID_BRAYTON` e `META_APP_SECRET_BRAYTON`
+
+As variaveis `META_APP_ID` e `META_APP_SECRET` ficam apenas como compatibilidade com configuracoes antigas.
+
 Padrao recomendado:
 
 - `.env`: apenas defaults nao sensiveis

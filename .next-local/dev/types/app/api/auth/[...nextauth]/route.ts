@@ -1,4 +1,4 @@
-// File: C:\Users\ferna\Desktop\Plataforma-Operacional-Great\app\api\auth\[...nextauth]\route.ts
+// File: C:\great-go\Plataforma-Operacional-Great\app\api\auth\[...nextauth]\route.ts
 import * as entry from '../../../../../../../app/api/auth/[...nextauth]/route.js'
 import type { NextRequest } from 'next/server.js'
 

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import { getStoredMetaTokenHealth } from "@/lib/meta-token-status"
+import { hasConfiguredMetaAppCredentials } from "@/lib/meta-api"
 import {
   getReportWorkerHealth,
 } from "@/lib/report-worker-health"
@@ -226,9 +227,7 @@ export async function getReportQueuesHealth() {
 
   const schedulerConfigured = Boolean(process.env.CRON_SECRET?.trim())
   const redisConfigured = isRedisConfigured()
-  const metaAppConfigured = Boolean(
-    process.env.META_APP_ID?.trim() && process.env.META_APP_SECRET?.trim()
-  )
+  const metaAppConfigured = hasConfiguredMetaAppCredentials()
   const workerAlerts = worker.ok ? [] : [buildWorkerHealthAlert(worker)]
   const pendingGeneration = pendingReports.filter(
     (report) => report.pendingJob.kind !== "SEND"

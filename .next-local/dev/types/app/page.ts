@@ -1,4 +1,4 @@
-// File: C:\Users\ferna\Desktop\Plataforma-Operacional-Great\app\page.tsx
+// File: C:\great-go\Plataforma-Operacional-Great\app\page.tsx
 import * as entry from '../../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

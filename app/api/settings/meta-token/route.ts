@@ -24,6 +24,7 @@ import {
   getMetaTokenPresetLabel,
   type MetaTokenPreset,
 } from "@/lib/meta-token"
+import { getMetaAppAccessToken } from "@/lib/meta-api"
 
 type AuthenticatedContext = {
   session: Awaited<ReturnType<typeof getServerSession>>
@@ -74,6 +75,7 @@ function storeMetaTokenValue(token: string) {
 
 async function inspectSelectedPresetToken(preset: MetaTokenPreset) {
   const token = getMetaAccessTokenFromEnv(preset)
+  const appAccessToken = getMetaAppAccessToken(preset)
 
   if (!token) {
     throw new Error(
@@ -81,7 +83,15 @@ async function inspectSelectedPresetToken(preset: MetaTokenPreset) {
     )
   }
 
-  const validation = await inspectMetaTokenValue(token)
+  if (!appAccessToken) {
+    throw new Error(
+      `Credenciais da app META para ${getMetaTokenPresetLabel(preset)} não configuradas no ambiente.`
+    )
+  }
+
+  const validation = await inspectMetaTokenValue(token, {
+    appAccessToken,
+  })
 
   if (!validation.ok) {
     throw new Error(validation.detail ?? "Token META inválido")

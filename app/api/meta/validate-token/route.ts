@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/authorization"
+import { getMetaAppAccessToken } from "@/lib/meta-api"
 import {
   getStoredMetaTokenHealth,
   inspectMetaTokenValue,
@@ -71,6 +72,8 @@ export async function POST(request: Request) {
       "preset" in payload
         ? getMetaAccessTokenFromEnv(payload.preset)
         : payload.token
+    const appAccessToken =
+      "preset" in payload ? getMetaAppAccessToken(payload.preset) : null
 
     if (!token) {
       return NextResponse.json<ApiErrorResponse>(
@@ -79,7 +82,16 @@ export async function POST(request: Request) {
       )
     }
 
-    const validation = await inspectMetaTokenValue(token)
+    if ("preset" in payload && !appAccessToken) {
+      return NextResponse.json<ApiErrorResponse>(
+        {
+          error: `Credenciais da app META para ${payload.preset === "ISAQUE" ? "Isaque" : "Brayton"} não configuradas no ambiente.`,
+        },
+        { status: 400 }
+      )
+    }
+
+    const validation = await inspectMetaTokenValue(token, appAccessToken ? { appAccessToken } : undefined)
 
     if (!validation.ok) {
       return NextResponse.json<MetaTokenValidationResponse>(

@@ -1,4 +1,5 @@
 import { logIntegrationEvent } from "@/lib/integration-monitoring"
+import type { MetaTokenPreset } from "@/lib/meta-token"
 
 const META_GRAPH_API_VERSION = "v18.0"
 const META_GRAPH_API_BASE_URL = `https://graph.facebook.com/${META_GRAPH_API_VERSION}`
@@ -48,6 +49,11 @@ type MetaApiRequestParams = {
   query?: Record<string, MetaRequestValue>
 }
 
+export type MetaAppAccessTokenCandidate = {
+  source: "ISAQUE" | "BRAYTON" | "GLOBAL" | "FACEBOOK"
+  token: string
+}
+
 function getMetaApiTimeoutMs() {
   const parsed = Number.parseInt(process.env.META_API_TIMEOUT_MS ?? "", 10)
 
@@ -56,6 +62,91 @@ function getMetaApiTimeoutMs() {
   }
 
   return parsed
+}
+
+function buildAppAccessToken(appId: string, appSecret: string) {
+  return `${appId}|${appSecret}`
+}
+
+function getAppAccessTokenFromEnv(
+  idKey: string,
+  secretKey: string
+): string | null {
+  const appId = process.env[idKey]?.trim()
+  const appSecret = process.env[secretKey]?.trim()
+
+  if (!appId || !appSecret) {
+    return null
+  }
+
+  return buildAppAccessToken(appId, appSecret)
+}
+
+function getLegacyMetaAppAccessToken() {
+  const appId = process.env.META_APP_ID?.trim()
+  const appSecret = process.env.META_APP_SECRET?.trim()
+
+  if (!appId || !appSecret) {
+    return null
+  }
+
+  return buildAppAccessToken(appId, appSecret)
+}
+
+function getFacebookLegacyMetaAppAccessToken() {
+  const appId = process.env.FACEBOOK_APP_ID?.trim()
+  const appSecret = process.env.FACEBOOK_APP_SECRET?.trim()
+
+  if (!appId || !appSecret) {
+    return null
+  }
+
+  return buildAppAccessToken(appId, appSecret)
+}
+
+export function getMetaAppAccessTokenCandidates(): MetaAppAccessTokenCandidate[] {
+  const candidates: MetaAppAccessTokenCandidate[] = []
+
+  const isaque = getAppAccessTokenFromEnv(
+    "META_APP_ID_ISAQUE",
+    "META_APP_SECRET_ISAQUE"
+  )
+  if (isaque) {
+    candidates.push({ source: "ISAQUE", token: isaque })
+  }
+
+  const brayton = getAppAccessTokenFromEnv(
+    "META_APP_ID_BRAYTON",
+    "META_APP_SECRET_BRAYTON"
+  )
+  if (brayton) {
+    candidates.push({ source: "BRAYTON", token: brayton })
+  }
+
+  const legacy = getLegacyMetaAppAccessToken()
+  if (legacy) {
+    candidates.push({ source: "GLOBAL", token: legacy })
+  }
+
+  const facebookLegacy = getFacebookLegacyMetaAppAccessToken()
+
+  if (facebookLegacy) {
+    candidates.push({ source: "FACEBOOK", token: facebookLegacy })
+  }
+
+  const unique = new Map<string, MetaAppAccessTokenCandidate>()
+
+  for (const candidate of candidates) {
+    if (!unique.has(candidate.token)) {
+      unique.set(candidate.token, candidate)
+    }
+  }
+
+  return Array.from(unique.values())
+}
+
+export function hasConfiguredMetaAppCredentials() {
+  return getMetaAppAccessTokenCandidates().length > 0
 }
 
 type MetaListResponse<T> = {
@@ -268,17 +359,22 @@ export async function metaApiListAllRequest<T>(
   return results
 }
 
-export function getMetaAppAccessToken() {
-  const appId =
-    process.env.META_APP_ID?.trim() || process.env.FACEBOOK_APP_ID?.trim()
-  const appSecret =
-    process.env.META_APP_SECRET?.trim() || process.env.FACEBOOK_APP_SECRET?.trim()
-
-  if (!appId || !appSecret) {
-    return null
+export function getMetaAppAccessToken(preset?: MetaTokenPreset | null) {
+  if (preset === "ISAQUE") {
+    return getAppAccessTokenFromEnv(
+      "META_APP_ID_ISAQUE",
+      "META_APP_SECRET_ISAQUE"
+    )
   }
 
-  return `${appId}|${appSecret}`
+  if (preset === "BRAYTON") {
+    return getAppAccessTokenFromEnv(
+      "META_APP_ID_BRAYTON",
+      "META_APP_SECRET_BRAYTON"
+    )
+  }
+
+  return getLegacyMetaAppAccessToken() ?? getFacebookLegacyMetaAppAccessToken()
 }
 
 export function buildMetaTimeRange(since: string, until: string) {
