@@ -399,12 +399,6 @@ export default function ReportsPage() {
     waitForQueuedReport,
   ])
 
-  useEffect(() => {
-    if (selectedClient && startDate && endDate) {
-      void fetchReport()
-    }
-  }, [fetchReport, selectedClient, startDate, endDate])
-
   const filteredClients = clients.filter(
     (client) =>
       client.name.toLowerCase().includes(search.toLowerCase()) ||
