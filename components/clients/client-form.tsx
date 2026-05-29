@@ -71,7 +71,6 @@ export function ClientForm({
   const activeInstance =
     groupsResponse?.previewInstance ??
     groupsResponse?.selectedInstance ??
-    groupsResponse?.instance ??
     null
   const filteredGroups = activeInstance
     ? availableGroups.filter(

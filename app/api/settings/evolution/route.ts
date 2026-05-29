@@ -47,8 +47,7 @@ export async function GET(request: Request) {
       user.evolutionInstance ?? null
     )
     const config = getEvolutionConfig()
-    const effectiveGroupInstance =
-      previewInstance || selectedInstance || config.instance || null
+    const effectiveGroupInstance = previewInstance || selectedInstance || null
 
     if (!config.configured) {
       return NextResponse.json<EvolutionSettingsResponse>({
@@ -82,7 +81,7 @@ export async function GET(request: Request) {
         connected: catalog.connected,
         instance: resolvedSelectedInstance || config.instance || null,
         selectedInstance: resolvedSelectedInstance,
-        previewInstance: resolvedPreviewInstance,
+        previewInstance: resolvedPreviewInstance || null,
         detail:
           catalog.partialErrors.length > 0
             ? `${detail} Algumas instâncias não puderam ser consultadas nesta atualização.`
