@@ -55,6 +55,15 @@ export type ReportTemplateDraft = {
   updatedAt?: string
 }
 
+export type ReportPresentationOptions = {
+  customTitle?: string
+  executiveSummary?: string
+  closingNotes?: string
+  sections?: ReportSectionVisibility
+  metrics?: ReportMetricVisibility
+  insightsEnabled?: boolean
+}
+
 export type ReportJobError = {
   message: string
   stage: ReportJobStage
@@ -91,6 +100,7 @@ export type PendingReportJob = {
   }
   enqueueSendOnComplete: boolean
   sendOptions: PendingReportSendOptions | null
+  presentation?: ReportPresentationOptions | null
   storedPayload?: StoredReportPayload | null
   attemptCount?: number
   maxAttempts?: number
@@ -162,6 +172,7 @@ export type ReportPayload = {
   dailyInsights?: ReportInsight[]
   topAds?: ReportAd[]
   genderBreakdown?: ReportBreakdownRow[]
+  presentation?: ReportPresentationOptions
 }
 
 export type ReportFilters = {
@@ -176,11 +187,13 @@ export type ReportRequest = {
   since: string
   until: string
   objective?: ReportObjectiveValue
+  presentation?: ReportPresentationOptions
 }
 
 export type StoredReportPayload = ReportPayload & {
   client: ReportClient
   filters: ReportFilters
+  presentation?: ReportPresentationOptions
   uiMessageOverride?: string | null
 }
 
@@ -226,6 +239,7 @@ export type ReportSendRequest = {
   pdfBase64?: string
   pdfFileName?: string
   groupId?: string
+  presentation?: ReportPresentationOptions
 }
 
 export type ReportSchedulePayload = {

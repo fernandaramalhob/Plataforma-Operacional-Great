@@ -7,7 +7,11 @@ import {
   resolveMessageMetric,
   resolveObjectiveMetric,
 } from "@/lib/report-metrics"
-import type { StoredReportPayload } from "@/types/report.types"
+import type {
+  ReportMetricVisibility,
+  ReportSectionVisibility,
+  StoredReportPayload,
+} from "@/types/report.types"
 
 const PAGE = {
   width: 210,
@@ -57,6 +61,31 @@ type CampaignRow = {
 }
 
 const MAX_CAMPAIGN_ROWS_FIRST_PAGE = 8
+
+const DEFAULT_SECTIONS: ReportSectionVisibility = {
+  overview: true,
+  advancedMetrics: true,
+  chart: true,
+  campaignTable: true,
+  topAds: true,
+  gender: true,
+  insights: true,
+  summary: true,
+  notes: true,
+}
+
+const DEFAULT_METRICS: ReportMetricVisibility = {
+  spend: true,
+  impressions: true,
+  reach: true,
+  clicks: true,
+  ctr: true,
+  cpc: true,
+  cpm: true,
+  conversationsStarted: true,
+  costPerConversation: true,
+  conversationRate: true,
+}
 
 function setFill(pdf: jsPDF, color: Rgb) {
   pdf.setFillColor(color[0], color[1], color[2])
@@ -114,7 +143,7 @@ function drawHeader(pdf: jsPDF, payload: StoredReportPayload) {
   pdf.setFont("helvetica", "normal")
   pdf.setFontSize(10)
   setText(pdf, COLORS.muted)
-  pdf.text("FACEBOOK - Visão Geral", 20, 35)
+  pdf.text(payload.presentation?.customTitle || "FACEBOOK - Visão Geral", 20, 35)
 
   pdf.setFont("helvetica", "bold")
   pdf.setFontSize(11)
@@ -320,6 +349,7 @@ function drawCampaignTable(
 
 function buildMetricCards(payload: StoredReportPayload) {
   const accountInsights = payload.accountInsights ?? {}
+  const metrics = payload.presentation?.metrics ?? DEFAULT_METRICS
   const objectiveMetric = resolveObjectiveMetric(accountInsights, payload.filters.objective)
   const messageMetric = resolveMessageMetric(accountInsights)
 
@@ -354,7 +384,17 @@ function buildMetricCards(payload: StoredReportPayload) {
       accentBg: COLORS.greenBg,
       accentText: COLORS.greenText,
     },
-  ]
+  ].filter((card) => {
+    const metricMap: Record<string, keyof ReportMetricVisibility> = {
+      Investimento: "spend",
+      "ImpressÃµes": "impressions",
+      Alcance: "reach",
+      Cliques: "clicks",
+      "Taxa de cliques": "ctr",
+    }
+
+    return metrics[metricMap[card.label]]
+  })
 
   const advanced: MetricCard[] = [
     {
@@ -393,7 +433,17 @@ function buildMetricCards(payload: StoredReportPayload) {
       accentBg: COLORS.surface,
       accentText: COLORS.red,
     },
-  ]
+  ].filter((card) => {
+    const metricMap: Record<string, keyof ReportMetricVisibility> = {
+      "Custo por clique": "cpc",
+      "Custo por mil impressÃµes": "cpm",
+      "Conversas iniciadas": "conversationsStarted",
+      "Custo por conversa": "costPerConversation",
+      [messageMetric.efficiencyLabel ?? "Taxa de conversa"]: "conversationRate",
+    }
+
+    return metrics[metricMap[card.label]]
+  })
 
   const summary = [
     {
@@ -446,6 +496,7 @@ export function buildStandardReportPdfBuffer(params: {
     compress: true,
   })
 
+  const sections = payload.presentation?.sections ?? DEFAULT_SECTIONS
   const { overview, advanced, summary, objectiveMetric } = buildMetricCards(payload)
   const campaignRows = buildCampaignRows(payload, objectiveMetric.label)
   const firstPageCampaignRows = campaignRows.slice(0, MAX_CAMPAIGN_ROWS_FIRST_PAGE)
@@ -461,20 +512,28 @@ export function buildStandardReportPdfBuffer(params: {
 
   pageShell(pdf, 1, totalPages)
   drawHeader(pdf, payload)
-  drawOverviewCards(pdf, overview, 50)
-  drawAdvancedMetrics(pdf, advanced, 98)
-  drawCampaignTable(
-    pdf,
-    firstPageCampaignRows,
-    objectiveMetric.label,
-    160,
-    Math.max(campaignRows.length - firstPageCampaignRows.length, 0)
-  )
+  if (sections.overview) {
+    drawOverviewCards(pdf, overview, 50)
+  }
+  if (sections.advancedMetrics) {
+    drawAdvancedMetrics(pdf, advanced, 98)
+  }
+  if (sections.campaignTable) {
+    drawCampaignTable(
+      pdf,
+      firstPageCampaignRows,
+      objectiveMetric.label,
+      160,
+      Math.max(campaignRows.length - firstPageCampaignRows.length, 0)
+    )
+  }
 
   pdf.addPage()
   pageShell(pdf, 2, totalPages)
   drawHeader(pdf, payload)
-  drawSummary(pdf, summary, 50)
+  if (sections.summary) {
+    drawSummary(pdf, summary, 50)
+  }
 
   return Buffer.from(pdf.output("arraybuffer"))
 }

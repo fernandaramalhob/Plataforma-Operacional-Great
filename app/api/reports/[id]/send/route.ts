@@ -6,6 +6,7 @@ import { sendPersistedReportNow } from "@/lib/report-delivery"
 import { prisma } from "@/lib/prisma"
 import { logError } from "@/lib/safe-logger"
 import type { ReportSendRequest } from "@/types/report.types"
+import type { Prisma } from "@prisma/client"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -69,6 +70,18 @@ export async function POST(
     }
 
     const body = (await request.json().catch(() => ({}))) as ReportSendRequest
+    if (body.presentation) {
+      await prisma.report.update({
+        where: { id: report.id },
+        data: {
+          payloadJson: {
+            ...(report.payloadJson as Record<string, unknown>),
+            presentation: body.presentation,
+          } as Prisma.InputJsonValue,
+        },
+      })
+    }
+
     const targetGroupId = body.groupId?.trim() || report.client.whatsappGroupId
     const evolutionInstance = normalizeEvolutionInstancePreference(user.evolutionInstance)
 

@@ -7,6 +7,46 @@ const reportObjectiveSchema = z.enum([
   "MESSAGES",
 ])
 
+const reportSectionVisibilitySchema = z
+  .object({
+    overview: z.boolean(),
+    advancedMetrics: z.boolean(),
+    chart: z.boolean(),
+    campaignTable: z.boolean(),
+    topAds: z.boolean(),
+    gender: z.boolean(),
+    insights: z.boolean(),
+    summary: z.boolean(),
+    notes: z.boolean(),
+  })
+  .strict()
+
+const reportMetricVisibilitySchema = z
+  .object({
+    spend: z.boolean(),
+    impressions: z.boolean(),
+    reach: z.boolean(),
+    clicks: z.boolean(),
+    ctr: z.boolean(),
+    cpc: z.boolean(),
+    cpm: z.boolean(),
+    conversationsStarted: z.boolean(),
+    costPerConversation: z.boolean(),
+    conversationRate: z.boolean(),
+  })
+  .strict()
+
+const reportPresentationSchema = z
+  .object({
+    customTitle: z.preprocess(nullableToUndefined, z.string().optional()),
+    executiveSummary: z.preprocess(nullableToUndefined, z.string().optional()),
+    closingNotes: z.preprocess(nullableToUndefined, z.string().optional()),
+    sections: reportSectionVisibilitySchema.optional(),
+    metrics: reportMetricVisibilitySchema.optional(),
+    insightsEnabled: z.boolean().optional(),
+  })
+  .strict()
+
 function trimString(value: unknown) {
   return typeof value === "string" ? value.trim() : value
 }
@@ -40,6 +80,7 @@ function buildReportSchema() {
         },
         reportObjectiveSchema.optional().default("ALL")
       ),
+      presentation: reportPresentationSchema.optional(),
     })
     .strict()
     .superRefine((data, ctx) => {

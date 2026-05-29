@@ -11,6 +11,7 @@ import type {
   ReportSendResponse,
   SavedReportResponse,
   SavedReportMessageResponse,
+  ReportPresentationOptions,
 } from "@/types/report.types"
 import type { EvolutionSettingsResponse } from "@/types/evolution.types"
 
@@ -54,7 +55,10 @@ export async function loadSavedReport(
 
 export async function saveSavedReportMessage(
   reportId: string,
-  message: string
+  message: string,
+  options?: {
+    presentation?: ReportPresentationOptions
+  }
 ) {
   return fetchJsonOrThrow<SavedReportMessageResponse>(
     `/api/reports/${reportId}`,
@@ -63,7 +67,7 @@ export async function saveSavedReportMessage(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, presentation: options?.presentation }),
     },
     "Não foi possível salvar a mensagem"
   )

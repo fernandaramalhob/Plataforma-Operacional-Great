@@ -28,6 +28,7 @@ import type {
   ReportClient,
   ReportGenerationResponse,
   ReportPayload,
+  ReportPresentationOptions,
 } from "@/types/report.types"
 
 type ReportUser = Pick<User, "id" | "metaAccessToken" | "metaTokenExpiresAt">
@@ -52,6 +53,7 @@ type QueueReportGenerationParams = {
   enqueueSendOnComplete?: boolean
   scheduledSendAt?: string | null
   sendOptions?: PendingReportSendOptions | null
+  presentation?: ReportPresentationOptions | null
   source?: "manual" | "schedule" | "weekly"
 }
 
@@ -69,6 +71,7 @@ function buildQueuedReportPendingJob(params: QueueReportGenerationParams) {
     filters: params.filters,
     enqueueSendOnComplete: params.enqueueSendOnComplete ?? false,
     sendOptions: params.sendOptions ?? null,
+    presentation: params.presentation ?? null,
   }
 }
 

@@ -8,6 +8,7 @@ import type {
   PendingReportJob,
   PendingReportJobKind,
   PendingReportSource,
+  ReportPresentationOptions,
   ReportPayload,
   ReportSendMode,
   StoredReportPayload,
@@ -74,7 +75,8 @@ function formatTime(date: Date) {
 export function buildStoredReportPayload(
   payload: ReportPayload,
   filters: Omit<ReportFilters, "generatedAt">,
-  generatedAt: Date
+  generatedAt: Date,
+  presentation?: ReportPresentationOptions | null
 ): StoredReportPayload {
   return {
     ...payload,
@@ -88,6 +90,7 @@ export function buildStoredReportPayload(
       ...filters,
       generatedAt: generatedAt.toISOString(),
     },
+    presentation: presentation ?? payload.presentation,
   }
 }
 
@@ -198,12 +201,19 @@ export function parsePendingReportJobPayload(
       : isRecord(pendingJob.lease)
         ? pendingJob.lease
         : undefined
+  const presentation =
+    pendingJob.presentation == null
+      ? null
+      : isRecord(pendingJob.presentation)
+        ? (pendingJob.presentation as ReportPresentationOptions)
+        : undefined
 
   if (
     !filters ||
     sendOptions === undefined ||
     storedPayload === undefined ||
     lease === undefined ||
+    presentation === undefined ||
     typeof pendingJob.queuedAt !== "string" ||
     typeof pendingJob.requestedByUserId !== "string" ||
     !isPendingReportSource(pendingJob.source) ||
@@ -294,6 +304,7 @@ export function parsePendingReportJobPayload(
             typeof sendOptions.groupId === "string" ? sendOptions.groupId : null,
         }
       : null,
+    presentation,
     storedPayload,
     attemptCount:
       typeof pendingJob.attemptCount === "number" ? pendingJob.attemptCount : 0,

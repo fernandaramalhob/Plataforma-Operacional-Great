@@ -12,7 +12,10 @@ import {
 import { prisma } from "@/lib/prisma"
 import { processQueuedReportSafely } from "@/lib/report-processing"
 import { logError } from "@/lib/safe-logger"
-import type { SavedReportMessageResponse } from "@/types/report.types"
+import type {
+  ReportPresentationOptions,
+  SavedReportMessageResponse,
+} from "@/types/report.types"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -169,21 +172,30 @@ export async function PUT(
 
     const body = (await request.json().catch(() => ({}))) as {
       message?: string | null
+      presentation?: ReportPresentationOptions | null
     }
+    const hasMessage = "message" in body
     const message = typeof body.message === "string" ? body.message.trim() : ""
-    const nextMessage = message || null
+    const nextMessage = hasMessage ? message || null : payload.uiMessageOverride ?? null
+    const nextPresentation = isRecord(body.presentation) ? body.presentation : null
     const payloadJson = { ...(report.payloadJson as Record<string, unknown>) }
 
     if (isRecord(payloadJson.pendingJob) && isRecord(payloadJson.pendingJob.storedPayload)) {
       payloadJson.pendingJob = {
         ...payloadJson.pendingJob,
+        presentation: nextPresentation ?? payloadJson.pendingJob.presentation,
         storedPayload: {
           ...payloadJson.pendingJob.storedPayload,
           uiMessageOverride: nextMessage,
+          presentation:
+            nextPresentation ?? payloadJson.pendingJob.storedPayload.presentation,
         },
       }
     } else {
       payloadJson.uiMessageOverride = nextMessage
+      if (nextPresentation) {
+        payloadJson.presentation = nextPresentation
+      }
     }
 
     await prisma.report.update({

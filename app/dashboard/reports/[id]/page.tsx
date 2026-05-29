@@ -66,6 +66,7 @@ export default function ReportPreviewPage() {
             report.payload?.campaigns.map((campaign) => campaign.id) ?? []
           )
           if (report.payload) {
+            setInsightsEnabled(report.payload.presentation?.insightsEnabled ?? true)
             const previewMessage = buildReportSendPreview({
               reportId: report.id,
               payload: report.payload,
@@ -457,6 +458,11 @@ export default function ReportPreviewPage() {
               objective={payload.filters.objective}
               selectedCampaignIds={selectedCampaignIds}
               insightsEnabled={insightsEnabled}
+              metricVisibility={payload.presentation?.metrics}
+              customTitle={payload.presentation?.customTitle}
+              executiveSummary={payload.presentation?.executiveSummary}
+              closingNotes={payload.presentation?.closingNotes}
+              sectionVisibility={payload.presentation?.sections}
             />
           </div>
 

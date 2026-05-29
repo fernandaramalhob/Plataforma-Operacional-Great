@@ -816,7 +816,8 @@ export function ReportPreview({
   variant = "screen",
 }: ReportPreviewProps) {
   const isPdf = variant === "pdf"
-  const visibleSections: ReportSectionVisibility = sectionVisibility ?? {
+  const presentation = reportData.presentation
+  const visibleSections: ReportSectionVisibility = sectionVisibility ?? presentation?.sections ?? {
     overview: true,
     advancedMetrics: true,
     chart: true,
@@ -827,7 +828,7 @@ export function ReportPreview({
     summary: true,
     notes: true,
   }
-  const visibleMetrics: ReportMetricVisibility = metricVisibility ?? {
+  const visibleMetrics: ReportMetricVisibility = metricVisibility ?? presentation?.metrics ?? {
     spend: true,
     impressions: true,
     reach: true,
@@ -839,6 +840,10 @@ export function ReportPreview({
     costPerConversation: true,
     conversationRate: true,
   }
+  const resolvedCustomTitle = customTitle ?? presentation?.customTitle
+  const resolvedExecutiveSummary = executiveSummary ?? presentation?.executiveSummary
+  const resolvedClosingNotes = closingNotes ?? presentation?.closingNotes
+  const shouldShowInsights = visibleSections.insights && insightsEnabled
   const accountInsights = reportData.accountInsights ?? {}
   const spend = parseReportNumber(accountInsights.spend)
   const impressions = parseReportNumber(accountInsights.impressions)
@@ -1040,8 +1045,8 @@ export function ReportPreview({
           client={client}
           startDate={startDate}
           endDate={endDate}
-          customTitle={customTitle}
-          executiveSummary={executiveSummary}
+          customTitle={resolvedCustomTitle}
+          executiveSummary={resolvedExecutiveSummary}
           isPdf={false}
         />
 
@@ -1074,14 +1079,14 @@ export function ReportPreview({
               rows={reportData.genderBreakdown ?? []}
             />
           ) : null}
-          {visibleSections.insights && insightsEnabled ? (
+          {shouldShowInsights ? (
             <InsightsSection insights={automaticInsights} isPdf={false} />
           ) : null}
           {visibleSections.summary ? (
             <SummarySection summary={campaignSummary} isPdf={false} />
           ) : null}
           {visibleSections.notes ? (
-            <ManualNotesSection closingNotes={closingNotes} />
+            <ManualNotesSection closingNotes={resolvedClosingNotes} />
           ) : null}
         </div>
       </div>
@@ -1094,8 +1099,9 @@ export function ReportPreview({
     (visibleSections.chart && chartData.length > 0) ||
     (visibleSections.topAds && Boolean(reportData.topAds?.length)) ||
     (visibleSections.gender && Boolean(reportData.genderBreakdown?.length)) ||
+    (shouldShowInsights && automaticInsights.length > 0) ||
     (visibleSections.summary && campaignSummary.length > 0) ||
-    (visibleSections.notes && Boolean(closingNotes?.trim()))
+    (visibleSections.notes && Boolean(resolvedClosingNotes?.trim()))
   const totalPages = 1 + (hasSecondaryPage ? 1 : 0)
 
   let pageNumber = 1
@@ -1108,8 +1114,8 @@ export function ReportPreview({
             client={client}
             startDate={startDate}
             endDate={endDate}
-            customTitle={customTitle}
-            executiveSummary={executiveSummary}
+            customTitle={resolvedCustomTitle}
+            executiveSummary={resolvedExecutiveSummary}
             isPdf
           />
 
@@ -1152,8 +1158,11 @@ export function ReportPreview({
                   rows={reportData.genderBreakdown ?? []}
                 />
               ) : null}
+              {shouldShowInsights ? (
+                <InsightsSection insights={automaticInsights} isPdf />
+              ) : null}
               {visibleSections.notes ? (
-                <ManualNotesSection closingNotes={closingNotes} />
+                <ManualNotesSection closingNotes={resolvedClosingNotes} />
               ) : null}
             </div>
           </div>

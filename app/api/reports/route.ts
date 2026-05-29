@@ -104,7 +104,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { clientId, since, until, objective } = parsedBody.data
+    const { clientId, since, until, objective, presentation } = parsedBody.data
     const client = await prisma.client.findUnique({
       where: { id: clientId },
       include: { manager: true },
@@ -132,6 +132,7 @@ export async function POST(request: Request) {
         objective,
       },
       requestedByUserId: user.id,
+      presentation,
     })
 
     after(() => processQueuedReportSafely(report.id))

@@ -53,7 +53,7 @@ export default async function ReportPdfPage({ params, searchParams }: PageProps)
         endDate={payload.filters.until}
         objective={payload.filters.objective}
         selectedCampaignIds={payload.campaigns.map((campaign) => campaign.id)}
-        insightsEnabled
+        insightsEnabled={payload.presentation?.insightsEnabled ?? true}
         variant="pdf"
       />
     </main>

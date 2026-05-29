@@ -1131,7 +1131,8 @@ async function processGenerationJob(params: {
     const storedPayload = buildStoredReportPayload(
       payload,
       params.pendingJob.filters,
-      generatedAt
+      generatedAt,
+      params.pendingJob.presentation
     )
 
     if (!params.pendingJob.enqueueSendOnComplete) {

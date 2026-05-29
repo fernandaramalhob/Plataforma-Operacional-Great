@@ -31,6 +31,7 @@ import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
 import {
   pollSavedReportUntilReady,
   requestQueuedReport,
+  saveSavedReportMessage,
   sendReportToWhatsApp,
 } from "@/lib/report-client"
 import {
@@ -194,6 +195,7 @@ export default function ReportsPage() {
       dailyInsights: savedReport.payload.dailyInsights,
       topAds: savedReport.payload.topAds,
       genderBreakdown: savedReport.payload.genderBreakdown,
+      presentation: savedReport.payload.presentation,
     }
 
     setCurrentReportId(savedReport.id)
@@ -203,11 +205,24 @@ export default function ReportsPage() {
       reportId: savedReport.id,
       payload: savedReport.payload,
     })
-    const savedTemplate = selectedClient
-      ? loadReportTemplate(selectedClient.id)
-      : null
+    if (savedReport.payload.presentation) {
+      const presentation = savedReport.payload.presentation
 
-    applyTemplate(savedTemplate, previewMessage)
+      setCustomTitle(presentation.customTitle || "FACEBOOK - Visão Geral")
+      setExecutiveSummary(presentation.executiveSummary || "")
+      setClosingNotes(presentation.closingNotes || "")
+      setSectionVisibility(presentation.sections || DEFAULT_REPORT_SECTIONS)
+      setMetricVisibility(presentation.metrics || DEFAULT_REPORT_METRICS)
+      setInsightsEnabled(presentation.insightsEnabled ?? true)
+      setSendMessage(previewMessage)
+      setSavedTemplateLabel(null)
+    } else {
+      const savedTemplate = selectedClient
+        ? loadReportTemplate(selectedClient.id)
+        : null
+
+      applyTemplate(savedTemplate, previewMessage)
+    }
 
     return true
   }, [applyTemplate, selectedClient])
@@ -349,6 +364,14 @@ export default function ReportsPage() {
         since: startDate,
         until: endDate,
         objective,
+        presentation: {
+          customTitle,
+          executiveSummary,
+          closingNotes,
+          sections: sectionVisibility,
+          metrics: metricVisibility,
+          insightsEnabled,
+        },
       })
       setCurrentReportId(response.reportId)
       setLoadingReportMessage("Relatório em fila. Processando dados da META API...")
@@ -363,9 +386,15 @@ export default function ReportsPage() {
     }
   }, [
     clearCurrentReport,
+    closingNotes,
     endDate,
+    executiveSummary,
+    customTitle,
     objective,
+    insightsEnabled,
+    metricVisibility,
     selectedClient,
+    sectionVisibility,
     startDate,
     waitForQueuedReport,
   ])
@@ -471,6 +500,17 @@ export default function ReportsPage() {
       setActionFeedback(`Template "${template.name}" carregado.`)
   }
 
+  function buildCurrentPresentation() {
+    return {
+      customTitle,
+      executiveSummary,
+      closingNotes,
+      sections: sectionVisibility,
+      metrics: metricVisibility,
+      insightsEnabled,
+    }
+  }
+
   async function handleSendReport() {
     if (!currentReportId || !selectedClient) {
       return
@@ -484,6 +524,7 @@ export default function ReportsPage() {
       await sendReportToWhatsApp(currentReportId, {
         mode: sendMode,
         message: sendMode === "PDF_ONLY" ? undefined : sendMessage,
+        presentation: buildCurrentPresentation(),
       })
       setActionFeedback("Envio concluído com o formato selecionado.")
     } catch (error) {
@@ -505,6 +546,10 @@ export default function ReportsPage() {
     setIsExporting(true)
 
     try {
+      await saveSavedReportMessage(currentReportId, sendMessage, {
+        presentation: buildCurrentPresentation(),
+      })
+
       const response = await fetch("/api/reports/" + currentReportId + "/pdf", {
         cache: "no-store",
       })
