@@ -103,6 +103,7 @@ function getInitials(name: string) {
 
 export default function ReportsPage() {
   const reportPollSequenceRef = useRef(0)
+  const autoLoadedReportKeyRef = useRef("")
   const [clients, setClients] = useState<ClientListItem[]>([])
   const [loadingClients, setLoadingClients] = useState(true)
   const [search, setSearch] = useState("")
@@ -241,6 +242,7 @@ export default function ReportsPage() {
 
   const resetWorkspace = useCallback(() => {
     reportPollSequenceRef.current += 1
+    autoLoadedReportKeyRef.current = ""
     setSelectedClient(null)
     setSelectedClientIds([])
     setSelectedCampaigns([])
@@ -398,6 +400,21 @@ export default function ReportsPage() {
     startDate,
     waitForQueuedReport,
   ])
+
+  useEffect(() => {
+    if (!selectedClient || !startDate || !endDate) {
+      return
+    }
+
+    const reportKey = `${selectedClient.id}:${startDate}:${endDate}:${objective}`
+
+    if (autoLoadedReportKeyRef.current === reportKey) {
+      return
+    }
+
+    autoLoadedReportKeyRef.current = reportKey
+    void fetchReport()
+  }, [endDate, fetchReport, objective, selectedClient, startDate])
 
   const filteredClients = clients.filter(
     (client) =>
