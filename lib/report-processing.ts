@@ -1296,6 +1296,31 @@ export async function processQueuedReport(reportId: string): Promise<QueuedRepor
     const pendingJob = parsePendingReportJobPayload(report.payloadJson)
 
     if (!pendingJob) {
+      const storedPayload = parseStoredReportPayload(report.payloadJson)
+
+      if (!storedPayload) {
+        await prisma.report.updateMany({
+          where: {
+            id: reportId,
+            status: "PENDING",
+          },
+          data: {
+            status: "FAILED",
+            payloadJson: buildReportJobErrorPayload(
+              "Relatório pendente sem dados de processamento. Gere o relatório novamente.",
+              "GENERATION"
+            ),
+          },
+        })
+
+        return {
+          status: "failed" as const,
+          reportId,
+          message:
+            "Relatório pendente sem dados de processamento. Gere o relatório novamente.",
+        }
+      }
+
       return {
         status: "skipped" as const,
         reportId,

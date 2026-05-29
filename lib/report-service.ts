@@ -121,7 +121,12 @@ export function shouldReuseExistingReportByFilters(
     objective: string
   }
 ) {
-  if (!existing || existing.status === "FAILED" || existing.status === "CANCELLED") {
+  if (
+    !existing ||
+    existing.status === "PENDING" ||
+    existing.status === "FAILED" ||
+    existing.status === "CANCELLED"
+  ) {
     return false
   }
 
