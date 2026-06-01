@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma"
+import {
+  listPendingQueuedReportIds,
+  processPendingReportBatch,
+} from "@/lib/report-processing"
 import { processDueReportSchedules } from "@/lib/report-schedule"
 import { touchReportWorkerHeartbeat } from "@/lib/report-worker-health"
 import { logError, logInfo } from "@/lib/safe-logger"
@@ -18,11 +22,14 @@ export async function runDueReportScheduleSweep(params?: {
         },
       },
     })
+    const pendingReportIds = await listPendingQueuedReportIds(1)
 
-    if (dueSchedules === 0) {
+    if (dueSchedules === 0 && pendingReportIds.length === 0) {
       return {
         dueSchedules,
+        pendingReports: 0,
         processed: 0,
+        reportsAttempted: 0,
         ran: false,
       }
     }
@@ -30,11 +37,13 @@ export async function runDueReportScheduleSweep(params?: {
     logInfo("report-schedule.fallback.start", {
       source,
       dueSchedules,
+      pendingReports: pendingReportIds.length,
     })
 
     const processed = await processDueReportSchedules({
       limit: params?.limit,
     })
+    const reportProcessing = await processPendingReportBatch(params?.limit)
 
     await touchReportWorkerHeartbeat().catch((error) => {
       logError("report-schedule.fallback.heartbeat", error, {
@@ -46,11 +55,16 @@ export async function runDueReportScheduleSweep(params?: {
       source,
       dueSchedules,
       processed,
+      reportsAttempted: reportProcessing.attempted,
+      reportsProcessed: reportProcessing.processed,
+      reportsFailed: reportProcessing.failed,
     })
 
     return {
       dueSchedules,
+      pendingReports: pendingReportIds.length,
       processed,
+      reportsAttempted: reportProcessing.attempted,
       ran: true,
     }
   } catch (error) {
@@ -61,7 +75,9 @@ export async function runDueReportScheduleSweep(params?: {
 
     return {
       dueSchedules: 0,
+      pendingReports: 0,
       processed: 0,
+      reportsAttempted: 0,
       ran: false,
     }
   }
