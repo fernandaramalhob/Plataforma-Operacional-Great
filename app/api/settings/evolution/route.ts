@@ -64,7 +64,9 @@ export async function GET(request: Request) {
     }
 
     try {
-      const catalog = await loadEvolutionCatalog()
+      const catalog = await loadEvolutionCatalog({
+        groupInstances: effectiveGroupInstance ? [effectiveGroupInstance] : undefined,
+      })
       const resolvedPreviewInstance =
         findEvolutionInstanceMatch(previewInstance, catalog.instances)?.name ??
         previewInstance
