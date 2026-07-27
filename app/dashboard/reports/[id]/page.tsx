@@ -18,6 +18,7 @@ import { ErrorState } from "@/components/shared/error-state"
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
 import { buildReportSendPreview } from "@/lib/report-message"
 import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
+import { buildStandardReportPdfBuffer } from "@/lib/report-pdf-standard"
 import {
   pollSavedReportUntilReady,
   saveSavedReportMessage,
@@ -183,31 +184,21 @@ export default function ReportPreviewPage() {
 
     setGenerating(true)
     setError("")
+    setActionFeedback("")
 
     try {
-      const response = await fetch(`/api/reports/${savedReport.id}/pdf`, {
-        cache: "no-store",
+      const pdfData = buildStandardReportPdfBuffer({
+        reportId: savedReport.id,
+        payload: savedReport.payload,
       })
 
-      if (!response.ok) {
-        const body = await response.json().catch(() => null)
-        throw new Error(
-          (body as { error?: string } | null)?.error ??
-            `Não foi possível gerar o PDF (${response.status})`
-        )
-      }
+      const fileName = `${buildReportPdfFileName({
+        clientName: savedReport.payload.client.name,
+        startDate: savedReport.payload.filters.since,
+        endDate: savedReport.payload.filters.until,
+      })}.pdf`
 
-      const blob = await response.blob()
-      const contentDisposition = response.headers.get("content-disposition")
-      const match = contentDisposition?.match(/filename="?([^"]+)"?/i)
-      const fileName =
-        match?.[1] ??
-        `${buildReportPdfFileName({
-          clientName: savedReport.payload.client.name,
-          startDate: savedReport.payload.filters.since,
-          endDate: savedReport.payload.filters.until,
-        })}.pdf`
-
+      const blob = new Blob([pdfData], { type: "application/pdf" })
       const objectUrl = URL.createObjectURL(blob)
       const anchor = document.createElement("a")
       anchor.href = objectUrl
@@ -226,6 +217,7 @@ export default function ReportPreviewPage() {
   }
 
   async function handleSaveMessage() {
+
     if (!savedReport?.payload) {
       return
     }

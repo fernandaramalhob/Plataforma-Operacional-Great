@@ -47,6 +47,6 @@ test("buildStandardReportPdfBuffer gera um PDF padrão não vazio", () => {
     },
   })
 
-  assert.equal(Buffer.isBuffer(buffer), true)
-  assert.ok(buffer.length > 1000)
+  assert.ok(buffer instanceof Uint8Array)
+  assert.ok(buffer.byteLength > 1000)
 })

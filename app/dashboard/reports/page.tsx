@@ -28,6 +28,8 @@ import { fetchJsonOrThrow } from "@/lib/api-client"
 import { formatLocalDateInput } from "@/lib/date-input"
 import { buildReportSendPreview } from "@/lib/report-message"
 import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
+
+import { buildStandardReportPdfBuffer } from "@/lib/report-pdf-standard"
 import {
   pollSavedReportUntilReady,
   requestQueuedReport,
@@ -50,6 +52,7 @@ import type {
   ReportSendMode,
   ReportTemplateDraft,
   SavedReportResponse,
+  StoredReportPayload,
 } from "@/types/report.types"
 
 const colors = [
@@ -61,7 +64,7 @@ const colors = [
   "bg-[#C1121F]",
 ]
 
-const DEFAULT_TEMPLATE_NAME = "Template padrão"
+const DEFAULT_TEMPLATE_NAME = "Template padrÃ£o"
 
 const DEFAULT_REPORT_SECTIONS: ReportSectionVisibility = {
   overview: true,
@@ -125,7 +128,7 @@ export default function ReportsPage() {
   const [sendMode, setSendMode] = useState<ReportSendMode>("PDF_AND_MESSAGE")
   const [sendMessage, setSendMessage] = useState("")
   const [templateName, setTemplateName] = useState(DEFAULT_TEMPLATE_NAME)
-  const [customTitle, setCustomTitle] = useState("FACEBOOK - Visão Geral")
+  const [customTitle, setCustomTitle] = useState("FACEBOOK - VisÃ£o Geral")
   const [executiveSummary, setExecutiveSummary] = useState("")
   const [closingNotes, setClosingNotes] = useState("")
   const [sectionVisibility, setSectionVisibility] = useState<ReportSectionVisibility>(
@@ -157,7 +160,7 @@ export default function ReportsPage() {
 
   const resetCustomization = useCallback(() => {
     setTemplateName(DEFAULT_TEMPLATE_NAME)
-    setCustomTitle("FACEBOOK - Visão Geral")
+    setCustomTitle("FACEBOOK - VisÃ£o Geral")
     setExecutiveSummary("")
     setClosingNotes("")
     setSectionVisibility(DEFAULT_REPORT_SECTIONS)
@@ -176,7 +179,7 @@ export default function ReportsPage() {
       }
 
       setTemplateName(template.name || DEFAULT_TEMPLATE_NAME)
-      setCustomTitle(template.customTitle || "FACEBOOK - Visão Geral")
+      setCustomTitle(template.customTitle || "FACEBOOK - VisÃ£o Geral")
       setExecutiveSummary(template.executiveSummary || "")
       setClosingNotes(template.closingNotes || "")
       setSectionVisibility(template.sections || DEFAULT_REPORT_SECTIONS)
@@ -215,7 +218,7 @@ export default function ReportsPage() {
     if (savedReport.payload.presentation) {
       const presentation = savedReport.payload.presentation
 
-      setCustomTitle(presentation.customTitle || "FACEBOOK - Visão Geral")
+      setCustomTitle(presentation.customTitle || "FACEBOOK - VisÃ£o Geral")
       setExecutiveSummary(presentation.executiveSummary || "")
       setClosingNotes(presentation.closingNotes || "")
       setSectionVisibility(presentation.sections || DEFAULT_REPORT_SECTIONS)
@@ -296,7 +299,7 @@ export default function ReportsPage() {
     }
 
     const start = new Date(today)
-    // Mantém o intervalo inclusivo: 1 semana = 7 dias no total, 1 mês = 30 dias, etc.
+    // MantÃ©m o intervalo inclusivo: 1 semana = 7 dias no total, 1 mÃªs = 30 dias, etc.
     start.setDate(today.getDate() - (daysByPeriod[activePeriod] - 1))
     setStartDate(formatLocalDateInput(start))
     setEndDate(formatLocalDateInput(today))
@@ -331,7 +334,7 @@ export default function ReportsPage() {
         sequence,
         getCurrentSequence: () => reportPollSequenceRef.current,
         sleep,
-        fallbackMessage: "Erro ao acompanhar a fila do relatório",
+        fallbackMessage: "Erro ao acompanhar a fila do relatÃ³rio",
         onUpdate: (nextReport) => {
           setCurrentReportId(nextReport.id)
 
@@ -341,14 +344,14 @@ export default function ReportsPage() {
           }
 
           setLoadingReportMessage(
-            "Relatório em fila. Processando dados da META API..."
+            "RelatÃ³rio em fila. Processando dados da META API..."
           )
         },
       })
 
       if (savedReport?.status === "FAILED") {
         throw new Error(
-          savedReport.errorMessage || "Não foi possível gerar o relatório"
+          savedReport.errorMessage || "NÃ£o foi possÃ­vel gerar o relatÃ³rio"
         )
       }
     },
@@ -364,7 +367,7 @@ export default function ReportsPage() {
     setLoadingReport(true)
     setReportError("")
     setActionFeedback("")
-    setLoadingReportMessage("Enfileirando relatório...")
+    setLoadingReportMessage("Enfileirando relatÃ³rio...")
     const sequence = reportPollSequenceRef.current
 
     try {
@@ -383,7 +386,7 @@ export default function ReportsPage() {
         },
       })
       setCurrentReportId(response.reportId)
-      setLoadingReportMessage("Relatório em fila. Processando dados da META API...")
+      setLoadingReportMessage("RelatÃ³rio em fila. Processando dados da META API...")
       await waitForQueuedReport(response.reportId, sequence)
     } catch (error) {
       const message =
@@ -510,7 +513,7 @@ export default function ReportsPage() {
 
     const template = loadReportTemplate(selectedClient.id)
     if (!template) {
-      setActionFeedback("Ainda não existe template salvo para este cliente.")
+      setActionFeedback("Ainda nÃ£o existe template salvo para este cliente.")
       return
     }
 
@@ -544,12 +547,12 @@ export default function ReportsPage() {
         message: sendMode === "PDF_ONLY" ? undefined : sendMessage,
         presentation: buildCurrentPresentation(),
       })
-      setActionFeedback("Envio concluído com o formato selecionado.")
+      setActionFeedback("Envio concluÃ­do com o formato selecionado.")
     } catch (error) {
       setReportError(
         error instanceof Error
           ? error.message
-          : "Não foi possível enviar o relatório"
+          : "NÃ£o foi possÃ­vel enviar o relatÃ³rio"
       )
     } finally {
       setIsSending(false)
@@ -557,40 +560,58 @@ export default function ReportsPage() {
   }
 
   async function handleDownloadPdf() {
-    if (!currentReportId || !selectedClient) {
+    if (!currentReportId || !selectedClient || !reportData) {
       return
     }
 
     setIsExporting(true)
+    setReportError("")
+    setActionFeedback("")
 
     try {
-      await saveSavedReportMessage(currentReportId, sendMessage, {
+      void saveSavedReportMessage(currentReportId, sendMessage, {
         presentation: buildCurrentPresentation(),
+      }).catch((saveError) => {
+        logError("dashboard.report-preview.save-message", saveError, {
+          reportId: currentReportId,
+        })
       })
 
-      const response = await fetch("/api/reports/" + currentReportId + "/pdf", {
-        cache: "no-store",
-      })
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => null)
-        throw new Error(
-          (body as { error?: string } | null)?.error ??
-            "Não foi possível gerar o PDF (" + response.status + ")"
-        )
+      const pdfPayload = {
+        client: {
+          id: selectedClient.id,
+          name: selectedClient.name,
+          company: selectedClient.company,
+          adAccountId: selectedClient.adAccountId ?? null,
+        },
+        campaigns: reportData.campaigns.filter((campaign) =>
+          selectedCampaigns.includes(campaign.id)
+        ),
+        accountInsights: reportData.accountInsights,
+        dailyInsights: reportData.dailyInsights,
+        topAds: reportData.topAds,
+        genderBreakdown: reportData.genderBreakdown,
+        presentation: buildCurrentPresentation(),
+        filters: {
+          since: startDate,
+          until: endDate,
+          objective,
+          generatedAt: new Date().toISOString(),
+        },
       }
 
-      const blob = await response.blob()
-      const contentDisposition = response.headers.get("content-disposition")
-      const match = contentDisposition?.match(/filename="?([^"]+)"?/i)
-      const fileName =
-        match?.[1] ??
-        (buildReportPdfFileName({
-          clientName: selectedClient.name,
-          startDate,
-          endDate,
-        }) + ".pdf")
+      const pdfData = buildStandardReportPdfBuffer({
+        reportId: currentReportId,
+        payload: pdfPayload as StoredReportPayload,
+      })
 
+      const fileName = `${buildReportPdfFileName({
+        clientName: selectedClient.name,
+        startDate,
+        endDate,
+      })}.pdf`
+
+      const blob = new Blob([pdfData], { type: "application/pdf" })
       const objectUrl = URL.createObjectURL(blob)
       const anchor = document.createElement("a")
       anchor.href = objectUrl
@@ -598,8 +619,8 @@ export default function ReportsPage() {
       anchor.rel = "noreferrer"
       anchor.click()
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
-    } catch (error) {
-      logError("dashboard.reports.download-pdf", error, {
+    } catch (pdfError) {
+      logError("dashboard.report-preview.download", pdfError, {
         reportId: currentReportId,
       })
       setReportError("Não foi possível gerar o PDF do relatório")
@@ -616,8 +637,8 @@ export default function ReportsPage() {
       <>
         <div className="print:hidden">
           <Header
-            title="Relatórios"
-            subtitle="Selecione um cliente para visualizar o relatório"
+            title="RelatÃ³rios"
+            subtitle="Selecione um cliente para visualizar o relatÃ³rio"
           />
         </div>
         <div className="p-8">
@@ -639,7 +660,7 @@ export default function ReportsPage() {
                     : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                Gerar relatório
+                Gerar relatÃ³rio
               </button>
               <button
                 type="button"
@@ -777,7 +798,7 @@ export default function ReportsPage() {
                               {client.status === "ACTIVE" ? "Ativo" : "Inativo"}
                             </StatusBadge>
                             <span className="text-sm font-medium text-[#C1121F]">
-                              Ver relatório
+                              Ver relatÃ³rio
                             </span>
                           </div>
                         </button>
@@ -829,8 +850,8 @@ export default function ReportsPage() {
     <>
       <div className="print:hidden">
         <Header
-          title="Relatório"
-          subtitle={`${selectedClient.name} · ${startDate} até ${endDate}`}
+          title="RelatÃ³rio"
+          subtitle={`${selectedClient.name} Â· ${startDate} atÃ© ${endDate}`}
         />
       </div>
 
@@ -866,11 +887,11 @@ export default function ReportsPage() {
           </div>
 
           <div className="mb-5 rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
-            <FilterLabel>Período</FilterLabel>
+            <FilterLabel>PerÃ­odo</FilterLabel>
             <div className="mb-4 grid grid-cols-2 gap-2">
               {[
                 { label: "1 semana", value: "7d" },
-                { label: "1 mês", value: "30d" },
+                { label: "1 mÃªs", value: "30d" },
                 { label: "3 meses", value: "90d" },
                 { label: "6 meses", value: "180d" },
                 { label: "1 ano", value: "365d" },
@@ -890,7 +911,7 @@ export default function ReportsPage() {
               ))}
             </div>
             <p className="mb-2 text-xs font-medium text-slate-400">
-              Período personalizado
+              PerÃ­odo personalizado
             </p>
             <div className="flex gap-2">
               <input
@@ -919,8 +940,8 @@ export default function ReportsPage() {
             <div className="grid gap-2">
               {[
                 { label: "Todos", value: "ALL" },
-                { label: "Tráfego", value: "LINK_CLICKS" },
-                { label: "Conversão", value: "CONVERSIONS" },
+                { label: "TrÃ¡fego", value: "LINK_CLICKS" },
+                { label: "ConversÃ£o", value: "CONVERSIONS" },
                 { label: "Mensagens", value: "MESSAGES" },
               ].map((option) => (
                 <button
@@ -982,10 +1003,10 @@ export default function ReportsPage() {
             <label className="flex items-center justify-between gap-3">
               <span>
                 <span className="block text-sm font-semibold text-slate-800">
-                  Insights automáticos
+                  Insights automÃ¡ticos
                 </span>
                 <span className="mt-1 block text-xs text-slate-400">
-                  Gera observações inteligentes junto com o relatório.
+                  Gera observaÃ§Ãµes inteligentes junto com o relatÃ³rio.
                 </span>
               </span>
               <div
@@ -1022,13 +1043,13 @@ export default function ReportsPage() {
         <section className="min-h-0 flex-1 overflow-y-auto bg-[#eef1f6] print:overflow-visible print:bg-white">
           {loadingReport ? (
             <LoadingSkeleton
-              label={loadingReportMessage || "Gerando relatório..."}
+              label={loadingReportMessage || "Gerando relatÃ³rio..."}
               className="h-full"
             />
           ) : reportError ? (
             <div className="flex h-full items-center justify-center px-6">
               <ErrorState
-                title="Erro ao carregar relatório"
+                title="Erro ao carregar relatÃ³rio"
                 message={reportError}
                 action={
                   <button
@@ -1044,7 +1065,7 @@ export default function ReportsPage() {
           ) : !reportData ? (
             <div className="flex h-full items-center justify-center px-6">
               <EmptyState
-                title="Nenhum relatório carregado"
+                title="Nenhum relatÃ³rio carregado"
                 description='Selecione os filtros e clique em "Aplicar filtros".'
                 className="w-full max-w-lg border-none bg-transparent py-20"
               />
@@ -1105,7 +1126,7 @@ export default function ReportsPage() {
                     href={`/dashboard/reports/${currentReportId}`}
                     className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 transition hover:bg-gray-50"
                   >
-                    Ver relatório salvo
+                    Ver relatÃ³rio salvo
                   </Link>
                 ) : null}
                 <button
@@ -1132,7 +1153,7 @@ export default function ReportsPage() {
                   className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
                 >
                   <Download className="h-4 w-4" />
-                  {isExporting ? "Gerando PDF..." : "Salvar relatório em PDF"}
+                  {isExporting ? "Gerando PDF..." : "Salvar relatÃ³rio em PDF"}
                 </button>
               </div>
             </div>
@@ -1159,12 +1180,12 @@ export default function ReportsPage() {
             return
           }
           setActionFeedback(
-            `Agendamento salvo. Próximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
+            `Agendamento salvo. PrÃ³ximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
           )
           setScheduleModalOpen(false)
         }}
         onDisabled={() => {
-          setActionFeedback("Agendamento automático desativado com sucesso.")
+          setActionFeedback("Agendamento automÃ¡tico desativado com sucesso.")
         }}
       />
     </>

@@ -125,7 +125,7 @@ function pageShell(pdf: jsPDF, pageNumber: number, totalPages: number) {
   pdf.setFontSize(9)
   setText(pdf, COLORS.muted)
   pdf.text(
-    `Página ${pageNumber} de ${totalPages}`,
+    `PÃ¡gina ${pageNumber} de ${totalPages}`,
     PAGE.width - PAGE.margin,
     PAGE.height - 8,
     { align: "right" }
@@ -143,12 +143,12 @@ function drawHeader(pdf: jsPDF, payload: StoredReportPayload) {
   pdf.setFont("helvetica", "normal")
   pdf.setFontSize(10)
   setText(pdf, COLORS.muted)
-  pdf.text(payload.presentation?.customTitle || "FACEBOOK - Visão Geral", 20, 35)
+  pdf.text(payload.presentation?.customTitle || "FACEBOOK - VisÃ£o Geral", 20, 35)
 
   pdf.setFont("helvetica", "bold")
   pdf.setFontSize(11)
   setText(pdf, COLORS.text)
-  pdf.text(payload.client.company ?? "Marca não informada", PAGE.width - 20, 24, {
+  pdf.text(payload.client.company ?? "Marca nÃ£o informada", PAGE.width - 20, 24, {
     align: "right",
   })
 
@@ -158,7 +158,7 @@ function drawHeader(pdf: jsPDF, payload: StoredReportPayload) {
   pdf.setFontSize(8.5)
   setText(pdf, COLORS.muted)
   pdf.text(
-    `Período: ${formatDate(payload.filters.since)} - ${formatDate(payload.filters.until)}`,
+    `PerÃ­odo: ${formatDate(payload.filters.since)} - ${formatDate(payload.filters.until)}`,
     PAGE.width - 42,
     32,
     { align: "center" }
@@ -174,7 +174,7 @@ function drawMetricCard(pdf: jsPDF, x: number, y: number, width: number, height:
   pdf.setFont("helvetica", "bold")
   pdf.setFontSize(12)
   setText(pdf, card.accentText)
-  pdf.text("•", x + 9, y + 11, { align: "center" })
+  pdf.text("â€¢", x + 9, y + 11, { align: "center" })
 
   pdf.setFont("helvetica", "normal")
   pdf.setFontSize(8)
@@ -219,8 +219,8 @@ function drawAdvancedMetrics(pdf: jsPDF, cards: MetricCard[], startY: number) {
     startY,
     PAGE.width - PAGE.margin * 2,
     56,
-    "Visão geral e métricas avançadas",
-    "Consolidado da conta no período selecionado."
+    "VisÃ£o geral e mÃ©tricas avanÃ§adas",
+    "Consolidado da conta no perÃ­odo selecionado."
   )
 
   const gap = 3
@@ -281,8 +281,8 @@ function drawCampaignTable(
     114,
     "Performance por campanha",
     hiddenRowsCount > 0
-      ? `Exibindo ${rows.length} de ${rows.length + hiddenRowsCount} campanhas para manter o PDF em duas páginas.`
-      : "Campanhas consideradas neste relatório."
+      ? `Exibindo ${rows.length} de ${rows.length + hiddenRowsCount} campanhas para manter o PDF em duas pÃ¡ginas.`
+      : "Campanhas consideradas neste relatÃ³rio."
   )
 
   const startX = PAGE.margin + 5
@@ -292,7 +292,7 @@ function drawCampaignTable(
     { label: "Status", width: 22 },
     { label: objectiveLabel, width: 26 },
     { label: "Cliques", width: 20 },
-    { label: "Impressões", width: 24 },
+    { label: "ImpressÃµes", width: 24 },
     { label: "Gasto", width: 22 },
   ]
 
@@ -340,7 +340,7 @@ function drawCampaignTable(
     pdf.setFontSize(8)
     setText(pdf, COLORS.muted)
     pdf.text(
-      `+${hiddenRowsCount} campanha(s) omitida(s) nesta versão resumida do PDF.`,
+      `+${hiddenRowsCount} campanha(s) omitida(s) nesta versÃ£o resumida do PDF.`,
       startX,
       Math.min(rowY + 6, PAGE.height - 20)
     )
@@ -361,7 +361,7 @@ function buildMetricCards(payload: StoredReportPayload) {
       accentText: COLORS.blueText,
     },
     {
-      label: "Impressões",
+      label: "ImpressÃµes",
       value: formatInteger(parseReportNumber(accountInsights.impressions)),
       accentBg: COLORS.purpleBg,
       accentText: COLORS.purpleText,
@@ -387,7 +387,7 @@ function buildMetricCards(payload: StoredReportPayload) {
   ].filter((card) => {
     const metricMap: Record<string, keyof ReportMetricVisibility> = {
       Investimento: "spend",
-      "ImpressÃµes": "impressions",
+      "ImpressÃƒÂµes": "impressions",
       Alcance: "reach",
       Cliques: "clicks",
       "Taxa de cliques": "ctr",
@@ -404,7 +404,7 @@ function buildMetricCards(payload: StoredReportPayload) {
       accentText: COLORS.red,
     },
     {
-      label: "Custo por mil impressões",
+      label: "Custo por mil impressÃµes",
       value: formatCurrency(parseReportNumber(accountInsights.cpm)),
       accentBg: COLORS.surface,
       accentText: COLORS.red,
@@ -436,7 +436,7 @@ function buildMetricCards(payload: StoredReportPayload) {
   ].filter((card) => {
     const metricMap: Record<string, keyof ReportMetricVisibility> = {
       "Custo por clique": "cpc",
-      "Custo por mil impressÃµes": "cpm",
+      "Custo por mil impressÃƒÂµes": "cpm",
       "Conversas iniciadas": "conversationsStarted",
       "Custo por conversa": "costPerConversation",
       [messageMetric.efficiencyLabel ?? "Taxa de conversa"]: "conversationRate",
@@ -447,8 +447,8 @@ function buildMetricCards(payload: StoredReportPayload) {
 
   const summary = [
     {
-      label: "Período",
-      value: `${formatDate(payload.filters.since)} até ${formatDate(payload.filters.until)}`,
+      label: "PerÃ­odo",
+      value: `${formatDate(payload.filters.since)} atÃ© ${formatDate(payload.filters.until)}`,
     },
     {
       label: "Objetivo",
@@ -456,10 +456,10 @@ function buildMetricCards(payload: StoredReportPayload) {
     },
     {
       label: "Conta",
-      value: payload.client.adAccountId ?? "Não informada",
+      value: payload.client.adAccountId ?? "NÃ£o informada",
     },
     {
-      label: "Relatório",
+      label: "RelatÃ³rio",
       value: "META Ads",
     },
   ]
@@ -505,8 +505,8 @@ export function buildStandardReportPdfBuffer(params: {
   const totalPages = 2
 
   pdf.setDocumentProperties({
-    title: `Relatório META Ads | ${payload.client.name}`,
-    subject: "Relatório de performance META Ads",
+    title: `RelatÃ³rio META Ads | ${payload.client.name}`,
+    subject: "RelatÃ³rio de performance META Ads",
     author: "GreatGo",
     creator: "GreatGo",
     keywords: ["greatgo", "meta ads", payload.client.name, reportId].join(", "),
@@ -537,5 +537,5 @@ export function buildStandardReportPdfBuffer(params: {
     drawSummary(pdf, summary, 50)
   }
 
-  return Buffer.from(pdf.output("arraybuffer"))
+  return new Uint8Array(pdf.output("arraybuffer"))
 }

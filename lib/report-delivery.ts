@@ -145,13 +145,13 @@ export async function sendPersistedReportNow(
   })
 
   if (!report) {
-    throw new Error("Relatório não encontrado para envio")
+    throw new Error("RelatÃ³rio nÃ£o encontrado para envio")
   }
 
   const payload = parseStoredReportPayload(report.payloadJson)
 
   if (!payload) {
-    throw new Error("Relatório ainda não foi gerado")
+    throw new Error("RelatÃ³rio ainda nÃ£o foi gerado")
   }
 
   const targetGroup =
@@ -168,7 +168,7 @@ export async function sendPersistedReportNow(
   })
 
   if (currentStatus?.status === "CANCELLED") {
-    throw new Error("Relatório cancelado")
+    throw new Error("RelatÃ³rio cancelado")
   }
 
   const mode = options?.mode ?? "PDF_AND_MESSAGE"
@@ -248,7 +248,7 @@ export async function sendPersistedReportNow(
       await sendWhatsAppDocument({
         number: targetGroup.groupId,
         fileName,
-        contentBase64: pdfBuffer.toString("base64"),
+        contentBase64: Buffer.from(pdfBuffer).toString("base64"),
         caption: mode === "PDF_AND_MESSAGE" ? message : null,
         instance: preferredInstance,
         resolvedInstance,
@@ -291,11 +291,11 @@ export async function sendPersistedReportNow(
         where: { id: sendLog.id },
         data: {
           status: "FAILED",
-          errorMessage: "Envio cancelado antes da confirmação final.",
+          errorMessage: "Envio cancelado antes da confirmaÃ§Ã£o final.",
         },
       })
 
-      throw new Error("Relatório cancelado")
+      throw new Error("RelatÃ³rio cancelado")
     }
 
     const updatedReport = await prisma.report.updateMany({
@@ -315,11 +315,11 @@ export async function sendPersistedReportNow(
         where: { id: sendLog.id },
         data: {
           status: "FAILED",
-          errorMessage: "Envio cancelado antes da confirmação final.",
+          errorMessage: "Envio cancelado antes da confirmaÃ§Ã£o final.",
         },
       })
 
-      throw new Error("Relatório cancelado")
+      throw new Error("RelatÃ³rio cancelado")
     }
 
     await prisma.sendLog.update({
@@ -338,9 +338,9 @@ export async function sendPersistedReportNow(
     }
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Erro ao enviar relatório"
+      error instanceof Error ? error.message : "Erro ao enviar relatÃ³rio"
 
-    if (message === "Relatório cancelado") {
+    if (message === "RelatÃ³rio cancelado") {
       throw error
     }
 
