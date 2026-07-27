@@ -8,17 +8,17 @@ export async function buildReportPdfBufferWithFallback(params: {
   payload: StoredReportPayload
 }) {
   try {
-    return await buildPreviewReportPdfBuffer({
-      reportId: params.reportId,
-    })
-  } catch (error) {
-    logError("report-pdf-fallback.preview-fallback", error, {
-      reportId: params.reportId,
-    })
-
     return buildStandardReportPdfBuffer({
       reportId: params.reportId,
       payload: params.payload,
+    })
+  } catch (error) {
+    logError("report-pdf-fallback.standard-fallback", error, {
+      reportId: params.reportId,
+    })
+
+    return await buildPreviewReportPdfBuffer({
+      reportId: params.reportId,
     })
   }
 }
