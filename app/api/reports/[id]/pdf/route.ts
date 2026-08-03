@@ -1,3 +1,4 @@
+﻿import { jsPDF } from "jspdf"
 import { NextResponse } from "next/server"
 import { canAccessClient, getCurrentUser } from "@/lib/authorization"
 import { buildReportPdfBufferWithFallback } from "@/lib/report-pdf-fallback"
@@ -13,11 +14,11 @@ function buildContentDisposition(fileName: string) {
 
 function validatePdfBuffer(pdfBuffer: Uint8Array, reportId: string) {
   if (!(pdfBuffer instanceof Uint8Array)) {
-    throw new Error("O PDF retornado Ã© invÃ¡lido.")
+    throw new Error("O PDF retornado é inválido.")
   }
 
   if (pdfBuffer.byteLength === 0) {
-    throw new Error("O PDF retornado estÃ¡ vazio.")
+    throw new Error("O PDF retornado está vazio.")
   }
 
   if (
@@ -26,13 +27,87 @@ function validatePdfBuffer(pdfBuffer: Uint8Array, reportId: string) {
     pdfBuffer[2] !== 0x44 ||
     pdfBuffer[3] !== 0x46
   ) {
-    throw new Error("O PDF retornado nÃ£o contÃ©m a assinatura esperada.")
+    throw new Error("O PDF retornado não contém a assinatura esperada.")
   }
 
   logInfo("reports.pdf.get", {
     reportId,
     size: pdfBuffer.byteLength,
     step: "buffer-valid",
+  })
+}
+
+function buildEmergencyPdfBuffer(params: {
+  reportId: string
+  clientName: string
+  referenceWeek: Date
+  reason: string
+}) {
+  const pdf = new jsPDF({
+    orientation: "p",
+    unit: "mm",
+    format: "a4",
+    compress: true,
+  })
+
+  const period = params.referenceWeek.toLocaleDateString("pt-BR")
+
+  pdf.setDocumentProperties({
+    title: `Relatório META Ads | ${params.clientName}`,
+    subject: "Relatório de performance META Ads",
+    author: "GreatGo",
+    creator: "GreatGo",
+    keywords: ["greatgo", "meta ads", params.clientName, params.reportId].join(", "),
+  })
+
+  pdf.setFont("helvetica", "bold")
+  pdf.setFontSize(22)
+  pdf.text("Relatório", 20, 25)
+
+  pdf.setFont("helvetica", "normal")
+  pdf.setFontSize(11)
+  pdf.text(
+    "Não foi possível gerar a versão completa agora. O PDF de contingência foi criado automaticamente.",
+    20,
+    35,
+    {
+      maxWidth: 170,
+    }
+  )
+
+  pdf.setFont("helvetica", "bold")
+  pdf.setFontSize(12)
+  pdf.text("Cliente", 20, 52)
+  pdf.setFont("helvetica", "normal")
+  pdf.setFontSize(11)
+  pdf.text(params.clientName, 20, 60)
+
+  pdf.setFont("helvetica", "bold")
+  pdf.text("Período", 20, 74)
+  pdf.setFont("helvetica", "normal")
+  pdf.text(period, 20, 82)
+
+  pdf.setFont("helvetica", "bold")
+  pdf.text("Status", 20, 96)
+  pdf.setFont("helvetica", "normal")
+  pdf.text(params.reason, 20, 104, { maxWidth: 170 })
+
+  pdf.setFont("helvetica", "normal")
+  pdf.setFontSize(9)
+  pdf.text(`Referência: ${params.reportId}`, 20, 280)
+
+  return new Uint8Array(pdf.output("arraybuffer"))
+}
+
+function buildPdfResponse(buffer: Uint8Array, fileName: string) {
+  return new NextResponse(Buffer.from(buffer), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": buildContentDisposition(fileName),
+      "Content-Length": String(buffer.byteLength),
+      "Cache-Control": "no-store",
+    },
   })
 }
 
@@ -43,7 +118,7 @@ export async function GET(
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "NÃ£o autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -52,6 +127,7 @@ export async function GET(
       include: {
         client: {
           select: {
+            name: true,
             managerId: true,
           },
         },
@@ -59,57 +135,59 @@ export async function GET(
     })
 
     if (!report) {
-      return NextResponse.json(
-        { error: "RelatÃ³rio nÃ£o encontrado" },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Relatório não encontrado" }, { status: 404 })
     }
 
     if (!canAccessClient(user, report.client.managerId)) {
-      return NextResponse.json(
-        { error: "Acesso negado a este relatÃ³rio" },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: "Acesso negado a este relatório" }, { status: 403 })
     }
 
     const payload = parseStoredReportPayload(report.payloadJson)
+    const fallbackClientName = report.client.name || "Cliente não informado"
+    const fallbackReferenceWeek = report.referenceWeek ?? new Date()
 
-    if (!payload) {
-      return NextResponse.json(
-        { error: "RelatÃ³rio ainda esta em processamento" },
-        { status: 409 }
-      )
-    }
-
-    const pdfBuffer = await buildReportPdfBufferWithFallback({
-      reportId: report.id,
-      payload,
-      signal: request.signal,
-    })
+    const pdfBuffer = payload
+      ? await buildReportPdfBufferWithFallback({
+          reportId: report.id,
+          payload,
+        }).catch((error) => {
+          logError("reports.pdf.get.fallback", error, { reportId: report.id })
+          return buildEmergencyPdfBuffer({
+            reportId: report.id,
+            clientName: payload.client.name || fallbackClientName,
+            referenceWeek: fallbackReferenceWeek,
+            reason: "O PDF completo não pôde ser gerado. Foi entregue uma versão de contingência.",
+          })
+        })
+      : buildEmergencyPdfBuffer({
+          reportId: report.id,
+          clientName: fallbackClientName,
+          referenceWeek: fallbackReferenceWeek,
+          reason: "O relatório ainda está em processamento, então foi gerada uma versão de contingência.",
+        })
 
     validatePdfBuffer(pdfBuffer, report.id)
 
-    const fileName = `${buildReportPdfFileName({
-      clientName: payload.client.name,
-      startDate: payload.filters.since,
-      endDate: payload.filters.until,
-    })}.pdf`
+    const fileName = payload
+      ? `${buildReportPdfFileName({
+          clientName: payload.client.name,
+          startDate: payload.filters.since,
+          endDate: payload.filters.until,
+        })}.pdf`
+      : `greatgo-relatorio-meta-ads-${report.id}.pdf`
 
-    return new NextResponse(pdfBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": buildContentDisposition(fileName),
-        "Content-Length": String(pdfBuffer.byteLength),
-        "Cache-Control": "no-store",
-      },
-    })
+    return buildPdfResponse(pdfBuffer, fileName)
   } catch (error) {
     logError("reports.pdf.get", error)
-    return NextResponse.json(
-      { error: "NÃ£o foi possÃ­vel gerar o PDF do relatÃ³rio." },
-      { status: 500 }
-    )
+
+    const emergencyPdf = buildEmergencyPdfBuffer({
+      reportId: "unknown",
+      clientName: "Relatório",
+      referenceWeek: new Date(),
+      reason: "Não foi possível concluir a geração. A versão de contingência foi criada automaticamente.",
+    })
+
+    return buildPdfResponse(emergencyPdf, "greatgo-relatorio-meta-ads-contingencia.pdf")
   }
 }
 
