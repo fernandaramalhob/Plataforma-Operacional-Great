@@ -13,11 +13,11 @@ function buildContentDisposition(fileName: string) {
 
 function validatePdfBuffer(pdfBuffer: Uint8Array, reportId: string) {
   if (!(pdfBuffer instanceof Uint8Array)) {
-    throw new Error("O PDF retornado é inválido.")
+    throw new Error("O PDF retornado Ã© invÃ¡lido.")
   }
 
   if (pdfBuffer.byteLength === 0) {
-    throw new Error("O PDF retornado está vazio.")
+    throw new Error("O PDF retornado estÃ¡ vazio.")
   }
 
   if (
@@ -26,7 +26,7 @@ function validatePdfBuffer(pdfBuffer: Uint8Array, reportId: string) {
     pdfBuffer[2] !== 0x44 ||
     pdfBuffer[3] !== 0x46
   ) {
-    throw new Error("O PDF retornado não contém a assinatura esperada.")
+    throw new Error("O PDF retornado nÃ£o contÃ©m a assinatura esperada.")
   }
 
   logInfo("reports.pdf.get", {
@@ -37,13 +37,13 @@ function validatePdfBuffer(pdfBuffer: Uint8Array, reportId: string) {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "NÃ£o autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -60,14 +60,14 @@ export async function GET(
 
     if (!report) {
       return NextResponse.json(
-        { error: "Relatório não encontrado" },
+        { error: "RelatÃ³rio nÃ£o encontrado" },
         { status: 404 }
       )
     }
 
     if (!canAccessClient(user, report.client.managerId)) {
       return NextResponse.json(
-        { error: "Acesso negado a este relatório" },
+        { error: "Acesso negado a este relatÃ³rio" },
         { status: 403 }
       )
     }
@@ -76,7 +76,7 @@ export async function GET(
 
     if (!payload) {
       return NextResponse.json(
-        { error: "Relatório ainda esta em processamento" },
+        { error: "RelatÃ³rio ainda esta em processamento" },
         { status: 409 }
       )
     }
@@ -84,6 +84,7 @@ export async function GET(
     const pdfBuffer = await buildReportPdfBufferWithFallback({
       reportId: report.id,
       payload,
+      signal: request.signal,
     })
 
     validatePdfBuffer(pdfBuffer, report.id)
@@ -106,8 +107,9 @@ export async function GET(
   } catch (error) {
     logError("reports.pdf.get", error)
     return NextResponse.json(
-      { error: "Não foi possível gerar o PDF do relatório." },
+      { error: "NÃ£o foi possÃ­vel gerar o PDF do relatÃ³rio." },
       { status: 500 }
     )
   }
 }
+

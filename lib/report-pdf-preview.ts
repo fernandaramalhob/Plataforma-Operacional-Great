@@ -1,7 +1,8 @@
-import { createHmac, timingSafeEqual } from "node:crypto"
+﻿import { createHmac, timingSafeEqual } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import { parseStoredReportPayload } from "@/lib/report-domain"
 import { buildStandardReportPdfBuffer } from "@/lib/report-pdf-standard"
+import { withPdfGenerationSlot } from "@/lib/report-pdf-queue"
 import { logError, logInfo } from "@/lib/safe-logger"
 
 const TOKEN_TTL_MS = 5 * 60 * 1000
@@ -78,51 +79,63 @@ function validatePdfBuffer(pdfBuffer: Uint8Array, reportId: string) {
   })
 }
 
-export async function buildPreviewReportPdfBuffer(params: { reportId: string }) {
-  try {
-    logInfo("report-pdf-preview.build", {
+export async function buildPreviewReportPdfBuffer(params: {
+  reportId: string
+  signal?: AbortSignal
+}) {
+  return withPdfGenerationSlot(
+    {
+      label: "report-pdf-preview",
       reportId: params.reportId,
-      step: "starting-standard-generation",
-    })
+      signal: params.signal,
+    },
+    async () => {
+      try {
+        logInfo("report-pdf-preview.build", {
+          reportId: params.reportId,
+          step: "starting-standard-generation",
+        })
 
-    const report = await prisma.report.findUnique({
-      where: { id: params.reportId },
-      select: {
-        id: true,
-        payloadJson: true,
-      },
-    })
+        const report = await prisma.report.findUnique({
+          where: { id: params.reportId },
+          select: {
+            id: true,
+            payloadJson: true,
+          },
+        })
 
-    if (!report) {
-      throw new Error("Relatório não encontrado para gerar o PDF.")
+        if (!report) {
+          throw new Error("Relatório não encontrado para gerar o PDF.")
+        }
+
+        const payload = parseStoredReportPayload(report.payloadJson)
+
+        if (!payload) {
+          throw new Error("Relatório ainda está em processamento.")
+        }
+
+        const pdfBuffer = buildStandardReportPdfBuffer({
+          reportId: params.reportId,
+          payload,
+        })
+
+        validatePdfBuffer(pdfBuffer, params.reportId)
+
+        logInfo("report-pdf-preview.build", {
+          reportId: params.reportId,
+          step: "completed",
+          size: pdfBuffer.byteLength,
+        })
+
+        return pdfBuffer
+      } catch (error) {
+        logError("report-pdf-preview.build", error, {
+          reportId: params.reportId,
+        })
+        throw new Error(
+          "Não foi possível gerar o PDF da pré-visualização do relatório."
+        )
+      }
     }
-
-    const payload = parseStoredReportPayload(report.payloadJson)
-
-    if (!payload) {
-      throw new Error("Relatório ainda está em processamento.")
-    }
-
-    const pdfBuffer = buildStandardReportPdfBuffer({
-      reportId: params.reportId,
-      payload,
-    })
-
-    validatePdfBuffer(pdfBuffer, params.reportId)
-
-    logInfo("report-pdf-preview.build", {
-      reportId: params.reportId,
-      step: "completed",
-      size: pdfBuffer.byteLength,
-    })
-
-    return pdfBuffer
-  } catch (error) {
-    logError("report-pdf-preview.build", error, {
-      reportId: params.reportId,
-    })
-    throw new Error(
-      "Não foi possível gerar o PDF da pré-visualização do relatório."
-    )
-  }
+  )
 }

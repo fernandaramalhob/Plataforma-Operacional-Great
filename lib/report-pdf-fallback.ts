@@ -1,5 +1,6 @@
-import { jsPDF } from "jspdf"
+﻿import { jsPDF } from "jspdf"
 import { buildStandardReportPdfBuffer } from "@/lib/report-pdf-standard"
+import { withPdfGenerationSlot } from "@/lib/report-pdf-queue"
 import { logError } from "@/lib/safe-logger"
 import type { StoredReportPayload } from "@/types/report.types"
 
@@ -60,9 +61,14 @@ function buildEmergencyReportPdfBuffer(params: {
 
   pdf.setFont("helvetica", "normal")
   pdf.setFontSize(11)
-  pdf.text("Não foi possível renderizar a versão completa do PDF. Foi gerada uma versão de contingência.", 20, 35, {
-    maxWidth: 170,
-  })
+  pdf.text(
+    "Não foi possível renderizar a versão completa do PDF. Foi gerada uma versão de contingência.",
+    20,
+    35,
+    {
+      maxWidth: 170,
+    }
+  )
 
   pdf.setFont("helvetica", "bold")
   pdf.setFontSize(12)
@@ -91,31 +97,41 @@ function buildEmergencyReportPdfBuffer(params: {
 export async function buildReportPdfBufferWithFallback(params: {
   reportId: string
   payload: StoredReportPayload
+  signal?: AbortSignal
 }) {
-  try {
-    return buildStandardReportPdfBuffer({
+  return withPdfGenerationSlot(
+    {
+      label: "report-pdf-fallback",
       reportId: params.reportId,
-      payload: params.payload,
-    })
-  } catch (error) {
-    logError("report-pdf-fallback.standard-fallback", error, {
-      reportId: params.reportId,
-    })
+      signal: params.signal,
+    },
+    () => {
+      try {
+        return buildStandardReportPdfBuffer({
+          reportId: params.reportId,
+          payload: params.payload,
+        })
+      } catch (error) {
+        logError("report-pdf-fallback.standard-fallback", error, {
+          reportId: params.reportId,
+        })
 
-    try {
-      return buildStandardReportPdfBuffer({
-        reportId: params.reportId,
-        payload: normalizePayload(params.payload),
-      })
-    } catch (normalizedError) {
-      logError("report-pdf-fallback.emergency-fallback", normalizedError, {
-        reportId: params.reportId,
-      })
+        try {
+          return buildStandardReportPdfBuffer({
+            reportId: params.reportId,
+            payload: normalizePayload(params.payload),
+          })
+        } catch (normalizedError) {
+          logError("report-pdf-fallback.emergency-fallback", normalizedError, {
+            reportId: params.reportId,
+          })
 
-      return buildEmergencyReportPdfBuffer({
-        reportId: params.reportId,
-        payload: params.payload,
-      })
+          return buildEmergencyReportPdfBuffer({
+            reportId: params.reportId,
+            payload: params.payload,
+          })
+        }
+      }
     }
-  }
+  )
 }

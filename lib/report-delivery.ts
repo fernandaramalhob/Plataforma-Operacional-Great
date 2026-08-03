@@ -1,4 +1,5 @@
 import { buildReportPdfBufferWithFallback } from "@/lib/report-pdf-fallback"
+import { withPdfGenerationSlot } from "@/lib/report-pdf-queue"
 import { buildStandardReportPdfBuffer } from "@/lib/report-pdf-standard"
 import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
 import {
@@ -145,13 +146,13 @@ export async function sendPersistedReportNow(
   })
 
   if (!report) {
-    throw new Error("RelatÃ³rio nÃ£o encontrado para envio")
+    throw new Error("RelatÃƒÂ³rio nÃƒÂ£o encontrado para envio")
   }
 
   const payload = parseStoredReportPayload(report.payloadJson)
 
   if (!payload) {
-    throw new Error("RelatÃ³rio ainda nÃ£o foi gerado")
+    throw new Error("RelatÃƒÂ³rio ainda nÃƒÂ£o foi gerado")
   }
 
   const targetGroup =
@@ -168,7 +169,7 @@ export async function sendPersistedReportNow(
   })
 
   if (currentStatus?.status === "CANCELLED") {
-    throw new Error("RelatÃ³rio cancelado")
+    throw new Error("RelatÃƒÂ³rio cancelado")
   }
 
   const mode = options?.mode ?? "PDF_AND_MESSAGE"
@@ -228,10 +229,17 @@ export async function sendPersistedReportNow(
       const pdfBuffer = options?.pdfBase64
         ? Buffer.from(options.pdfBase64, "base64")
         : pdfStrategy === "standard"
-          ? buildStandardReportPdfBuffer({
-              reportId: report.id,
-              payload,
-            })
+          ? await withPdfGenerationSlot(
+              {
+                label: "report-delivery",
+                reportId: report.id,
+              },
+              () =>
+                buildStandardReportPdfBuffer({
+                  reportId: report.id,
+                  payload,
+                })
+            )
           : await buildReportPdfBufferWithFallback({
               reportId: report.id,
               payload,
@@ -291,11 +299,11 @@ export async function sendPersistedReportNow(
         where: { id: sendLog.id },
         data: {
           status: "FAILED",
-          errorMessage: "Envio cancelado antes da confirmaÃ§Ã£o final.",
+          errorMessage: "Envio cancelado antes da confirmaÃƒÂ§ÃƒÂ£o final.",
         },
       })
 
-      throw new Error("RelatÃ³rio cancelado")
+      throw new Error("RelatÃƒÂ³rio cancelado")
     }
 
     const updatedReport = await prisma.report.updateMany({
@@ -315,11 +323,11 @@ export async function sendPersistedReportNow(
         where: { id: sendLog.id },
         data: {
           status: "FAILED",
-          errorMessage: "Envio cancelado antes da confirmaÃ§Ã£o final.",
+          errorMessage: "Envio cancelado antes da confirmaÃƒÂ§ÃƒÂ£o final.",
         },
       })
 
-      throw new Error("RelatÃ³rio cancelado")
+      throw new Error("RelatÃƒÂ³rio cancelado")
     }
 
     await prisma.sendLog.update({
@@ -338,9 +346,9 @@ export async function sendPersistedReportNow(
     }
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Erro ao enviar relatÃ³rio"
+      error instanceof Error ? error.message : "Erro ao enviar relatÃƒÂ³rio"
 
-    if (message === "RelatÃ³rio cancelado") {
+    if (message === "RelatÃƒÂ³rio cancelado") {
       throw error
     }
 
@@ -375,3 +383,4 @@ export async function sendPersistedReportNow(
     throw error
   }
 }
+
