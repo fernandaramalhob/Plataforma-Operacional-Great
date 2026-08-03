@@ -1,5 +1,6 @@
-import { Prisma, ReportStatus } from "@prisma/client"
+﻿import { Prisma, ReportStatus } from "@prisma/client"
 import type { SendLog } from "@prisma/client"
+import { getFriendlyReportErrorMessage } from "@/lib/report-error-message"
 import type {
   HistoryRow,
   ReportFilters,
@@ -82,7 +83,7 @@ export function buildStoredReportPayload(
     ...payload,
     client: payload.client ?? {
       id: "",
-      name: "Cliente não informado",
+      name: "Cliente nÃ£o informado",
       company: null,
       adAccountId: null,
     },
@@ -422,7 +423,7 @@ export function mapReportToHistoryRow(report: {
   )[0]
   const attempts = latestLog?.attemptNumber ?? 0
   const referenceWeek = payload
-    ? `${payload.filters.since} até ${payload.filters.until}`
+    ? `${payload.filters.since} atÃ© ${payload.filters.until}`
     : formatDate(report.referenceWeek)
   const groupId =
     jobError?.groupId ??
@@ -432,6 +433,7 @@ export function mapReportToHistoryRow(report: {
   const scheduledAt = jobError?.scheduledAt ?? pendingJob?.queuedAt ?? null
   const sentAt = latestLog?.sentAt?.toISOString() ?? null
   const nextSendAt = jobError?.nextAttemptAt ?? pendingJob?.nextAttemptAt ?? null
+  const rawErrorMessage = latestLog?.errorMessage ?? jobError?.message ?? null
 
   return {
     id: report.id,
@@ -449,7 +451,12 @@ export function mapReportToHistoryRow(report: {
     nextSendAt,
     status: report.status,
     attempts,
-    errorMessage: latestLog?.errorMessage ?? jobError?.message ?? null,
+    errorMessage: rawErrorMessage
+      ? getFriendlyReportErrorMessage(
+          rawErrorMessage,
+          "Falha no processamento do relatório."
+        )
+      : null,
     referenceWeek,
   }
 }
@@ -483,7 +490,8 @@ export function mapScheduleToHistoryRow(schedule: {
   const scheduledAt = schedule.createdAt.toISOString()
   const sentAt = schedule.lastRunAt?.toISOString() ?? null
   const nextSendAt = schedule.nextRunAt.toISOString()
-  const referenceWeek = `${schedule.filtersSince} até ${schedule.filtersUntil}`
+  const rawErrorMessage = schedule.lastError ?? null
+  const referenceWeek = `${schedule.filtersSince} atÃ© ${schedule.filtersUntil}`
 
   return {
     id: schedule.id,
@@ -501,7 +509,15 @@ export function mapScheduleToHistoryRow(schedule: {
     nextSendAt,
     status: schedule.active ? "PENDING" : "CANCELLED",
     attempts: 0,
-    errorMessage: schedule.lastError,
+    errorMessage: rawErrorMessage
+      ? getFriendlyReportErrorMessage(
+          rawErrorMessage,
+          "Falha no processamento do agendamento."
+        )
+      : null,
     referenceWeek,
   }
 }
+
+
+

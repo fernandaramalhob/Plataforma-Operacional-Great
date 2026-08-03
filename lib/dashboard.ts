@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma"
 import { parseStoredReportPayload } from "@/lib/report-domain"
 import { getReportQueuesHealth } from "@/lib/report-monitoring"
 import { logWarn } from "@/lib/safe-logger"
+import { getFriendlyReportErrorMessage } from "@/lib/report-error-message"
 
 const RECENT_ACTIVITY_LIMIT = 5
 const CLIENT_SEND_STATUS_LIMIT = 8
@@ -581,7 +582,9 @@ function buildClientSendStatus(clients: ClientWithCampaigns[]) {
         status = "Enviado"
       } else if (sendLog?.status === "FAILED" || report?.status === "FAILED") {
         status = "Falha"
-        errorMessage = sendLog?.errorMessage ?? null
+        errorMessage = sendLog?.errorMessage
+          ? getFriendlyReportErrorMessage(sendLog.errorMessage, "Falha no processamento do relatório.")
+          : null
       } else if (report) {
         status = "Pendente"
       }
@@ -1148,3 +1151,5 @@ export async function getDashboardData(
     configIndicators,
   }
 }
+
+

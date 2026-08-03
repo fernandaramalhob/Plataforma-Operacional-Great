@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client"
+﻿import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import {
   getCurrentUser,
@@ -9,6 +9,7 @@ import { resolveUserEvolutionInstance } from "@/lib/evolution-preference"
 import { prisma } from "@/lib/prisma"
 import { parsePendingReportJobPayload } from "@/lib/report-domain"
 import { serializeReportSchedule } from "@/lib/report-schedule"
+import { getFriendlyReportErrorMessage } from "@/lib/report-error-message"
 import { logError } from "@/lib/safe-logger"
 import type {
   ReportScheduleListItem,
@@ -136,22 +137,22 @@ function deriveScheduleStatus(client: ClientWithSchedule): Pick<
   let statusLabel = "Agendado"
   let statusDetail =
     schedule.active
-      ? `Próximo envio em ${schedule.nextRunAt.toLocaleString("pt-BR")}.`
-      : "Aguardando uma nova configuração."
+      ? `PrÃ³ximo envio em ${schedule.nextRunAt.toLocaleString("pt-BR")}.`
+      : "Aguardando uma nova configuraÃ§Ã£o."
 
   if (relatedReport?.status === "PENDING" && pendingJob) {
     status = "IN_PROGRESS"
     statusLabel = "Em progresso"
     statusDetail =
       pendingJob.lastError && pendingJob.nextAttemptAt
-        ? `Nova tentativa ${pendingJob.kind === "SEND" ? "de envio" : "de geração"} em ${new Date(pendingJob.nextAttemptAt).toLocaleString("pt-BR")}.`
+        ? `Nova tentativa ${pendingJob.kind === "SEND" ? "de envio" : "de geraÃ§Ã£o"} em ${new Date(pendingJob.nextAttemptAt).toLocaleString("pt-BR")}.`
         : pendingJob.kind === "SEND"
-          ? "Relatório gerado, preparando envio automático."
-          : "Relatório em processamento para envio."
+          ? "RelatÃ³rio gerado, preparando envio automÃ¡tico."
+          : "RelatÃ³rio em processamento para envio."
   } else if (latestSendLog?.status === "FAILED" || relatedReport?.status === "FAILED" || schedule.lastError) {
     status = "FAILED"
     statusLabel = "Falhou"
-    statusDetail = lastSendError || "O último envio automático falhou."
+    statusDetail = lastSendError || "O Ãºltimo envio automÃ¡tico falhou."
   } else if (latestSendLog?.status === "PENDING") {
     status = "IN_PROGRESS"
     statusLabel = "Em progresso"
@@ -164,10 +165,10 @@ function deriveScheduleStatus(client: ClientWithSchedule): Pick<
     statusLabel = "Enviado"
     statusDetail =
       latestSendLog?.sentAt
-        ? `Último envio em ${latestSendLog.sentAt.toLocaleString("pt-BR")}.`
+        ? `Ãšltimo envio em ${latestSendLog.sentAt.toLocaleString("pt-BR")}.`
         : schedule.lastRunAt
           ? `Executado em ${schedule.lastRunAt.toLocaleString("pt-BR")}.`
-          : "Último envio concluido com sucesso."
+          : "Ãšltimo envio concluido com sucesso."
   } else if (!schedule.active && schedule.lastRunAt) {
     status = "SENT"
     statusLabel = "Enviado"
@@ -185,7 +186,9 @@ function deriveScheduleStatus(client: ClientWithSchedule): Pick<
     lastReportId: relatedReport?.id ?? null,
     lastReportGeneratedAt: relatedReport?.generatedAt.toISOString() ?? null,
     lastSendAttemptAt,
-    lastSendError,
+    lastSendError: lastSendError
+      ? getFriendlyReportErrorMessage(lastSendError, "Falha no processamento do agendamento.")
+      : null,
   }
 }
 
@@ -193,7 +196,7 @@ export async function GET() {
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "NÃ£o autorizado" }, { status: 401 })
     }
     const userEvolutionInstance = await resolveUserEvolutionInstance(user.id)
 
@@ -306,3 +309,5 @@ export async function GET() {
     return NextResponse.json({ error: "Erro interno" }, { status: 500 })
   }
 }
+
+
