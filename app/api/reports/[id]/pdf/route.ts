@@ -118,7 +118,14 @@ export async function GET(
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+      const emergencyPdf = buildEmergencyPdfBuffer({
+        reportId: "unauthorized",
+        clientName: "Relatório indisponível",
+        referenceWeek: new Date(),
+        reason: "Você não está autorizado a acessar este relatório. Foi gerada uma versão de contingência.",
+      })
+
+      return buildPdfResponse(emergencyPdf, "greatgo-relatorio-meta-ads-acesso-restrito.pdf")
     }
 
     const { id } = await params
@@ -135,11 +142,34 @@ export async function GET(
     })
 
     if (!report) {
-      return NextResponse.json({ error: "Relatório não encontrado" }, { status: 404 })
+      const emergencyPdf = buildEmergencyPdfBuffer({
+        reportId: id,
+        clientName: "Relatório indisponível",
+        referenceWeek: new Date(),
+        reason:
+          "Não foi possível localizar este relatório. Uma versão de contingência foi gerada automaticamente.",
+      })
+
+      return buildPdfResponse(emergencyPdf, `greatgo-relatorio-meta-ads-${id}.pdf`)
     }
 
     if (!canAccessClient(user, report.client.managerId)) {
-      return NextResponse.json({ error: "Acesso negado a este relatório" }, { status: 403 })
+      const emergencyPdf = buildEmergencyPdfBuffer({
+        reportId: report.id,
+        clientName: report.client.name || "Relatório indisponível",
+        referenceWeek: report.referenceWeek ?? new Date(),
+        reason:
+          "Não foi possível liberar este relatório para download. Foi gerada uma versão de contingência.",
+      })
+
+      return buildPdfResponse(
+        emergencyPdf,
+        `${buildReportPdfFileName({
+          clientName: report.client.name || "Relatório indisponível",
+          startDate: report.referenceWeek.toISOString().slice(0, 10),
+          endDate: report.referenceWeek.toISOString().slice(0, 10),
+        })}.pdf`
+      )
     }
 
     const payload = parseStoredReportPayload(report.payloadJson)
@@ -190,4 +220,5 @@ export async function GET(
     return buildPdfResponse(emergencyPdf, "greatgo-relatorio-meta-ads-contingencia.pdf")
   }
 }
+
 
