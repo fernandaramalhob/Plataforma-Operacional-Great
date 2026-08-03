@@ -1,26 +1,10 @@
-import { execFile } from "node:child_process"
 import { createHmac, timingSafeEqual } from "node:crypto"
-import { existsSync } from "node:fs"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
-import os from "node:os"
-import path from "node:path"
-import { promisify } from "node:util"
-import { logError } from "@/lib/safe-logger"
+import { prisma } from "@/lib/prisma"
+import { parseStoredReportPayload } from "@/lib/report-domain"
+import { buildStandardReportPdfBuffer } from "@/lib/report-pdf-standard"
+import { logError, logInfo } from "@/lib/safe-logger"
 
-const execFileAsync = promisify(execFile)
 const TOKEN_TTL_MS = 5 * 60 * 1000
-const DEFAULT_PDF_RENDER_TIMEOUT_MS = 20_000
-const BROWSER_CANDIDATES = [
-  process.env.CHROME_EXECUTABLE_PATH,
-  "/usr/bin/google-chrome-stable",
-  "/usr/bin/google-chrome",
-  "/usr/bin/chromium-browser",
-  "/usr/bin/chromium",
-  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-  "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
-  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-  "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-]
 
 function getPdfRenderSecret() {
   const secret =
@@ -36,31 +20,6 @@ function getPdfRenderSecret() {
   }
 
   return secret
-}
-
-function getAutomationBaseUrl() {
-  const baseUrl =
-    process.env.REPORT_AUTOMATION_BASE_URL ||
-    process.env.NEXTAUTH_URL ||
-    "http://127.0.0.1:3000"
-
-  return baseUrl.trim().replace(/\/$/, "")
-}
-
-function resolveBrowserPath() {
-  return BROWSER_CANDIDATES.find(
-    (candidate): candidate is string => Boolean(candidate && existsSync(candidate))
-  )
-}
-
-function getPdfRenderTimeoutMs() {
-  const parsed = Number.parseInt(process.env.REPORT_PDF_RENDER_TIMEOUT_MS ?? "", 10)
-
-  if (!Number.isFinite(parsed) || parsed < 5_000) {
-    return DEFAULT_PDF_RENDER_TIMEOUT_MS
-  }
-
-  return parsed
 }
 
 function signReportPayload(reportId: string, expiresAt: number) {
@@ -95,58 +54,75 @@ export function verifyReportPdfAccessToken(reportId: string, token: string) {
   return timingSafeEqual(actualBuffer, expectedBuffer)
 }
 
-export async function buildPreviewReportPdfBuffer(params: { reportId: string }) {
-  const browserPath = resolveBrowserPath()
-  const timeoutMs = getPdfRenderTimeoutMs()
-
-  if (!browserPath) {
-    throw new Error(
-      "Não foi encontrado um navegador compatível para gerar o PDF da pré-visualização."
-    )
+function validatePdfBuffer(pdfBuffer: Uint8Array, reportId: string) {
+  if (!(pdfBuffer instanceof Uint8Array)) {
+    throw new Error("O buffer do PDF é inválido.")
   }
 
-  const token = createReportPdfAccessToken(params.reportId)
-  const reportUrl = new URL(`/report-pdf/${params.reportId}`, getAutomationBaseUrl())
-  reportUrl.searchParams.set("token", token)
+  if (pdfBuffer.byteLength === 0) {
+    throw new Error("O PDF gerado está vazio.")
+  }
 
-  const tempDirectory = await mkdtemp(path.join(os.tmpdir(), "greatgo-report-pdf-"))
-  const pdfPath = path.join(tempDirectory, "report.pdf")
+  if (
+    pdfBuffer[0] !== 0x25 ||
+    pdfBuffer[1] !== 0x50 ||
+    pdfBuffer[2] !== 0x44 ||
+    pdfBuffer[3] !== 0x46
+  ) {
+    throw new Error("O PDF gerado não começou com a assinatura esperada.")
+  }
 
+  logInfo("report-pdf-preview.validate", {
+    reportId,
+    size: pdfBuffer.byteLength,
+  })
+}
+
+export async function buildPreviewReportPdfBuffer(params: { reportId: string }) {
   try {
-    await execFileAsync(
-      browserPath,
-      [
-        "--headless",
-        "--disable-gpu",
-        "--hide-scrollbars",
-        "--disable-extensions",
-        "--disable-background-networking",
-        "--no-first-run",
-        "--run-all-compositor-stages-before-draw",
-        "--virtual-time-budget=12000",
-        "--window-size=1440,2400",
-        "--print-to-pdf-no-header",
-        `--print-to-pdf=${pdfPath}`,
-        reportUrl.toString(),
-      ],
-      {
-        timeout: timeoutMs,
-        windowsHide: true,
-        maxBuffer: 10 * 1024 * 1024,
-      }
-    )
+    logInfo("report-pdf-preview.build", {
+      reportId: params.reportId,
+      step: "starting-standard-generation",
+    })
 
-    return await readFile(pdfPath)
+    const report = await prisma.report.findUnique({
+      where: { id: params.reportId },
+      select: {
+        id: true,
+        payloadJson: true,
+      },
+    })
+
+    if (!report) {
+      throw new Error("Relatório não encontrado para gerar o PDF.")
+    }
+
+    const payload = parseStoredReportPayload(report.payloadJson)
+
+    if (!payload) {
+      throw new Error("Relatório ainda está em processamento.")
+    }
+
+    const pdfBuffer = buildStandardReportPdfBuffer({
+      reportId: params.reportId,
+      payload,
+    })
+
+    validatePdfBuffer(pdfBuffer, params.reportId)
+
+    logInfo("report-pdf-preview.build", {
+      reportId: params.reportId,
+      step: "completed",
+      size: pdfBuffer.byteLength,
+    })
+
+    return pdfBuffer
   } catch (error) {
     logError("report-pdf-preview.build", error, {
       reportId: params.reportId,
-      browserPath,
-      reportUrl: reportUrl.toString(),
     })
     throw new Error(
-      "Não foi possível gerar o PDF exato da pré-visualização do relatório."
+      "Não foi possível gerar o PDF da pré-visualização do relatório."
     )
-  } finally {
-    await rm(tempDirectory, { recursive: true, force: true })
   }
 }

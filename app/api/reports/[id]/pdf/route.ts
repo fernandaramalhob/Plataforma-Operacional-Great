@@ -4,11 +4,36 @@ import { buildReportPdfBufferWithFallback } from "@/lib/report-pdf-fallback"
 import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
 import { parseStoredReportPayload } from "@/lib/report-domain"
 import { prisma } from "@/lib/prisma"
-import { logError } from "@/lib/safe-logger"
+import { logError, logInfo } from "@/lib/safe-logger"
 
 function buildContentDisposition(fileName: string) {
   const safeFileName = fileName.replace(/"/g, '\\"')
   return `attachment; filename="${safeFileName}"`
+}
+
+function validatePdfBuffer(pdfBuffer: Uint8Array, reportId: string) {
+  if (!(pdfBuffer instanceof Uint8Array)) {
+    throw new Error("O PDF retornado é inválido.")
+  }
+
+  if (pdfBuffer.byteLength === 0) {
+    throw new Error("O PDF retornado está vazio.")
+  }
+
+  if (
+    pdfBuffer[0] !== 0x25 ||
+    pdfBuffer[1] !== 0x50 ||
+    pdfBuffer[2] !== 0x44 ||
+    pdfBuffer[3] !== 0x46
+  ) {
+    throw new Error("O PDF retornado não contém a assinatura esperada.")
+  }
+
+  logInfo("reports.pdf.get", {
+    reportId,
+    size: pdfBuffer.byteLength,
+    step: "buffer-valid",
+  })
 }
 
 export async function GET(
@@ -61,6 +86,8 @@ export async function GET(
       payload,
     })
 
+    validatePdfBuffer(pdfBuffer, report.id)
+
     const fileName = `${buildReportPdfFileName({
       clientName: payload.client.name,
       startDate: payload.filters.since,
@@ -72,6 +99,7 @@ export async function GET(
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": buildContentDisposition(fileName),
+        "Content-Length": String(pdfBuffer.byteLength),
         "Cache-Control": "no-store",
       },
     })
