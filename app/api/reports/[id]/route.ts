@@ -12,6 +12,7 @@ import {
 import { prisma } from "@/lib/prisma"
 import { processQueuedReportSafely } from "@/lib/report-processing"
 import { logError } from "@/lib/safe-logger"
+import { getFriendlyReportErrorMessage } from "@/lib/report-error-message"
 import type {
   ReportPresentationOptions,
   SavedReportMessageResponse,
@@ -92,7 +93,7 @@ export async function GET(
     const payload = parseStoredReportPayload(report.payloadJson)
     const jobError = parseReportJobErrorPayload(report.payloadJson)
     const pendingJob = parsePendingReportJobPayload(report.payloadJson)
-    const errorMessage = report.sendLogs[0]?.errorMessage ?? jobError?.message ?? null
+    const errorMessage = getFriendlyReportErrorMessage(report.sendLogs[0]?.errorMessage ?? jobError?.message ?? null)
 
     if (report.status === "PENDING" && pendingJob) {
       after(() => processQueuedReportSafely(report.id))

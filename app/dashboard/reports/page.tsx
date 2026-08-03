@@ -41,6 +41,7 @@ import {
   saveReportTemplate,
 } from "@/lib/report-template-storage"
 import { logError } from "@/lib/safe-logger"
+import { getFriendlyReportErrorMessage } from "@/lib/report-error-message"
 import type { ClientListItem } from "@/types/client.types"
 import type {
   ReportMetricKey,
@@ -64,7 +65,7 @@ const colors = [
   "bg-[#C1121F]",
 ]
 
-const DEFAULT_TEMPLATE_NAME = "Template padrÃ£o"
+const DEFAULT_TEMPLATE_NAME = "Template padrão"
 
 const DEFAULT_REPORT_SECTIONS: ReportSectionVisibility = {
   overview: true,
@@ -110,6 +111,7 @@ function isActiveCampaign(campaign: { status?: string | null }) {
 
 export default function ReportsPage() {
   const reportPollSequenceRef = useRef(0)
+  const downloadLockRef = useRef(false)
   const autoLoadedReportKeyRef = useRef("")
   const [clients, setClients] = useState<ClientListItem[]>([])
   const [loadingClients, setLoadingClients] = useState(true)
@@ -128,7 +130,7 @@ export default function ReportsPage() {
   const [sendMode, setSendMode] = useState<ReportSendMode>("PDF_AND_MESSAGE")
   const [sendMessage, setSendMessage] = useState("")
   const [templateName, setTemplateName] = useState(DEFAULT_TEMPLATE_NAME)
-  const [customTitle, setCustomTitle] = useState("FACEBOOK - VisÃ£o Geral")
+  const [customTitle, setCustomTitle] = useState("FACEBOOK - Visão geral")
   const [executiveSummary, setExecutiveSummary] = useState("")
   const [closingNotes, setClosingNotes] = useState("")
   const [sectionVisibility, setSectionVisibility] = useState<ReportSectionVisibility>(
@@ -160,7 +162,7 @@ export default function ReportsPage() {
 
   const resetCustomization = useCallback(() => {
     setTemplateName(DEFAULT_TEMPLATE_NAME)
-    setCustomTitle("FACEBOOK - VisÃ£o Geral")
+    setCustomTitle("FACEBOOK - Visão geral")
     setExecutiveSummary("")
     setClosingNotes("")
     setSectionVisibility(DEFAULT_REPORT_SECTIONS)
@@ -179,7 +181,7 @@ export default function ReportsPage() {
       }
 
       setTemplateName(template.name || DEFAULT_TEMPLATE_NAME)
-      setCustomTitle(template.customTitle || "FACEBOOK - VisÃ£o Geral")
+      setCustomTitle(template.customTitle || "FACEBOOK - Visão geral")
       setExecutiveSummary(template.executiveSummary || "")
       setClosingNotes(template.closingNotes || "")
       setSectionVisibility(template.sections || DEFAULT_REPORT_SECTIONS)
@@ -218,7 +220,7 @@ export default function ReportsPage() {
     if (savedReport.payload.presentation) {
       const presentation = savedReport.payload.presentation
 
-      setCustomTitle(presentation.customTitle || "FACEBOOK - VisÃ£o Geral")
+      setCustomTitle(presentation.customTitle || "FACEBOOK - Visão geral")
       setExecutiveSummary(presentation.executiveSummary || "")
       setClosingNotes(presentation.closingNotes || "")
       setSectionVisibility(presentation.sections || DEFAULT_REPORT_SECTIONS)
@@ -299,7 +301,7 @@ export default function ReportsPage() {
     }
 
     const start = new Date(today)
-    // MantÃ©m o intervalo inclusivo: 1 semana = 7 dias no total, 1 mÃªs = 30 dias, etc.
+    // Mantém o intervalo inclusivo: 1 semana = 7 dias no total, 1 mês = 30 dias, etc.
     start.setDate(today.getDate() - (daysByPeriod[activePeriod] - 1))
     setStartDate(formatLocalDateInput(start))
     setEndDate(formatLocalDateInput(today))
@@ -334,7 +336,7 @@ export default function ReportsPage() {
         sequence,
         getCurrentSequence: () => reportPollSequenceRef.current,
         sleep,
-        fallbackMessage: "Erro ao acompanhar a fila do relatÃ³rio",
+        fallbackMessage: "Erro ao acompanhar a fila do relatório",
         onUpdate: (nextReport) => {
           setCurrentReportId(nextReport.id)
 
@@ -344,14 +346,17 @@ export default function ReportsPage() {
           }
 
           setLoadingReportMessage(
-            "RelatÃ³rio em fila. Processando dados da META API..."
+            "Relatório em fila. Processando dados da META API..."
           )
         },
       })
 
       if (savedReport?.status === "FAILED") {
         throw new Error(
-          savedReport.errorMessage || "NÃ£o foi possÃ­vel gerar o relatÃ³rio"
+          getFriendlyReportErrorMessage(
+            savedReport.errorMessage,
+            "Não foi possível gerar o relatório"
+          )
         )
       }
     },
@@ -367,7 +372,7 @@ export default function ReportsPage() {
     setLoadingReport(true)
     setReportError("")
     setActionFeedback("")
-    setLoadingReportMessage("Enfileirando relatÃ³rio...")
+    setLoadingReportMessage("Enfileirando relatório...")
     const sequence = reportPollSequenceRef.current
 
     try {
@@ -386,13 +391,13 @@ export default function ReportsPage() {
         },
       })
       setCurrentReportId(response.reportId)
-      setLoadingReportMessage("RelatÃ³rio em fila. Processando dados da META API...")
+      setLoadingReportMessage("Relatório em fila. Processando dados da META API...")
       await waitForQueuedReport(response.reportId, sequence)
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Erro ao conectar com a META API"
       clearCurrentReport()
-      setReportError(message)
+      setReportError(getFriendlyReportErrorMessage(message, "Não foi possível carregar o relatório"))
     } finally {
       setLoadingReport(false)
     }
@@ -513,7 +518,7 @@ export default function ReportsPage() {
 
     const template = loadReportTemplate(selectedClient.id)
     if (!template) {
-      setActionFeedback("Ainda nÃ£o existe template salvo para este cliente.")
+      setActionFeedback("Ainda não existe template salvo para este cliente.")
       return
     }
 
@@ -547,12 +552,12 @@ export default function ReportsPage() {
         message: sendMode === "PDF_ONLY" ? undefined : sendMessage,
         presentation: buildCurrentPresentation(),
       })
-      setActionFeedback("Envio concluÃ­do com o formato selecionado.")
+      setActionFeedback("Envio concluído com o formato selecionado.")
     } catch (error) {
       setReportError(
         error instanceof Error
           ? error.message
-          : "NÃ£o foi possÃ­vel enviar o relatÃ³rio"
+          : "Não foi possível enviar o relatório"
       )
     } finally {
       setIsSending(false)
@@ -560,10 +565,11 @@ export default function ReportsPage() {
   }
 
   async function handleDownloadPdf() {
-    if (!currentReportId || !selectedClient || !reportData) {
+    if (!currentReportId || !selectedClient || !reportData || downloadLockRef.current) {
       return
     }
 
+    downloadLockRef.current = true
     setIsExporting(true)
     setReportError("")
     setActionFeedback("")
@@ -625,6 +631,7 @@ export default function ReportsPage() {
       })
       setReportError("Não foi possível gerar o PDF do relatório")
     } finally {
+      downloadLockRef.current = false
       setIsExporting(false)
     }
   }
@@ -637,8 +644,8 @@ export default function ReportsPage() {
       <>
         <div className="print:hidden">
           <Header
-            title="RelatÃ³rios"
-            subtitle="Selecione um cliente para visualizar o relatÃ³rio"
+            title="Relatórios"
+            subtitle="Selecione um cliente para visualizar o relatório"
           />
         </div>
         <div className="p-8">
@@ -660,7 +667,7 @@ export default function ReportsPage() {
                     : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                Gerar relatÃ³rio
+                Gerar relatório
               </button>
               <button
                 type="button"
@@ -703,7 +710,7 @@ export default function ReportsPage() {
                       </p>
                       <p className="text-xs text-slate-500">
                         Marque varios clientes ou todos os filtrados para agendar no
-                        mesmo horario.
+                        mesmo horário.
                       </p>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
@@ -798,7 +805,7 @@ export default function ReportsPage() {
                               {client.status === "ACTIVE" ? "Ativo" : "Inativo"}
                             </StatusBadge>
                             <span className="text-sm font-medium text-[#C1121F]">
-                              Ver relatÃ³rio
+                              Ver relatório
                             </span>
                           </div>
                         </button>
@@ -850,8 +857,8 @@ export default function ReportsPage() {
     <>
       <div className="print:hidden">
         <Header
-          title="RelatÃ³rio"
-          subtitle={`${selectedClient.name} Â· ${startDate} atÃ© ${endDate}`}
+          title="Relatório"
+          subtitle={`${selectedClient.name} · ${startDate} até ${endDate}`}
         />
       </div>
 
@@ -887,11 +894,11 @@ export default function ReportsPage() {
           </div>
 
           <div className="mb-5 rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
-            <FilterLabel>PerÃ­odo</FilterLabel>
+            <FilterLabel>Período</FilterLabel>
             <div className="mb-4 grid grid-cols-2 gap-2">
               {[
                 { label: "1 semana", value: "7d" },
-                { label: "1 mÃªs", value: "30d" },
+                { label: "1 mês", value: "30d" },
                 { label: "3 meses", value: "90d" },
                 { label: "6 meses", value: "180d" },
                 { label: "1 ano", value: "365d" },
@@ -911,7 +918,7 @@ export default function ReportsPage() {
               ))}
             </div>
             <p className="mb-2 text-xs font-medium text-slate-400">
-              PerÃ­odo personalizado
+              Período personalizado
             </p>
             <div className="flex gap-2">
               <input
@@ -940,8 +947,8 @@ export default function ReportsPage() {
             <div className="grid gap-2">
               {[
                 { label: "Todos", value: "ALL" },
-                { label: "TrÃ¡fego", value: "LINK_CLICKS" },
-                { label: "ConversÃ£o", value: "CONVERSIONS" },
+                { label: "Tráfego", value: "LINK_CLICKS" },
+                { label: "Conversão", value: "CONVERSIONS" },
                 { label: "Mensagens", value: "MESSAGES" },
               ].map((option) => (
                 <button
@@ -1003,10 +1010,10 @@ export default function ReportsPage() {
             <label className="flex items-center justify-between gap-3">
               <span>
                 <span className="block text-sm font-semibold text-slate-800">
-                  Insights automÃ¡ticos
+                  Insights automáticos
                 </span>
                 <span className="mt-1 block text-xs text-slate-400">
-                  Gera observaÃ§Ãµes inteligentes junto com o relatÃ³rio.
+                  Gera observações inteligentes junto com o relatório.
                 </span>
               </span>
               <div
@@ -1043,13 +1050,13 @@ export default function ReportsPage() {
         <section className="min-h-0 flex-1 overflow-y-auto bg-[#eef1f6] print:overflow-visible print:bg-white">
           {loadingReport ? (
             <LoadingSkeleton
-              label={loadingReportMessage || "Gerando relatÃ³rio..."}
+              label={loadingReportMessage || "Gerando relatório..."}
               className="h-full"
             />
           ) : reportError ? (
             <div className="flex h-full items-center justify-center px-6">
               <ErrorState
-                title="Erro ao carregar relatÃ³rio"
+                title="Erro ao carregar relatório"
                 message={reportError}
                 action={
                   <button
@@ -1065,7 +1072,7 @@ export default function ReportsPage() {
           ) : !reportData ? (
             <div className="flex h-full items-center justify-center px-6">
               <EmptyState
-                title="Nenhum relatÃ³rio carregado"
+                title="Nenhum relatório carregado"
                 description='Selecione os filtros e clique em "Aplicar filtros".'
                 className="w-full max-w-lg border-none bg-transparent py-20"
               />
@@ -1126,7 +1133,7 @@ export default function ReportsPage() {
                     href={`/dashboard/reports/${currentReportId}`}
                     className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 transition hover:bg-gray-50"
                   >
-                    Ver relatÃ³rio salvo
+                    Ver relatório salvo
                   </Link>
                 ) : null}
                 <button
@@ -1153,7 +1160,7 @@ export default function ReportsPage() {
                   className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
                 >
                   <Download className="h-4 w-4" />
-                  {isExporting ? "Gerando PDF..." : "Salvar relatÃ³rio em PDF"}
+                  {isExporting ? "Gerando PDF..." : "Salvar relatório em PDF"}
                 </button>
               </div>
             </div>
@@ -1180,12 +1187,12 @@ export default function ReportsPage() {
             return
           }
           setActionFeedback(
-            `Agendamento salvo. PrÃ³ximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
+            `Agendamento salvo. Próximo envio em ${new Date(schedule.nextRunAt).toLocaleString("pt-BR")}.`
           )
           setScheduleModalOpen(false)
         }}
         onDisabled={() => {
-          setActionFeedback("Agendamento automÃ¡tico desativado com sucesso.")
+          setActionFeedback("Agendamento automático desativado com sucesso.")
         }}
       />
     </>

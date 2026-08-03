@@ -106,7 +106,7 @@ export async function GET(
   } catch (error) {
     logError("reports.pdf.get", error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erro interno" },
+      { error: "Não foi possível gerar o PDF do relatório." },
       { status: 500 }
     )
   }

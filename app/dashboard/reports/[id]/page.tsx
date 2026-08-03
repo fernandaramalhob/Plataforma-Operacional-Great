@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -25,6 +25,7 @@ import {
   sendReportToWhatsApp,
 } from "@/lib/report-client"
 import { logError } from "@/lib/safe-logger"
+import { getFriendlyReportErrorMessage } from "@/lib/report-error-message"
 import type { ReportSendMode, SavedReportResponse } from "@/types/report.types"
 
 function isActiveCampaign(campaign: { status?: string | null }) {
@@ -35,6 +36,7 @@ export default function ReportPreviewPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const reportPollSequenceRef = useRef(0)
+  const downloadLockRef = useRef(false)
   const initialSendModeRef = useRef<ReportSendMode>("PDF_AND_MESSAGE")
   const initialSendMessageRef = useRef("")
   const [savedReport, setSavedReport] = useState<SavedReportResponse | null>(null)
@@ -121,9 +123,11 @@ export default function ReportPreviewPage() {
 
         setSavedReport(null)
         setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Não foi possível carregar o relatório"
+          getFriendlyReportErrorMessage(
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Não foi possível carregar o relatório"
+          )
         )
       })
       .finally(() => {
@@ -142,7 +146,7 @@ export default function ReportPreviewPage() {
   }
 
   async function handleSendReport() {
-    if (!savedReport?.payload) {
+    if (!savedReport?.payload || downloadLockRef.current) {
       return
     }
 
@@ -178,10 +182,11 @@ export default function ReportPreviewPage() {
   }
 
   async function handleDownloadPdf() {
-    if (!savedReport?.payload) {
+    if (!savedReport?.payload || downloadLockRef.current) {
       return
     }
 
+    downloadLockRef.current = true
     setGenerating(true)
     setError("")
     setActionFeedback("")
@@ -212,13 +217,14 @@ export default function ReportPreviewPage() {
       })
       setError("Não foi possível gerar o PDF do relatório")
     } finally {
+      downloadLockRef.current = false
       setGenerating(false)
     }
   }
 
   async function handleSaveMessage() {
 
-    if (!savedReport?.payload) {
+    if (!savedReport?.payload || downloadLockRef.current) {
       return
     }
 
@@ -306,7 +312,7 @@ export default function ReportPreviewPage() {
             {isCancelled ? (
               <p>{savedReport.errorMessage || "O envio foi cancelado com sucesso."}</p>
             ) : savedReport.status === "FAILED" ? (
-              <p>{savedReport.errorMessage || "Não foi possível gerar este relatório."}</p>
+              <p>{getFriendlyReportErrorMessage(savedReport.errorMessage, "Não foi possível gerar este relatório.")}</p>
             ) : (
               <div className="flex items-center gap-3">
                 <Loader2 className="h-5 w-5 animate-spin text-[#C1121F]" />
