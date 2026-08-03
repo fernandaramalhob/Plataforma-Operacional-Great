@@ -28,8 +28,7 @@ import { fetchJsonOrThrow } from "@/lib/api-client"
 import { formatLocalDateInput } from "@/lib/date-input"
 import { buildReportSendPreview } from "@/lib/report-message"
 import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
-
-import { buildStandardReportPdfBuffer } from "@/lib/report-pdf-standard"
+import { downloadReportPdfFromApi } from "@/lib/report-pdf-download"
 import {
   pollSavedReportUntilReady,
   requestQueuedReport,
@@ -53,7 +52,6 @@ import type {
   ReportSendMode,
   ReportTemplateDraft,
   SavedReportResponse,
-  StoredReportPayload,
 } from "@/types/report.types"
 
 const colors = [
@@ -111,7 +109,7 @@ function isActiveCampaign(campaign: { status?: string | null }) {
 
 export default function ReportsPage() {
   const reportPollSequenceRef = useRef(0)
-  const downloadLockRef = useRef(false)
+  const pdfRequestInProgressRef = useRef(false)
   const autoLoadedReportKeyRef = useRef("")
   const [clients, setClients] = useState<ClientListItem[]>([])
   const [loadingClients, setLoadingClients] = useState(true)
@@ -123,7 +121,7 @@ export default function ReportsPage() {
   const [loadingReportMessage, setLoadingReportMessage] = useState("")
   const [reportError, setReportError] = useState("")
   const [insightsEnabled, setInsightsEnabled] = useState(true)
-  const [isExporting, setIsExporting] = useState(false)
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [currentReportId, setCurrentReportId] = useState<string | null>(null)
   const [actionFeedback, setActionFeedback] = useState("")
@@ -416,21 +414,6 @@ export default function ReportsPage() {
     waitForQueuedReport,
   ])
 
-  useEffect(() => {
-    if (!selectedClient || !startDate || !endDate) {
-      return
-    }
-
-    const reportKey = `${selectedClient.id}:${startDate}:${endDate}:${objective}`
-
-    if (autoLoadedReportKeyRef.current === reportKey) {
-      return
-    }
-
-    autoLoadedReportKeyRef.current = reportKey
-    void fetchReport()
-  }, [endDate, fetchReport, objective, selectedClient, startDate])
-
   const filteredClients = clients.filter(
     (client) =>
       client.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -565,12 +548,12 @@ export default function ReportsPage() {
   }
 
   async function handleDownloadPdf() {
-    if (!currentReportId || !selectedClient || !reportData || downloadLockRef.current) {
+    if (!currentReportId || !selectedClient || !reportData || pdfRequestInProgressRef.current) {
       return
     }
 
-    downloadLockRef.current = true
-    setIsExporting(true)
+    pdfRequestInProgressRef.current = true
+    setIsGeneratingPdf(true)
     setReportError("")
     setActionFeedback("")
 
@@ -583,56 +566,24 @@ export default function ReportsPage() {
         })
       })
 
-      const pdfPayload = {
-        client: {
-          id: selectedClient.id,
-          name: selectedClient.name,
-          company: selectedClient.company,
-          adAccountId: selectedClient.adAccountId ?? null,
-        },
-        campaigns: reportData.campaigns.filter((campaign) =>
-          selectedCampaigns.includes(campaign.id)
-        ),
-        accountInsights: reportData.accountInsights,
-        dailyInsights: reportData.dailyInsights,
-        topAds: reportData.topAds,
-        genderBreakdown: reportData.genderBreakdown,
-        presentation: buildCurrentPresentation(),
-        filters: {
-          since: startDate,
-          until: endDate,
-          objective,
-          generatedAt: new Date().toISOString(),
-        },
-      }
-
-      const pdfData = buildStandardReportPdfBuffer({
-        reportId: currentReportId,
-        payload: pdfPayload as StoredReportPayload,
-      })
-
       const fileName = `${buildReportPdfFileName({
         clientName: selectedClient.name,
         startDate,
         endDate,
       })}.pdf`
 
-      const blob = new Blob([pdfData], { type: "application/pdf" })
-      const objectUrl = URL.createObjectURL(blob)
-      const anchor = document.createElement("a")
-      anchor.href = objectUrl
-      anchor.download = fileName
-      anchor.rel = "noreferrer"
-      anchor.click()
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+      await downloadReportPdfFromApi({
+        reportId: currentReportId,
+        fileName,
+      })
     } catch (pdfError) {
       logError("dashboard.report-preview.download", pdfError, {
         reportId: currentReportId,
       })
       setReportError("Não foi possível gerar o PDF do relatório")
     } finally {
-      downloadLockRef.current = false
-      setIsExporting(false)
+      pdfRequestInProgressRef.current = false
+      setIsGeneratingPdf(false)
     }
   }
 
@@ -1156,11 +1107,11 @@ export default function ReportsPage() {
                 <button
                   onClick={() => void handleDownloadPdf()}
                   data-cy="reports-save-pdf"
-                  disabled={isExporting}
+                  disabled={isGeneratingPdf}
                   className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
                 >
                   <Download className="h-4 w-4" />
-                  {isExporting ? "Gerando PDF..." : "Salvar relatório em PDF"}
+                  {isGeneratingPdf ? "Gerando PDF..." : "Salvar relatório em PDF"}
                 </button>
               </div>
             </div>

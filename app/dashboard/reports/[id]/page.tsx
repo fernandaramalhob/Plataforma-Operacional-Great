@@ -18,7 +18,7 @@ import { ErrorState } from "@/components/shared/error-state"
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton"
 import { buildReportSendPreview } from "@/lib/report-message"
 import { buildReportPdfFileName } from "@/lib/report-pdf-shared"
-import { buildStandardReportPdfBuffer } from "@/lib/report-pdf-standard"
+import { downloadReportPdfFromApi } from "@/lib/report-pdf-download"
 import {
   pollSavedReportUntilReady,
   saveSavedReportMessage,
@@ -36,7 +36,7 @@ export default function ReportPreviewPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const reportPollSequenceRef = useRef(0)
-  const downloadLockRef = useRef(false)
+  const pdfRequestInProgressRef = useRef(false)
   const initialSendModeRef = useRef<ReportSendMode>("PDF_AND_MESSAGE")
   const initialSendMessageRef = useRef("")
   const [savedReport, setSavedReport] = useState<SavedReportResponse | null>(null)
@@ -44,7 +44,7 @@ export default function ReportPreviewPage() {
   const [insightsEnabled, setInsightsEnabled] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [generating, setGenerating] = useState(false)
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [sending, setSending] = useState(false)
   const [savingMessage, setSavingMessage] = useState(false)
   const [actionFeedback, setActionFeedback] = useState("")
@@ -146,7 +146,7 @@ export default function ReportPreviewPage() {
   }
 
   async function handleSendReport() {
-    if (!savedReport?.payload || downloadLockRef.current) {
+    if (!savedReport?.payload) {
       return
     }
 
@@ -182,49 +182,40 @@ export default function ReportPreviewPage() {
   }
 
   async function handleDownloadPdf() {
-    if (!savedReport?.payload || downloadLockRef.current) {
+    if (!savedReport?.payload) {
       return
     }
 
-    downloadLockRef.current = true
-    setGenerating(true)
+    pdfRequestInProgressRef.current = true
+    setIsGeneratingPdf(true)
     setError("")
     setActionFeedback("")
 
     try {
-      const pdfData = buildStandardReportPdfBuffer({
-        reportId: savedReport.id,
-        payload: savedReport.payload,
-      })
-
       const fileName = `${buildReportPdfFileName({
         clientName: savedReport.payload.client.name,
         startDate: savedReport.payload.filters.since,
         endDate: savedReport.payload.filters.until,
       })}.pdf`
 
-      const blob = new Blob([pdfData], { type: "application/pdf" })
-      const objectUrl = URL.createObjectURL(blob)
-      const anchor = document.createElement("a")
-      anchor.href = objectUrl
-      anchor.download = fileName
-      anchor.rel = "noreferrer"
-      anchor.click()
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+      await downloadReportPdfFromApi({
+        reportId: savedReport.id,
+        fileName,
+      })
     } catch (pdfError) {
       logError("dashboard.report-preview.download", pdfError, {
         reportId: savedReport.id,
       })
       setError("Não foi possível gerar o PDF do relatório")
     } finally {
-      downloadLockRef.current = false
-      setGenerating(false)
+      pdfRequestInProgressRef.current = false
+      setIsGeneratingPdf(false)
     }
   }
 
   async function handleSaveMessage() {
 
-    if (!savedReport?.payload || downloadLockRef.current) {
+    if (!savedReport?.payload) {
       return
     }
 
@@ -503,11 +494,11 @@ export default function ReportPreviewPage() {
               </button>
               <button
                 onClick={() => void handleDownloadPdf()}
-                disabled={generating}
+                disabled={isGeneratingPdf}
                 className="flex items-center gap-2 rounded-xl bg-[#C1121F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A50F1A] disabled:opacity-60"
               >
                 <Download className="h-4 w-4" />
-                {generating ? "Gerando PDF..." : "Salvar relatório em PDF"}
+                {isGeneratingPdf ? "Gerando PDF..." : "Salvar relatório em PDF"}
               </button>
             </div>
           </div>
