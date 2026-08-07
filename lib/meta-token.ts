@@ -220,17 +220,6 @@ export function getMetaTokenFromCandidates(
 export function resolveMetaTokenCandidate(
   ...storedTokens: Array<string | null | undefined>
 ) {
-  const environmentToken = getMetaAccessTokenFromEnv()
-
-  if (environmentToken) {
-    return {
-      token: environmentToken,
-      encryptedToken: null,
-      index: -1,
-      source: "environment" as const,
-    }
-  }
-
   for (let index = 0; index < storedTokens.length; index += 1) {
     const storedToken = storedTokens[index]
 
@@ -240,6 +229,17 @@ export function resolveMetaTokenCandidate(
         index,
         source: "database" as const,
       }
+    }
+  }
+
+  const environmentToken = getMetaAccessTokenFromEnv()
+
+  if (environmentToken) {
+    return {
+      token: environmentToken,
+      encryptedToken: null,
+      index: -1,
+      source: "environment" as const,
     }
   }
 
