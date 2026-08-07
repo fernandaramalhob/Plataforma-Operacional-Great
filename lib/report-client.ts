@@ -1,4 +1,9 @@
-import { fetchJsonOrThrow } from "@/lib/api-client"
+import {
+  fetchJsonOrThrow,
+  getApiErrorMessage,
+  isApiErrorResponse,
+  readJsonResponse,
+} from "@/lib/api-client"
 import type {
   ReportCancelResponse,
   ReportRescheduleResponse,
@@ -26,8 +31,23 @@ type PollSavedReportOptions = {
   fallbackMessage?: string
 }
 
+async function fetchReportJsonOrThrow<T>(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  fallbackMessage: string
+): Promise<T> {
+  const response = await fetch(input, init)
+  const data = await readJsonResponse<T>(response)
+
+  if ((!response.ok && response.status !== 202) || isApiErrorResponse(data)) {
+    throw new Error(getApiErrorMessage(data, fallbackMessage))
+  }
+
+  return data as T
+}
+
 export async function requestQueuedReport(payload: ReportRequest) {
-  return fetchJsonOrThrow<QueuedReportResponse>(
+  return fetchReportJsonOrThrow<QueuedReportResponse>(
     "/api/reports",
     {
       method: "POST",
@@ -44,7 +64,7 @@ export async function loadSavedReport(
   reportId: string,
   fallbackMessage = "Não foi possível carregar o relatório"
 ) {
-  return fetchJsonOrThrow<SavedReportResponse>(
+  return fetchReportJsonOrThrow<SavedReportResponse>(
     `/api/reports/${reportId}`,
     {
       cache: "no-store",
