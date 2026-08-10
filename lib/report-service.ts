@@ -214,17 +214,23 @@ function buildMetaTokenOwners(user: ReportUser, client: ClientWithManager) {
   ] satisfies MetaTokenOwner[]
 }
 
-function isMetaPermissionError(error: unknown) {
+export function isMetaPermissionError(error: unknown) {
   const message =
     error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
 
   return (
     error instanceof MetaApiError
     && (
-      message.includes("ads_management")
+      error.code === 190
+      || message.includes("ads_management")
       || message.includes("ads_read")
       || message.includes("ad account owner has not grant")
       || message.includes("permissions-and-features")
+      || message.includes("not a confirmed user")
+      || message.includes("sessions for the user are not allowed")
+      || message.includes("error validating access token")
+      || message.includes("invalid oauth access token")
+      || message.includes("oauthexception")
     )
   )
 }

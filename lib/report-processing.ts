@@ -266,7 +266,7 @@ function getStalePendingSendGraceMs() {
   return value * 1000
 }
 
-function isPermanentMetaPermissionError(message: string) {
+export function isPermanentMetaPermissionError(message: string) {
   const normalized = message.toLowerCase()
 
   return (
@@ -274,6 +274,11 @@ function isPermanentMetaPermissionError(message: string) {
     || normalized.includes("ads_read permission")
     || normalized.includes("ad account owner has not grant")
     || normalized.includes("permissions-and-features")
+    || normalized.includes("not a confirmed user")
+    || normalized.includes("sessions for the user are not allowed")
+    || normalized.includes("error validating access token")
+    || normalized.includes("invalid oauth access token")
+    || normalized.includes("oauthexception")
   )
 }
 
